@@ -1,27 +1,27 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Cust = {
   id: string;
   name: string;
-  company: string;
-  phone1: string;
+  diploma: string;
   stage: string;
   ownerId: string;
   ownerName: string;
 };
 
-// DB enum stages + prototype colors
+// مراحل قاعدة البيانات (stage_t) + ألوان وتسميات البروتوتايب
 const STAGES = [
   { key: "new", label: "جديد", color: "#2F6BFF" },
   { key: "contacted", label: "تم التواصل", color: "#0FA3A3" },
   { key: "interested", label: "مهتم", color: "#7B61FF" },
   { key: "negotiation", label: "تفاوض", color: "#F08A24" },
-  { key: "enrolled", label: "مشترك", color: "#18A957" },
+  { key: "enrolled", label: "مسجّل / دفع", color: "#18A957" },
   { key: "onhold", label: "معلّق", color: "#E6A700" },
-  { key: "lost", label: "خسارة", color: "#94A2BB" },
+  { key: "lost", label: "مؤجل / مرفوض", color: "#94A2BB" },
 ];
 
 const AV = ["#F08A24", "#0FA3A3", "#2F6BFF", "#7B61FF", "#18A957", "#E0483B", "#E6A700"];
@@ -62,9 +62,15 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
     <div>
       <div className="page-h">
         <div>
-          <h1>المراحل</h1>
+          <h1>مسار المبيعات</h1>
           <p>{custs.length} عميل — اسحب العميل بين المراحل</p>
         </div>
+        <Link className="btn" href="/customers/new">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          إضافة عميل
+        </Link>
       </div>
 
       <div className="pipe">
@@ -74,6 +80,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
             <div
               key={s.key}
               className={"col" + (overCol === s.key ? " drag" : "")}
+              data-stage={s.key}
               onDragOver={(e) => {
                 e.preventDefault();
                 if (overCol !== s.key) setOverCol(s.key);
@@ -107,15 +114,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                     onClick={() => router.push(`/customers/${c.id}`)}
                   >
                     <div className="pn">{c.name}</div>
-                    <div className="pm">
-                      {c.company && <span>{c.company}</span>}
-                      {c.phone1 && (
-                        <span className="num" dir="ltr">
-                          {c.phone1}
-                        </span>
-                      )}
-                      {!c.company && !c.phone1 && <span>—</span>}
-                    </div>
+                    <div className="pm">{c.diploma || "—"}</div>
                     <div className="pf">
                       <span className="who-mini">
                         <span className="av-xs" style={{ background: avColor(c.ownerId) }}>
@@ -127,7 +126,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                   </div>
                 ))}
                 {items.length === 0 && (
-                  <div className="text-xs text-muted text-center py-3">—</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", padding: "10px 0" }}>—</div>
                 )}
               </div>
             </div>
