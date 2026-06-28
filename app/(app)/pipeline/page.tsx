@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import StageMover from "./StageMover";
 
@@ -61,7 +62,11 @@ export default async function Pipeline() {
               <div className="p-2 space-y-2 min-h-[60px] max-h-[70vh] overflow-y-auto">
                 {items.map((c) => (
                   <div key={c.id} className="bg-white rounded-lg border border-line p-2.5">
-                    <div className="font-bold text-sm">{c.name}</div>
+                    <div className="font-bold text-sm">
+                      <Link href={`/customers/${c.id}`} className="text-brand hover:underline">
+                        {c.name}
+                      </Link>
+                    </div>
                     <div className="text-xs text-muted mt-0.5">{c.company || "—"}</div>
                     {c.phone1 && (
                       <div className="text-xs text-muted mt-0.5" dir="ltr">

@@ -38,7 +38,11 @@ export default async function Customers() {
           <tbody>
             {(rows || []).map(r => (
               <tr key={r.id} className="border-t border-line hover:bg-brand-soft/40">
-                <td className="p-3 font-bold">{r.name}</td>
+                <td className="p-3 font-bold">
+                  <Link href={`/customers/${r.id}`} className="text-brand hover:underline">
+                    {r.name}
+                  </Link>
+                </td>
                 <td className="p-3 text-muted" dir="ltr">{r.phone1 || "—"}</td>
                 <td className="p-3 text-muted">{r.company || "—"}</td>
                 <td className="p-3">{STAGES[r.stage] || r.stage}</td>
