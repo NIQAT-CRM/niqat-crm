@@ -11,18 +11,16 @@ const STAGES: Record<string, { label: string; color: string }> = {
   contacted: { label: "تم التواصل", color: "#0FA3A3" },
   interested: { label: "مهتم", color: "#7B61FF" },
   negotiation: { label: "تفاوض", color: "#F08A24" },
-  enrolled: { label: "مشترك", color: "#18A957" },
+  enrolled: { label: "مسجّل / دفع", color: "#18A957" },
   onhold: { label: "معلّق", color: "#E6A700" },
-  lost: { label: "خسارة", color: "#94A2BB" },
+  lost: { label: "مؤجل / مرفوض", color: "#94A2BB" },
 };
 
 function Kpi({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="bg-white rounded-xl border border-line p-4">
-      <div className="text-xs text-muted font-bold">{label}</div>
-      <div className="text-2xl font-extrabold num mt-1" style={{ color }}>
-        {value}
-      </div>
+    <div className="card" style={{ padding: 16 }}>
+      <div style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 700 }}>{label}</div>
+      <div className="num" style={{ fontSize: 26, fontWeight: 800, marginTop: 4, color }}>{value}</div>
     </div>
   );
 }
@@ -138,7 +136,7 @@ export default async function Reports() {
       )}
 
       <h2 className="font-extrabold mb-2 text-ink">توزيع المراحل ({totalCust} عميل)</h2>
-      <div className="bg-white rounded-xl border border-line p-4 mb-6 space-y-2">
+      <div className="card" style={{ padding: 16, marginBottom: 24, display: "flex", flexDirection: "column", gap: 8 }}>
         {Object.keys(STAGES).map((s) => {
           const n = stageCount[s] || 0;
           const st = STAGES[s];
@@ -158,9 +156,9 @@ export default async function Reports() {
       </div>
 
       <h2 className="font-extrabold mb-2 text-ink">تقرير الإحالات / الأفيلييت</h2>
-      <div className="bg-white rounded-xl border border-line overflow-x-auto">
-        <table className="w-full text-sm min-w-[560px]">
-          <thead className="bg-brand-soft/50 text-muted text-xs">
+      <div className="tbl-wrap">
+        <table style={{ minWidth: 560 }}>
+          <thead>
             <tr>
               <th className="text-start px-4 py-3 font-bold">الكود</th>
               <th className="text-start px-4 py-3 font-bold">الأفيلييت</th>

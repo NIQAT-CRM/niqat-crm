@@ -34,6 +34,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .eq("id", user.id)
     .maybeSingle();
 
+  const tomorrow = new Date(); tomorrow.setHours(0, 0, 0, 0); tomorrow.setDate(tomorrow.getDate() + 1);
+  const [dueRes, handoffRes] = await Promise.all([
+    supabase.from("tasks").select("*", { count: "exact", head: true })
+      .eq("assignee_id", user.id).eq("done", false).lt("due_at", tomorrow.toISOString()),
+    supabase.from("handoffs").select("*", { count: "exact", head: true }).eq("status", "pending"),
+  ]);
+  const dueCount = dueRes.count ?? 0;
+  const handoffCount = handoffRes.count ?? 0;
+
   const name = profile?.full_name || user.email || "مستخدم";
   const teamLabel = TEAM_AR[(profile?.team || "").toLowerCase()] || profile?.team || "—";
 
@@ -54,6 +63,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           canUsers={!!profile?.can_manage_users}
           canSettings={!!profile?.can_manage_settings}
           canGrant={!!profile?.can_manage_settings}
+          dueCount={dueCount}
+          handoffCount={handoffCount}
         />
 
         <div className="sb-foot">

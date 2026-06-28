@@ -63,6 +63,16 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
     }
   }
 
+  async function archive(id: string) {
+    const prev = tickets;
+    setTickets((l) => l.filter((t) => t.id !== id));
+    const { error } = await supabase.from("tickets").update({ archived: true }).eq("id", id);
+    if (error) {
+      setTickets(prev);
+      alert("تعذّر الأرشفة: " + error.message);
+    }
+  }
+
   return (
     <div>
       <div className="page-h">
@@ -70,11 +80,9 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
           <h1>الدعم</h1>
           <p>{tickets.length} تذكرة — اسحب التذكرة بين الأعمدة</p>
         </div>
-        <Link
-          href="/support/new"
-          className="bg-brand text-white rounded-lg px-4 py-2 text-sm font-bold hover:bg-brand-dark shrink-0"
-        >
-          + تذكرة جديدة
+        <Link href="/support/new" className="btn">
+          <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
+          تذكرة جديدة
         </Link>
       </div>
 
@@ -119,6 +127,9 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
                       }}
                       onClick={() => router.push(`/support/${t.id}`)}
                     >
+                      <button className="cardx" title="أرشفة التذكرة" onClick={(ev) => { ev.stopPropagation(); archive(t.id); }}>
+                        <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 12l5 5L20 7" /></svg>
+                      </button>
                       <div className="th">
                         <span className="pr" style={{ background: pc }} />
                         <span className="tt">{t.title}</span>

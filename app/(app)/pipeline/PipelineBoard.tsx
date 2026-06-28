@@ -58,6 +58,16 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
     }
   }
 
+  async function archive(id: string) {
+    const prev = custs;
+    setCusts((l) => l.filter((x) => x.id !== id));
+    const { error } = await supabase.from("customers").update({ archived: true }).eq("id", id);
+    if (error) {
+      setCusts(prev);
+      alert("تعذّر الأرشفة: " + error.message);
+    }
+  }
+
   return (
     <div>
       <div className="page-h">
@@ -113,6 +123,13 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                     }}
                     onClick={() => router.push(`/customers/${c.id}`)}
                   >
+                    <button
+                      className="cardx"
+                      title="أرشفة الكارت"
+                      onClick={(ev) => { ev.stopPropagation(); archive(c.id); }}
+                    >
+                      <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 12l5 5L20 7" /></svg>
+                    </button>
                     <div className="pn">{c.name}</div>
                     <div className="pm">{c.diploma || "—"}</div>
                     <div className="pf">

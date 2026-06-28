@@ -10,6 +10,7 @@ export default async function Pipeline() {
     .from("customers")
     .select("id,name,company,phone1,stage,owner_id")
     .eq("deleted", false)
+    .eq("archived", false)
     .order("created_at", { ascending: false })
     .limit(500);
 

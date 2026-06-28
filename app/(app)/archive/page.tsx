@@ -7,7 +7,7 @@ export default async function Archive() {
   const { data: rows } = await supabase
     .from("customers")
     .select("id,name,email,phone1")
-    .eq("deleted", true)
+    .eq("archived", true)
     .order("updated_at", { ascending: false })
     .limit(300);
 
