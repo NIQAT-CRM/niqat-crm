@@ -8,20 +8,24 @@ export default function AddBatch() {
   const router = useRouter();
   const supabase = createClient();
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ code: "", start_date: "", capacity: "", notes: "" });
+  const [f, setF] = useState({ code: "", start_date: "", end_date: "", capacity: "", notes: "" });
   const [busy, setBusy] = useState(false);
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
 
   async function save() {
     if (!f.code.trim()) { toast("اكتب كود الباتش"); return; }
     setBusy(true);
-    const { error } = await supabase.from("batches").insert({
+    const base: any = {
       code: f.code.trim(), start_date: f.start_date || null,
       capacity: f.capacity ? Number(f.capacity) : null, notes: f.notes.trim(), status: "open",
-    });
+    };
+    let error = (await supabase.from("batches").insert({ ...base, end_date: f.end_date || null })).error;
+    if (error && /end_date/.test((error as any).message || "")) {
+      error = (await supabase.from("batches").insert(base)).error; // العمود لسه مش موجود
+    }
     setBusy(false);
     if (error) { toast((error as any).code === "23505" ? "الكود موجود قبل كده" : "تعذّر الحفظ"); return; }
-    setF({ code: "", start_date: "", capacity: "", notes: "" }); setOpen(false);
+    setF({ code: "", start_date: "", end_date: "", capacity: "", notes: "" }); setOpen(false);
     toast("اتضاف الباتش"); router.refresh();
   }
 
@@ -40,7 +44,10 @@ export default function AddBatch() {
           <div className="fld"><label>الكود</label><input className="inp num" dir="ltr" placeholder="B25" value={f.code} onChange={(e) => set("code", e.target.value)} /></div>
           <div className="fld"><label>السعة</label><input className="inp num" dir="ltr" value={f.capacity} onChange={(e) => set("capacity", e.target.value)} /></div>
         </div>
-        <div className="fld"><label>تاريخ البدء</label><input className="inp num" type="date" dir="ltr" value={f.start_date} onChange={(e) => set("start_date", e.target.value)} /></div>
+        <div className="frow">
+          <div className="fld"><label>تاريخ البدء</label><input className="inp num" type="date" dir="ltr" value={f.start_date} onChange={(e) => set("start_date", e.target.value)} /></div>
+          <div className="fld"><label>تاريخ النهاية</label><input className="inp num" type="date" dir="ltr" value={f.end_date} onChange={(e) => set("end_date", e.target.value)} /></div>
+        </div>
         <div className="fld"><label>ملاحظات</label><input className="inp" value={f.notes} onChange={(e) => set("notes", e.target.value)} /></div>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn" onClick={save} disabled={busy}>{busy ? "..." : "حفظ"}</button>

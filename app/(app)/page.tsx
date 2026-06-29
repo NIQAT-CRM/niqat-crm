@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
+import BatchDoneBtn from "./batches/BatchDoneBtn";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +21,9 @@ const fmtDate = (d: string) => { try { return new Date(d).toLocaleDateString("ar
 export default async function Dashboard() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: me } = await supabase.from("profiles").select("can_see_finance,can_grant_access").eq("id", user?.id || "").maybeSingle();
+  const { data: me } = await supabase.from("profiles").select("can_see_finance,can_grant_access,can_manage_batches").eq("id", user?.id || "").maybeSingle();
   const canFinance = !!me?.can_see_finance;
+  const canManageBatches = !!me?.can_manage_batches;
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const in7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
@@ -42,6 +44,12 @@ export default async function Dashboard() {
   const enrollments = (enrRes.data as any[]) || [];
   const diplomas = (dipRes.data as any[]) || [];
   const batches = (btRes.data as any[]) || [];
+  // تواريخ النهاية (دفاعي: العمود ممكن يكون لسه مش موجود)
+  const endMap = new Map<string, string>();
+  if (batches.length) {
+    const eRes = await supabase.from("batches").select("id,end_date");
+    if (!eRes.error) for (const r of (eRes.data as any[]) || []) if (r.end_date) endMap.set(r.id, r.end_date);
+  }
   const cName = new Map(customers.map((c) => [c.id, c.name]));
   const pName = new Map(((profRes.data as any[]) || []).map((p) => [p.id, p.full_name]));
   const dName = new Map(diplomas.map((d) => [d.id, d.name_ar]));
@@ -165,11 +173,14 @@ export default async function Dashboard() {
           {batches.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا توجد باتشات.</div>}
           {batches.map((b) => {
             const st = b.status === "closed" ? { l: "منتهية", c: "#94A2BB" } : b.status === "full" ? { l: "مكتملة", c: "#E0483B" } : { l: "متاحة", c: "#18A957" };
+            const end = endMap.get(b.id);
+            const range = (b.start_date || "—") + (end ? " → " + end : "");
             return (
               <div key={b.id} className="sch">
                 <div style={{ fontWeight: 800, color: "var(--ink)" }}>{b.code}</div>
-                <div className="num" style={{ fontSize: 12.5, color: "var(--muted)", flex: 1, marginInlineStart: 12 }}>{b.start_date || "—"}</div>
-                <span className="stg" style={{ background: st.c + "1a", color: st.c }}>{st.l}</span>
+                <div className="num" style={{ fontSize: 12.5, color: "var(--muted)", flex: 1, marginInlineStart: 12 }}>{range}</div>
+                {canManageBatches && b.status !== "closed" && <BatchDoneBtn id={b.id} />}
+                <span className="stg" style={{ background: st.c + "1a", color: st.c, marginInlineStart: 10 }}>{st.l}</span>
               </div>
             );
           })}
