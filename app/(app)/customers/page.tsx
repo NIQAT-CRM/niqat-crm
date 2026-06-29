@@ -112,7 +112,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
           {canExport && <ExportButton rows={exportRows} headers={exportHeaders} />}
           <Link className="btn" href="/customers/new">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
-            إضافة عميل
+            {tr("addCust")}
           </Link>
         </div>
       </div>
@@ -125,8 +125,8 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         <table>
           <thead>
             <tr>
-              <th>الاسم</th><th>الدبلومة</th><th>الموبايل</th><th>المرحلة</th>
-              {canFinance && <th>المتبقّي</th>}<th>المسؤول</th>
+              <th>{tr("name")}</th><th>{tr("diplomas")}</th><th>{tr("phone")}</th><th>{tr("stage")}</th>
+              {canFinance && <th>{tr("remaining")}</th>}<th>{tr("owner")}</th>
             </tr>
           </thead>
           <tbody>

@@ -105,14 +105,14 @@ export default async function Dashboard() {
   const bMax = Math.max(...byBatch.map((x) => x.n), 1);
 
   const kpis = [
-    { label: "إجمالي العملاء", value: total, color: "#2F6BFF" },
-    { label: "محتملون", value: leads, color: "#F08A24" },
+    { label: tr("totalCust"), value: total, color: "#2F6BFF" },
+    { label: tr("newLeads"), value: leads, color: "#F08A24" },
     ...(canFinance ? [
-      { label: "المحصّل", value: fmtMoney(revenue / 1000) + "K ج", color: "#0FA3A3" },
-      { label: "المتبقّي", value: fmtMoney(outstanding / 1000) + "K ج", color: "#E6A700" },
+      { label: tr("revenue"), value: fmtMoney(revenue / 1000) + "K", color: "#0FA3A3" },
+      { label: tr("outstanding"), value: fmtMoney(outstanding / 1000) + "K", color: "#E6A700" },
     ] : []),
-    { label: "مسجّل / دفع", value: enrolled, color: "#18A957" },
-    { label: "تذاكر مفتوحة", value: tkRes.count ?? 0, color: "#E0483B" },
+    { label: tr("enrolled"), value: enrolled, color: "#18A957" },
+    { label: tr("openTk"), value: tkRes.count ?? 0, color: "#E0483B" },
   ];
 
   return (
@@ -131,7 +131,7 @@ export default async function Dashboard() {
       {/* مطلوب إجراء الآن */}
       <div className="card" style={{ padding: 18, marginTop: 16 }}>
         <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3>مطلوب إجراء الآن</h3><span className="chip">{actionCount}</span>
+          <h3>{tr("alertsT")}</h3><span className="chip">{actionCount}</span>
         </div>
         <div style={{ marginTop: 10 }}>
           {actionCount === 0 ? (
@@ -150,7 +150,7 @@ export default async function Dashboard() {
       {/* جدول الباتشات */}
       <div className="card" style={{ padding: 18, marginTop: 16 }}>
         <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3>جدول الباتشات</h3><span className="chip">{batches.length}</span>
+          <h3>{tr("schedule")}</h3><span className="chip">{batches.length}</span>
         </div>
         <div style={{ marginTop: 8 }}>
           {batches.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا توجد باتشات.</div>}
@@ -190,7 +190,7 @@ export default async function Dashboard() {
         </div>
 
         <div className="card" style={{ padding: 18 }}>
-          <div className="card-h"><h3>الاشتراكات حسب الدبلومة</h3></div>
+          <div className="card-h"><h3>{tr("byDiploma")}</h3></div>
           {byDip.length === 0 ? (
             <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 10 }}>لا توجد اشتراكات.</div>
           ) : (
@@ -213,7 +213,7 @@ export default async function Dashboard() {
       {/* by batch + النشاط الأخير */}
       <div className="grid2" style={{ marginTop: 16 }}>
         <div className="card" style={{ padding: 18 }}>
-          <div className="card-h"><h3>العملاء حسب الباتش</h3></div>
+          <div className="card-h"><h3>{tr("byBatch")}</h3></div>
           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9 }}>
             {byBatch.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>—</div>}
             {byBatch.map((x) => (
@@ -229,7 +229,7 @@ export default async function Dashboard() {
         </div>
 
         <div className="card" style={{ padding: 18 }}>
-          <div className="card-h"><h3>النشاط الأخير</h3></div>
+          <div className="card-h"><h3>{tr("recentAct")}</h3></div>
           <div style={{ marginTop: 8 }}>
             {((logRes.data as any[]) || []).length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا يوجد نشاط بعد.</div>}
             {((logRes.data as any[]) || []).map((l, idx) => (
