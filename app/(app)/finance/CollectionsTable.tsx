@@ -5,14 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Row = {
-  id: string;
-  customerId: string;
-  customerName: string;
-  diploma: string;
-  amount: number;
-  currency: string;
-  due: string;
-  state: "overdue" | "soon" | "upcoming";
+  id: string; customerId: string; customerName: string; diploma: string;
+  amount: number; currency: string; due: string; state: "overdue" | "soon" | "upcoming";
 };
 
 function money(n: number, cur: string) {
@@ -33,73 +27,55 @@ export default function CollectionsTable({ rows }: { rows: Row[] }) {
 
   async function markPaid(id: string) {
     setBusy(id);
-    const { error } = await supabase
-      .from("installments")
-      .update({ status: "paid", paid_at: new Date().toISOString() })
-      .eq("id", id);
+    const { error } = await supabase.from("installments")
+      .update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", id);
     setBusy(null);
-    if (error) {
-      alert("تعذّر التحديث: " + error.message);
-      return;
-    }
+    if (error) { alert("تعذّر التحديث: " + error.message); return; }
     setList((l) => l.filter((r) => r.id !== id));
     router.refresh();
   }
 
   if (list.length === 0)
     return (
-      <div className="bg-white rounded-xl border border-line p-6 text-center text-muted text-sm">
+      <div className="card" style={{ padding: 24, textAlign: "center", color: "var(--muted)", fontSize: 14 }}>
         مفيش أقساط مستحقة 🎉
       </div>
     );
 
   return (
-    <div className="bg-white rounded-xl border border-line overflow-x-auto">
-      <table className="w-full text-sm min-w-[640px]">
-        <thead className="bg-brand-soft/50 text-muted text-xs">
+    <div className="tbl-wrap">
+      <table>
+        <thead>
           <tr>
-            <th className="text-start px-4 py-3 font-bold">العميل</th>
-            <th className="text-start px-4 py-3 font-bold">الدبلومة</th>
-            <th className="text-start px-4 py-3 font-bold">المبلغ</th>
-            <th className="text-start px-4 py-3 font-bold">الاستحقاق</th>
-            <th className="text-start px-4 py-3 font-bold">الحالة</th>
-            <th className="px-4 py-3"></th>
+            <th>العميل</th>
+            <th>الدبلومة</th>
+            <th>المبلغ</th>
+            <th>الاستحقاق</th>
+            <th>الحالة</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           {list.map((r) => {
             const st = STATE[r.state];
             return (
-              <tr key={r.id} className="border-t border-line">
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/customers/${r.customerId}`}
-                    className="text-brand font-bold hover:underline"
-                  >
+              <tr key={r.id}>
+                <td>
+                  <Link href={`/customers/${r.customerId}`} style={{ color: "var(--brand)", fontWeight: 700 }}>
                     {r.customerName}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-ink">{r.diploma}</td>
-                <td className="px-4 py-3 num font-bold" dir="ltr">
-                  {money(r.amount, r.currency)}
-                </td>
-                <td className="px-4 py-3 num text-muted" dir="ltr">
-                  {r.due || "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className="text-[11px] rounded-full px-2 py-0.5 font-bold"
-                    style={{ color: st.color, background: st.bg }}
-                  >
+                <td>{r.diploma}</td>
+                <td className="num" dir="ltr" style={{ fontWeight: 700 }}>{money(r.amount, r.currency)}</td>
+                <td className="num" dir="ltr" style={{ color: "var(--muted)" }}>{r.due || "—"}</td>
+                <td>
+                  <span style={{ fontSize: 11, borderRadius: 20, padding: "2px 9px", fontWeight: 700, color: st.color, background: st.bg }}>
                     {st.label}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-end">
-                  <button
-                    onClick={() => markPaid(r.id)}
-                    disabled={busy === r.id}
-                    className="bg-green text-white text-xs font-bold rounded-lg px-3 py-1.5 hover:opacity-90 disabled:opacity-50"
-                  >
+                <td style={{ textAlign: "end" }}>
+                  <button onClick={() => markPaid(r.id)} disabled={busy === r.id}
+                    className="btn" style={{ background: "var(--green)", padding: "6px 12px", fontSize: 12 }}>
                     {busy === r.id ? "..." : "تم الدفع"}
                   </button>
                 </td>

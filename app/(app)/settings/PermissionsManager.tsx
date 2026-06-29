@@ -2,12 +2,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-type Profile = {
-  id: string;
-  full_name: string | null;
-  team: string | null;
-  [k: string]: any;
-};
+type Profile = { id: string; full_name: string | null; team: string | null; [k: string]: any };
 
 const PERMS: [string, string][] = [
   ["can_edit_customers", "تعديل العملاء"],
@@ -22,35 +17,6 @@ const PERMS: [string, string][] = [
   ["can_export", "تصدير البيانات"],
 ];
 
-function Toggle({
-  on,
-  busy,
-  onClick,
-}: {
-  on: boolean;
-  busy: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={busy}
-      className={
-        "relative w-10 h-5 rounded-full transition disabled:opacity-50 " +
-        (on ? "bg-green" : "bg-line")
-      }
-      aria-pressed={on}
-    >
-      <span
-        className={
-          "absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all " +
-          (on ? "right-0.5" : "right-[22px]")
-        }
-      />
-    </button>
-  );
-}
-
 export default function PermissionsManager({ profiles }: { profiles: Profile[] }) {
   const supabase = createClient();
   const [rows, setRows] = useState<Profile[]>(profiles);
@@ -60,10 +26,7 @@ export default function PermissionsManager({ profiles }: { profiles: Profile[] }
     const key = pid + col;
     setBusy(key);
     setRows((rs) => rs.map((r) => (r.id === pid ? { ...r, [col]: !current } : r)));
-    const { error } = await supabase
-      .from("profiles")
-      .update({ [col]: !current })
-      .eq("id", pid);
+    const { error } = await supabase.from("profiles").update({ [col]: !current }).eq("id", pid);
     setBusy(null);
     if (error) {
       setRows((rs) => rs.map((r) => (r.id === pid ? { ...r, [col]: current } : r)));
@@ -72,32 +35,27 @@ export default function PermissionsManager({ profiles }: { profiles: Profile[] }
   }
 
   return (
-    <div className="space-y-4">
+    <div>
       {rows.length === 0 && (
-        <div className="bg-white rounded-xl border border-line p-6 text-center text-muted text-sm">
+        <div className="card" style={{ padding: 24, textAlign: "center", color: "var(--muted)", fontSize: 14 }}>
           لا يوجد أعضاء بعد.
         </div>
       )}
 
       {rows.map((p) => (
-        <div key={p.id} className="bg-white rounded-xl border border-line p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="font-extrabold text-ink">{p.full_name || "—"}</div>
-            <span className="text-[11px] rounded-full px-2 py-0.5 font-bold bg-brand-soft text-brand">
-              {p.team || "—"}
-            </span>
+        <div key={p.id} className="ucard">
+          <div className="ucard-h" style={{ justifyContent: "space-between" }}>
+            <div style={{ fontWeight: 800, color: "var(--ink)" }}>{p.full_name || "—"}</div>
+            <span className="chip">{p.team || "—"}</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 24, rowGap: 10 }}>
             {PERMS.map(([col, label]) => {
               const on = !!p[col];
+              const isBusy = busy === p.id + col;
               return (
-                <div key={col} className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-ink">{label}</span>
-                  <Toggle
-                    on={on}
-                    busy={busy === p.id + col}
-                    onClick={() => toggle(p.id, col, on)}
-                  />
+                <div key={col} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, opacity: isBusy ? 0.5 : 1 }}>
+                  <span style={{ fontSize: 14, color: "var(--ink)" }}>{label}</span>
+                  <div className={"sw" + (on ? " on" : "")} onClick={() => !isBusy && toggle(p.id, col, on)}><i /></div>
                 </div>
               );
             })}
@@ -105,7 +63,7 @@ export default function PermissionsManager({ profiles }: { profiles: Profile[] }
         </div>
       ))}
 
-      <p className="text-xs text-muted">
+      <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
         ملاحظة: الأعضاء بيظهروا هنا بعد ما يتعمل لهم حساب دخول. دلوقتي ظاهر حسابات الإدارة بس.
       </p>
     </div>

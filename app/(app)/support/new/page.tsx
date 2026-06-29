@@ -17,13 +17,11 @@ export default async function NewTicketPage({
     .order("name", { ascending: true });
 
   return (
-    <div className="max-w-lg">
-      <div className="mb-4">
-        <Link href="/support" className="text-sm text-muted hover:text-ink">
-          ← رجوع للدعم
-        </Link>
+    <div style={{ maxWidth: 560 }}>
+      <div style={{ marginBottom: 12 }}>
+        <Link href="/support" style={{ fontSize: 13, color: "var(--muted)" }}>← رجوع للدعم</Link>
       </div>
-      <h1 className="text-xl font-extrabold mb-4">تذكرة جديدة</h1>
+      <div className="page-h"><h1>تذكرة جديدة</h1></div>
       <NewTicketForm
         customers={(customers as any) || []}
         presetCustomer={searchParams.customer || ""}

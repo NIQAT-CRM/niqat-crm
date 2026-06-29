@@ -20,19 +20,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 16, background: "var(--bg)" }}>
-      <div className="card" style={{ width: "100%", maxWidth: 380, padding: 28 }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 18 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="نقاط" style={{ width: 56, height: 56, objectFit: "contain", marginBottom: 10 }} />
-          <div className="appname">CRM-NIQAT</div>
-          <div className="appname-sub">نظام إدارة العملاء</div>
-        </div>
+    <div className="login">
+      <div className="login-card">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <div className="logo"><img src="/logo.png" alt="NIQAT" /></div>
+        <div className="appname">CRM-NIQAT</div>
+        <div className="appname-sub">نظام إدارة العملاء</div>
+        <h2>تسجيل الدخول</h2>
+        <p className="sub">ادخل بياناتك للمتابعة</p>
 
         <div className="fld">
           <label>البريد الإلكتروني</label>
-          <input className="inp num" type="email" dir="ltr" value={email}
-            onChange={(e) => setEmail(e.target.value)} />
+          <input className="inp num" type="email" dir="ltr" placeholder="name@niqat.com"
+            value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <div className="fld">
           <label>كلمة المرور</label>

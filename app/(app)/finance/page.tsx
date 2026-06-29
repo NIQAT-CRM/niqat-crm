@@ -9,11 +9,9 @@ function money(n: number, cur: string) {
 
 function Kpi({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="bg-white rounded-xl border border-line p-4">
-      <div className="text-xs text-muted font-bold">{label}</div>
-      <div className="text-2xl font-extrabold num mt-1" style={{ color }}>
-        {value}
-      </div>
+    <div className="card" style={{ padding: 16 }}>
+      <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{label}</div>
+      <div className="num" style={{ fontSize: 26, fontWeight: 800, marginTop: 4, color }}>{value}</div>
     </div>
   );
 }
@@ -102,7 +100,7 @@ export default async function Finance() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 20 }}>
         <Kpi label="إجمالي المتفق عليه" value={money(agreed, "EGP")} color="#2F6BFF" />
         <Kpi label="المحصّل" value={money(collected, "EGP")} color="#18A957" />
         <Kpi label="المتبقّي" value={money(outstanding, "EGP")} color="#E6A700" />

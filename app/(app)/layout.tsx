@@ -51,7 +51,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <aside className="sb" id="sb">
         <div className="sb-logo">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="نقاط" />
+          <img src="/icon.png" alt="N" />
           <div>
             <b>CRM-NIQAT</b>
             <span>نظام إدارة العملاء</span>

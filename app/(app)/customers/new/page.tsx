@@ -33,32 +33,26 @@ export default function NewCustomer() {
   }
 
   const Field = (label: string, k: keyof typeof f, ltr = false) => (
-    <div className="mb-3">
-      <label className="block text-sm font-bold mb-1">{label}</label>
-      <input className="w-full border border-line rounded-lg px-3 py-2 outline-none focus:border-brand"
-        dir={ltr ? "ltr" : "rtl"} value={f[k]} onChange={e => set(k, e.target.value)} />
+    <div className="fld">
+      <label>{label}</label>
+      <input className={"inp" + (ltr ? " num" : "")} dir={ltr ? "ltr" : "rtl"}
+        value={f[k]} onChange={e => set(k, e.target.value)} />
     </div>
   );
 
   return (
-    <div className="max-w-lg">
-      <h1 className="text-xl font-extrabold mb-4">إضافة عميل</h1>
-      <div className="bg-white rounded-xl border border-line p-5">
+    <div style={{ maxWidth: 560 }}>
+      <div className="page-h"><h1>إضافة عميل</h1></div>
+      <div className="card" style={{ padding: 20 }}>
         {Field("الاسم *", "name")}
         {Field("موبايل ١", "phone1", true)}
         {Field("موبايل ٢", "phone2", true)}
         {Field("الإيميل", "email", true)}
         {Field("الشركة", "company")}
-        {err && <div className="text-red-600 text-sm mb-3">{err}</div>}
-        <div className="flex gap-2">
-          <button onClick={save} disabled={saving}
-            className="bg-brand text-white rounded-lg px-5 py-2.5 font-bold hover:bg-brand-dark disabled:opacity-60">
-            {saving ? "..." : "حفظ"}
-          </button>
-          <button onClick={() => router.back()}
-            className="border border-line rounded-lg px-5 py-2.5 font-bold text-muted hover:bg-gray-50">
-            رجوع
-          </button>
+        {err && <div style={{ color: "var(--red)", fontSize: 13, marginBottom: 10 }}>{err}</div>}
+        <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+          <button onClick={save} disabled={saving} className="btn">{saving ? "..." : "حفظ"}</button>
+          <button onClick={() => router.back()} className="btn ghost">رجوع</button>
         </div>
       </div>
     </div>
