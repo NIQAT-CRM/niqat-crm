@@ -3,12 +3,13 @@ import PipelineBoard from "./PipelineBoard";
 
 export const dynamic = "force-dynamic";
 
-export default async function Pipeline() {
+export default async function Pipeline({ searchParams }: { searchParams: { q?: string } }) {
   const supabase = createClient();
+  const q = (searchParams?.q || "").trim().toLowerCase();
 
   const { data: rows } = await supabase
     .from("customers")
-    .select("id,name,company,phone1,stage,owner_id")
+    .select("id,name,company,phone1,phone2,email,stage,owner_id")
     .eq("deleted", false)
     .eq("archived", false)
     .order("created_at", { ascending: false })
@@ -29,7 +30,11 @@ export default async function Pipeline() {
     if (cid && nm && !dipName.has(cid)) dipName.set(cid, nm);
   }
 
-  const items = (rows || []).map((c) => ({
+  let src = rows || [];
+  if (q) src = src.filter((c: any) =>
+    ((c.name || "") + " " + (c.phone1 || "") + " " + (c.phone2 || "") + " " + (c.email || "")).toLowerCase().includes(q));
+
+  const items = src.map((c: any) => ({
     id: c.id as string,
     name: (c.name as string) || "—",
     diploma: dipName.get(c.id as string) || "",

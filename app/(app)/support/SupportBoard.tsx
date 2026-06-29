@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -44,6 +44,7 @@ function initials(name: string) {
 export default function SupportBoard({ initial }: { initial: Ticket[] }) {
   const tr = useT();
   const router = useRouter();
+  const downRef = useRef<{ x: number; y: number } | null>(null);
   const supabase = createClient();
   const [tickets, setTickets] = useState<Ticket[]>(initial);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -127,9 +128,15 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
                         setDragId(null);
                         setOverCol(null);
                       }}
-                      onClick={() => router.push(`/support/${t.id}`)}
+                      onMouseDown={(e) => { downRef.current = { x: e.clientX, y: e.clientY }; }}
+                      onMouseUp={(e) => {
+                        const d = downRef.current; downRef.current = null;
+                        if (!d) return;
+                        if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 6) router.push(`/support/${t.id}`);
+                      }}
+                      style={{ cursor: "pointer" }}
                     >
-                      <button className="cardx" title="أرشفة التذكرة" onClick={(ev) => { ev.stopPropagation(); archive(t.id); }}>
+                      <button className="cardx" title="أرشفة التذكرة" onMouseDown={(ev) => ev.stopPropagation()} onClick={(ev) => { ev.stopPropagation(); archive(t.id); }}>
                         <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 12l5 5L20 7" /></svg>
                       </button>
                       <div className="th">

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -39,6 +39,7 @@ function initials(name: string) {
 export default function PipelineBoard({ initial }: { initial: Cust[] }) {
   const tr = useT();
   const router = useRouter();
+  const downRef = useRef<{ x: number; y: number } | null>(null);
   const supabase = createClient();
   const [custs, setCusts] = useState<Cust[]>(initial);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -123,11 +124,18 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                       setDragId(null);
                       setOverCol(null);
                     }}
-                    onClick={() => router.push(`/customers/${c.id}`)}
+                    onMouseDown={(e) => { downRef.current = { x: e.clientX, y: e.clientY }; }}
+                    onMouseUp={(e) => {
+                      const d = downRef.current; downRef.current = null;
+                      if (!d) return;
+                      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 6) router.push(`/customers/${c.id}`);
+                    }}
+                    style={{ cursor: "pointer" }}
                   >
                     <button
                       className="cardx"
                       title="أرشفة الكارت"
+                      onMouseDown={(ev) => ev.stopPropagation()}
                       onClick={(ev) => { ev.stopPropagation(); archive(c.id); }}
                     >
                       <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 12l5 5L20 7" /></svg>
