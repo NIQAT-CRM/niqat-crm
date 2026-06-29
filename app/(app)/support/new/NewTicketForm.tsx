@@ -12,9 +12,9 @@ const PRIOS = [
 ];
 
 export default function NewTicketForm({
-  customers, presetCustomer,
+  customers, presetCustomer, problems = [],
 }: {
-  customers: Cust[]; presetCustomer: string;
+  customers: Cust[]; presetCustomer: string; problems?: string[];
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -35,8 +35,14 @@ export default function NewTicketForm({
     const { data, error } = await supabase.from("tickets").insert({
       customer_id: customerId, title: title.trim(), priority, status: "open", archived: false,
     }).select("id").single();
+    if (error) { setSaving(false); setErr("تعذّر إنشاء التذكرة: " + error.message); return; }
+    // حفظ المشكلة في القائمة المتكررة لو جديدة
+    const tt = title.trim();
+    if (tt && !problems.some((p) => p.toLowerCase() === tt.toLowerCase())) {
+      const next = [...problems, tt].slice(-50);
+      await supabase.from("app_settings").upsert({ key: "ticket_problems", value: next, updated_at: new Date().toISOString() });
+    }
     setSaving(false);
-    if (error) { setErr("تعذّر إنشاء التذكرة: " + error.message); return; }
     router.push(`/support/${data!.id}`);
   }
 
@@ -52,10 +58,21 @@ export default function NewTicketForm({
         </select>
       </div>
 
+      {problems.length > 0 && (
+        <div className="fld">
+          <label>مشاكل متكررة (اختر بدل ما تكتب)</label>
+          <select className="inp" value="" onChange={(e) => e.target.value && setTitle(e.target.value)}>
+            <option value="">— اختر مشكلة محفوظة —</option>
+            {problems.map((p, i) => <option key={i} value={p}>{p}</option>)}
+          </select>
+        </div>
+      )}
+
       <div className="fld">
         <label>الموضوع</label>
-        <input className="inp" value={title} onChange={(e) => setTitle(e.target.value)}
+        <input className="inp" value={title} onChange={(e) => setTitle(e.target.value)} list="probs"
           placeholder="مثال: مشكلة في الدخول على المنصة" />
+        <datalist id="probs">{problems.map((p, i) => <option key={i} value={p} />)}</datalist>
       </div>
 
       <div className="fld">

@@ -20,6 +20,7 @@ const PERMS: [string, string][] = [
   ["can_export", "تصدير البيانات"],
   ["can_manage_settings", "إدارة الإعدادات"],
   ["can_manage_users", "إدارة المستخدمين"],
+  ["can_see_daily_sales", "رؤية مبيعات اليوم"],
 ];
 const PRESET: Record<string, string[]> = {
   sales: ["can_edit_customers", "can_message", "can_view_reports"],
@@ -44,6 +45,37 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
     const o: Record<string, boolean> = {}; PRESET.sales.forEach((k) => (o[k] = true)); return o;
   });
   const [adding, setAdding] = useState(false);
+
+  // تعديل / حذف عضو
+  const [editId, setEditId] = useState<string | null>(null);
+  const [ef, setEf] = useState({ full_name: "", phone: "", email: "" });
+  function startEdit(u: Profile) {
+    setEditId(u.id); setEf({ full_name: u.full_name || "", phone: u.phone || "", email: u.email || "" });
+  }
+  async function saveEdit(u: Profile) {
+    setBusy(u.id + "edit");
+    const res = await fetch("/api/team", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: u.id, full_name: ef.full_name, phone: ef.phone, email: ef.email }),
+    });
+    const j = await res.json().catch(() => ({}));
+    setBusy(null);
+    if (!res.ok) return toast(j.error || "تعذّر التعديل");
+    setRows((rs) => rs.map((x) => (x.id === u.id ? { ...x, full_name: ef.full_name, phone: ef.phone, email: ef.email } : x)));
+    setEditId(null); toast("اتعدّل ✓");
+  }
+  async function removeUser(u: Profile) {
+    if (!confirm(`متأكد من حذف ${u.full_name || "العضو"}؟ الإجراء ده نهائي.`)) return;
+    setBusy(u.id + "del");
+    const res = await fetch("/api/team", {
+      method: "DELETE", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: u.id }),
+    });
+    const j = await res.json().catch(() => ({}));
+    setBusy(null);
+    if (!res.ok) return toast(j.error || "تعذّر الحذف");
+    setRows((rs) => rs.filter((x) => x.id !== u.id)); toast("اتحذف");
+  }
 
   async function toggle(p: Profile, col: string) {
     if (p.team === "admin") { toast("المدير العام كل صلاحياته مفعّلة"); return; }
@@ -90,8 +122,24 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
         <div>
           <b style={{ fontSize: 15, color: "var(--ink)" }}>{u.full_name || "—"}</b>{" "}
           <span className="uteam">{(TEAMS.find((t) => t[0] === u.team) || [, u.team])[1]}</span>
+          {u.phone && <div style={{ fontSize: 12, color: "var(--muted)" }} className="num" dir="ltr">{u.phone}</div>}
+        </div>
+        <div style={{ marginInlineStart: "auto", display: "flex", gap: 8 }}>
+          <button onClick={() => (editId === u.id ? setEditId(null) : startEdit(u))} style={{ background: "none", border: "none", color: "var(--brand)", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>تعديل</button>
+          <button onClick={() => removeUser(u)} disabled={busy === u.id + "del"} style={{ background: "none", border: "none", color: "#E0483B", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>حذف</button>
         </div>
       </div>
+      {editId === u.id && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "8px 0", padding: 10, border: "1px dashed var(--brand)", borderRadius: 8 }}>
+          <input className="inp" placeholder="الاسم" value={ef.full_name} onChange={(e) => setEf((s) => ({ ...s, full_name: e.target.value }))} />
+          <input className="inp num" dir="ltr" placeholder="رقم التليفون" value={ef.phone} onChange={(e) => setEf((s) => ({ ...s, phone: e.target.value }))} />
+          <input className="inp num" dir="ltr" type="email" placeholder="الإيميل" value={ef.email} onChange={(e) => setEf((s) => ({ ...s, email: e.target.value }))} />
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn" onClick={() => saveEdit(u)} disabled={busy === u.id + "edit"} style={{ height: 36 }}>{busy === u.id + "edit" ? "..." : "حفظ"}</button>
+            <button className="btn ghost" onClick={() => setEditId(null)} style={{ height: 36 }}>إلغاء</button>
+          </div>
+        </div>
+      )}
       {u.team === "admin" ? (
         <div style={{ fontSize: 12.5, color: "var(--muted)" }}>المدير العام — كل الصلاحيات مفعّلة</div>
       ) : (

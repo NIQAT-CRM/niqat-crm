@@ -30,5 +30,5 @@ export default async function MyTasks() {
     assignee: pMap.get(k.assignee_id || "") || "",
   }));
 
-  return <TaskList initial={tasks} />;
+  return <TaskList initial={tasks} meId={user?.id || ""} />;
 }

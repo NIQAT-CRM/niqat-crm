@@ -49,6 +49,7 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
   const [tickets, setTickets] = useState<Ticket[]>(initial);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
+  const [colQ, setColQ] = useState<Record<string, string>>({});
 
   async function drop(status: string) {
     const id = dragId;
@@ -91,7 +92,9 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
 
       <div className="pipe">
         {STATUSES.map((s) => {
-          const items = tickets.filter((t) => (t.status || "open") === s.key);
+          const cq = (colQ[s.key] || "").trim().toLowerCase();
+          const items = tickets.filter((t) => (t.status || "open") === s.key)
+            .filter((t) => !cq || ((t.title || "") + " " + ((t as any).customerName || "") + " " + ((t as any).phone || "")).toLowerCase().includes(cq));
           return (
             <div
               key={s.key}
@@ -115,6 +118,9 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
                 </span>
                 <span className="ct">{items.length}</span>
               </div>
+              <input className="inp" placeholder="فلترة العمود…" value={colQ[s.key] || ""}
+                onChange={(e) => setColQ((q) => ({ ...q, [s.key]: e.target.value }))}
+                style={{ height: 30, fontSize: 12, margin: "0 0 8px" }} />
               <div className="col-b enter">
                 {items.map((t) => {
                   const pc = PRC[t.priority] || PRC.normal;

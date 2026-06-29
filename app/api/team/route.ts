@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 const PERM_KEYS = [
   "can_edit_customers", "can_see_finance", "can_view_reports", "can_manage_tickets",
   "can_manage_batches", "can_manage_settings", "can_manage_users", "can_grant_access",
-  "can_message", "can_export",
+  "can_message", "can_export", "can_see_daily_sales",
 ] as const;
 
 export async function POST(req: Request) {
@@ -54,4 +54,45 @@ export async function POST(req: Request) {
   if (uErr) return NextResponse.json({ error: "اتعمل الحساب بس فشل ضبط الصلاحيات: " + uErr.message }, { status: 500 });
 
   return NextResponse.json({ ok: true, id: created.user.id });
+}
+
+async function guard() {
+  const supabase = createServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { err: NextResponse.json({ error: "غير مسجّل دخول" }, { status: 401 }) };
+  const { data: me } = await supabase.from("profiles").select("can_manage_users").eq("id", user.id).maybeSingle();
+  if (!me?.can_manage_users) return { err: NextResponse.json({ error: "مالكش صلاحية" }, { status: 403 }) };
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) return { err: NextResponse.json({ error: "مفتاح SUPABASE_SERVICE_ROLE_KEY مش متضاف في Vercel." }, { status: 500 }) };
+  return { meId: user.id, admin: createAdmin(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } }) };
+}
+
+export async function PATCH(req: Request) {
+  const g = await guard(); if ("err" in g) return g.err;
+  const body = await req.json().catch(() => null);
+  if (!body?.id) return NextResponse.json({ error: "بيانات غير صحيحة" }, { status: 400 });
+  const id = String(body.id);
+  const upd: Record<string, any> = {};
+  if (typeof body.full_name === "string") upd.full_name = body.full_name.trim();
+  if (typeof body.phone === "string") upd.phone = body.phone.trim();
+  if (Object.keys(upd).length) {
+    const { error } = await g.admin!.from("profiles").update(upd).eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+  if (typeof body.email === "string" && body.email.trim()) {
+    const { error } = await g.admin!.auth.admin.updateUserById(id, { email: body.email.trim().toLowerCase() });
+    if (error) return NextResponse.json({ error: "تعذّر تغيير الإيميل: " + error.message }, { status: 400 });
+  }
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(req: Request) {
+  const g = await guard(); if ("err" in g) return g.err;
+  const body = await req.json().catch(() => null);
+  if (!body?.id) return NextResponse.json({ error: "بيانات غير صحيحة" }, { status: 400 });
+  if (body.id === g.meId) return NextResponse.json({ error: "مينفعش تحذف نفسك" }, { status: 400 });
+  const { error } = await g.admin!.auth.admin.deleteUser(String(body.id));
+  if (error) return NextResponse.json({ error: "تعذّر الحذف: " + error.message }, { status: 400 });
+  return NextResponse.json({ ok: true });
 }

@@ -11,11 +11,27 @@ type T = {
 const today = () => new Date().toISOString().slice(0, 10);
 const waLink = (p: string) => "https://wa.me/" + (p || "").replace(/[^\d]/g, "");
 
-export default function TaskList({ initial }: { initial: T[] }) {
+export default function TaskList({ initial, meId }: { initial: T[]; meId: string }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [tasks, setTasks] = useState<T[]>(initial);
+  const [nt, setNt] = useState("");
+  const [ntDue, setNtDue] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  async function addMine() {
+    const title = nt.trim();
+    if (!title) return;
+    setAdding(true);
+    const { data, error } = await supabase.from("tasks")
+      .insert({ title, assignee_id: meId, due_at: ntDue ? new Date(ntDue).toISOString() : null, done: false })
+      .select("id").maybeSingle();
+    setAdding(false);
+    if (error || !data) return;
+    setTasks((l) => [{ id: data.id as string, title, due: ntDue || "", done: false, custId: "", custName: "", phone: "", assignee: "" }, ...l]);
+    setNt(""); setNtDue("");
+  }
 
   async function toggle(id: string) {
     const cur = tasks.find((t) => t.id === id);
@@ -82,6 +98,12 @@ export default function TaskList({ initial }: { initial: T[] }) {
           <h1>{tr("myTasks")}</h1>
           <p>{openCount} مهمة مفتوحة</p>
         </div>
+      </div>
+      <div className="card" style={{ padding: 12, marginBottom: 14, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <input className="inp" placeholder="مهمة جديدة لنفسي…" style={{ flex: 1, minWidth: 180 }} value={nt}
+          onChange={(e) => setNt(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addMine()} />
+        <input className="inp num" type="date" dir="ltr" style={{ width: 150 }} value={ntDue} onChange={(e) => setNtDue(e.target.value)} />
+        <button className="btn" onClick={addMine} disabled={adding} style={{ height: 40 }}>{adding ? "..." : "إضافة"}</button>
       </div>
       {tasks.length === 0 ? (
         <div className="empty"><b>لا توجد مهام</b></div>

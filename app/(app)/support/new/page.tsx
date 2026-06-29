@@ -17,6 +17,9 @@ export default async function NewTicketPage({
     .eq("deleted", false)
     .order("name", { ascending: true });
 
+  const { data: probRow } = await supabase.from("app_settings").select("value").eq("key", "ticket_problems").maybeSingle();
+  const problems = Array.isArray(probRow?.value) ? (probRow!.value as string[]) : [];
+
   return (
     <div style={{ maxWidth: 560 }}>
       <div style={{ marginBottom: 12 }}>
@@ -26,6 +29,7 @@ export default async function NewTicketPage({
       <NewTicketForm
         customers={(customers as any) || []}
         presetCustomer={searchParams.customer || ""}
+        problems={problems}
       />
     </div>
   );

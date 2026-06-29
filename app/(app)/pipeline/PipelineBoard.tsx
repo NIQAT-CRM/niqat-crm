@@ -44,6 +44,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
   const [custs, setCusts] = useState<Cust[]>(initial);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
+  const [colQ, setColQ] = useState<Record<string, string>>({});
 
   async function drop(stage: string) {
     const id = dragId;
@@ -88,7 +89,9 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
 
       <div className="pipe">
         {STAGES.map((s) => {
-          const items = custs.filter((c) => (c.stage || "new") === s.key);
+          const cq = (colQ[s.key] || "").trim().toLowerCase();
+          const items = custs.filter((c) => (c.stage || "new") === s.key)
+            .filter((c) => !cq || ((c.name || "") + " " + ((c as any).phone1 || "") + " " + ((c as any).company || "")).toLowerCase().includes(cq));
           return (
             <div
               key={s.key}
@@ -113,6 +116,9 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                 </span>
                 <span className="ct">{items.length}</span>
               </div>
+              <input className="inp" placeholder="فلترة العمود…" value={colQ[s.key] || ""}
+                onChange={(e) => setColQ((q) => ({ ...q, [s.key]: e.target.value }))}
+                style={{ height: 30, fontSize: 12, margin: "0 0 8px" }} />
               <div className="col-b enter">
                 {items.map((c) => (
                   <div

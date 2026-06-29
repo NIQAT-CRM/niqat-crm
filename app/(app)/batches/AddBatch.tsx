@@ -4,28 +4,29 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 
-export default function AddBatch() {
+export default function AddBatch({ diplomas = [] }: { diplomas?: { id: string; name: string }[] }) {
   const router = useRouter();
   const supabase = createClient();
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ code: "", start_date: "", end_date: "", capacity: "", notes: "" });
+  const [f, setF] = useState({ code: "", diploma_id: "", start_date: "", end_date: "", capacity: "", notes: "" });
   const [busy, setBusy] = useState(false);
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
 
   async function save() {
-    if (!f.code.trim()) { toast("اكتب كود الباتش"); return; }
+    if (!f.code.trim()) { toast("اكتب رقم الباتش"); return; }
     setBusy(true);
     const base: any = {
       code: f.code.trim(), start_date: f.start_date || null,
       capacity: f.capacity ? Number(f.capacity) : null, notes: f.notes.trim(), status: "open",
     };
-    let error = (await supabase.from("batches").insert({ ...base, end_date: f.end_date || null })).error;
-    if (error && /end_date/.test((error as any).message || "")) {
-      error = (await supabase.from("batches").insert(base)).error; // العمود لسه مش موجود
+    const full = { ...base, end_date: f.end_date || null, diploma_id: f.diploma_id || null };
+    let error = (await supabase.from("batches").insert(full)).error;
+    if (error && /end_date|diploma_id/.test((error as any).message || "")) {
+      error = (await supabase.from("batches").insert(base)).error; // أعمدة لسه مش موجودة
     }
     setBusy(false);
     if (error) { toast((error as any).code === "23505" ? "الكود موجود قبل كده" : "تعذّر الحفظ"); return; }
-    setF({ code: "", start_date: "", end_date: "", capacity: "", notes: "" }); setOpen(false);
+    setF({ code: "", diploma_id: "", start_date: "", end_date: "", capacity: "", notes: "" }); setOpen(false);
     toast("اتضاف الباتش"); router.refresh();
   }
 
@@ -40,8 +41,13 @@ export default function AddBatch() {
     <div style={{ position: "fixed", inset: 0, background: "rgba(15,27,48,.45)", zIndex: 60, display: "grid", placeItems: "center", padding: 16 }} onClick={() => setOpen(false)}>
       <div className="card" style={{ padding: 20, width: "min(440px,100%)" }} onClick={(e) => e.stopPropagation()}>
         <div className="sec-t" style={{ marginTop: 0 }}>باتش جديد</div>
+        <div className="fld"><label>الدبلومة</label>
+          <select className="inp" value={f.diploma_id} onChange={(e) => set("diploma_id", e.target.value)}>
+            <option value="">— اختر الدبلومة —</option>
+            {diplomas.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select></div>
         <div className="frow">
-          <div className="fld"><label>الكود</label><input className="inp num" dir="ltr" placeholder="B25" value={f.code} onChange={(e) => set("code", e.target.value)} /></div>
+          <div className="fld"><label>رقم الباتش</label><input className="inp num" dir="ltr" placeholder="B22" value={f.code} onChange={(e) => set("code", e.target.value)} /></div>
           <div className="fld"><label>السعة</label><input className="inp num" dir="ltr" value={f.capacity} onChange={(e) => set("capacity", e.target.value)} /></div>
         </div>
         <div className="frow">

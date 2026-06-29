@@ -24,12 +24,18 @@ export default async function Dashboard() {
   const { data: me } = await supabase.from("profiles").select("can_see_finance,can_grant_access,can_manage_batches").eq("id", user?.id || "").maybeSingle();
   const canFinance = !!me?.can_see_finance;
   const canManageBatches = !!me?.can_manage_batches;
+  // صلاحية رؤية مبيعات اليوم (منفصلة — جلب آمن لو العمود لسه مش موجود)
+  const { data: dsProf } = await supabase.from("profiles").select("can_see_daily_sales").eq("id", user?.id || "").maybeSingle();
+  const canDailySales = !!dsProf?.can_see_daily_sales;
+  // أسماء التخصصات
+  const { data: specsD } = await supabase.from("specialties").select("id,name_ar");
+  const spName = new Map((specsD || []).map((s: any) => [s.id, s.name_ar]));
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const in7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
 
   const [custRes, enrRes, dipRes, btRes, tkRes, fuRes, hoRes, logRes, profRes] = await Promise.all([
-    supabase.from("customers").select("id,name,stage").eq("deleted", false),
+    supabase.from("customers").select("id,name,stage,specialty_id").eq("deleted", false).eq("archived", false),
     supabase.from("enrollments").select("id,customer_id,diploma_id,batch_id"),
     supabase.from("diplomas").select("id,name_ar"),
     supabase.from("batches").select("id,code,status,start_date,capacity").order("start_date"),
@@ -121,16 +127,33 @@ export default async function Dashboard() {
   const bMax = Math.max(...byBatch.map((x) => x.n), 1);
 
   const kpis = [
-    { label: tr("totalCust"), value: total, color: "#2F6BFF" },
-    { label: tr("newLeads"), value: leads, color: "#F08A24" },
-    { label: tr("convRate"), value: conv + "%", color: "#18A957" },
-    { label: tr("tasksToday"), value: tasksToday ?? 0, color: "#7B61FF" },
+    { label: tr("totalCust"), value: total, color: "#2F6BFF", emoji: "👥" },
+    { label: tr("newLeads"), value: leads, color: "#F08A24", emoji: "🎯" },
+    { label: tr("convRate"), value: conv + "%", color: "#18A957", emoji: "📈" },
+    { label: tr("tasksToday"), value: tasksToday ?? 0, color: "#7B61FF", emoji: "✅" },
     ...(canFinance ? [
-      { label: tr("revenue"), value: fmtMoney(revenue / 1000) + "K", color: "#0FA3A3" },
-      { label: tr("outstanding"), value: fmtMoney(outstanding / 1000) + "K", color: "#E6A700" },
+      { label: tr("revenue"), value: fmtMoney(revenue / 1000) + "K", color: "#0FA3A3", emoji: "💰" },
+      { label: tr("outstanding"), value: fmtMoney(outstanding / 1000) + "K", color: "#E6A700", emoji: "⏳" },
     ] : []),
-    { label: tr("openTk"), value: tkRes.count ?? 0, color: "#E0483B" },
+    { label: tr("openTk"), value: tkRes.count ?? 0, color: "#E0483B", emoji: "🎫" },
   ];
+
+  // مبيعات النهاردة (محصّل فعلي اليوم) — بصلاحية منفصلة
+  let todaySales = 0;
+  if (canDailySales) {
+    const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
+    const { data: paidToday } = await supabase.from("installments")
+      .select("amount,currency,paid_at,status").gte("paid_at", startToday.toISOString());
+    for (const i of (paidToday || []) as any[]) {
+      if ((i.status === "paid" || i.paid_at) && i.currency === "EGP") todaySales += Number(i.amount) || 0;
+    }
+  }
+
+  // التخصصات الهندسية: العملاء المسجّلين/الدافعين لكل تخصص
+  const spCount: Record<string, number> = {};
+  for (const c of customers) if (c.stage === "enrolled" && c.specialty_id) spCount[c.specialty_id] = (spCount[c.specialty_id] || 0) + 1;
+  const spRows = Object.entries(spCount).map(([id, n]) => ({ name: spName.get(id) || "—", n })).sort((a, b) => b.n - a.n);
+  const spMax = Math.max(...spRows.map((r) => r.n), 1);
 
   return (
     <div>
@@ -139,10 +162,16 @@ export default async function Dashboard() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 14 }}>
         {kpis.map((k) => (
           <div key={k.label} className="card" style={{ padding: 18 }}>
-            <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}>{k.label}</div>
+            <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}><span style={{ marginInlineEnd: 6 }}>{(k as any).emoji}</span>{k.label}</div>
             <div className="num" style={{ fontSize: 28, fontWeight: 800, color: k.color }}>{k.value}</div>
           </div>
         ))}
+        {canDailySales && (
+          <div className="card" style={{ padding: 18, background: "linear-gradient(135deg,#0FA3A310,#18A95710)" }}>
+            <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}><span style={{ marginInlineEnd: 6 }}>🟢</span>مبيعات النهاردة</div>
+            <div className="num" style={{ fontSize: 28, fontWeight: 800, color: "#0FA3A3" }}>{fmtMoney(todaySales)} <span style={{ fontSize: 15 }}>ج</span></div>
+          </div>
+        )}
       </div>
 
       {/* مطلوب إجراء الآن */}
@@ -227,6 +256,28 @@ export default async function Dashboard() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* التخصصات الهندسية (المسجّلين الدافعين) */}
+      <div className="card" style={{ padding: 18, marginTop: 16 }}>
+        <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h3>التخصصات الهندسية (مسجّلين / دافعين)</h3><span className="chip">{spRows.length}</span>
+        </div>
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9 }}>
+          {spRows.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا يوجد مسجّلون بعد.</div>}
+          {spRows.map((x, i) => {
+            const pct = Math.round((x.n / spMax) * 100);
+            return (
+              <div key={x.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ width: 150, fontSize: 12.5, fontWeight: 700 }}>{i === 0 ? "🏆 " : ""}{x.name}</span>
+                <div style={{ flex: 1, height: 9, background: "#eef2f8", borderRadius: 20, overflow: "hidden" }}>
+                  <div style={{ width: pct + "%", height: "100%", background: "#2F6BFF" }} />
+                </div>
+                <span className="num" style={{ width: 30, textAlign: "left", fontWeight: 700, color: "var(--muted)" }}>{x.n}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
 

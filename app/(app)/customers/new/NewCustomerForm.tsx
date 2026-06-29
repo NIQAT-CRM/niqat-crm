@@ -26,6 +26,8 @@ export default function NewCustomerForm({
   const [saving, setSaving] = useState(false);
   const [dup, setDup] = useState<{ id: string; name: string } | null>(null);
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
+  // الاسم: لو إنجليزي خليه CAPITAL تلقائيًا (العربي زي ما هو)
+  const setName = (v: string) => set("name", /[A-Za-z]/.test(v) ? v.toUpperCase() : v);
 
   // الافييليت + الخصم
   const affMatch = affiliates.find((a) => a.code.toUpperCase() === f.affiliate_code.trim().toUpperCase());
@@ -105,7 +107,8 @@ export default function NewCustomerForm({
   return (
     <div className="card" style={{ padding: 20 }}>
       <div className="sec-t" style={{ marginTop: 0 }}>البيانات الأساسية</div>
-      {I("الاسم *", "name")}
+      <div className="fld"><label>الاسم *</label>
+        <input className="inp" value={f.name} onChange={(e) => setName(e.target.value)} placeholder="عربي أو English" /></div>
       <div className="frow">{I("موبايل ١", "phone1", true)}{I("موبايل ٢", "phone2", true)}</div>
       <div className="frow">{I("الإيميل", "email", true)}{I("الشركة", "company")}</div>
       {I("كود الأفيلييت", "affiliate_code", true)}

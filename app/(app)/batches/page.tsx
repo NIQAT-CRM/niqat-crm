@@ -19,6 +19,13 @@ export default async function Batches() {
     batches = bMin.data || [];
   } else batches = bFull.data || [];
 
+  // الدبلومة لكل باتش (دفاعي)
+  const dMap = new Map<string, string>();
+  const bd = await supabase.from("batches").select("id,diploma_id");
+  const { data: allDips } = await supabase.from("diplomas").select("id,name_ar").order("name_ar");
+  const dipName = new Map((allDips || []).map((d: any) => [d.id, d.name_ar]));
+  if (!bd.error) for (const r of (bd.data as any[]) || []) if (r.diploma_id) dMap.set(r.id, dipName.get(r.diploma_id) || "");
+
   const { data: enr } = await supabase.from("enrollments").select("batch_id");
   const cnt = new Map<string, number>();
   for (const e of enr || []) {
@@ -33,7 +40,7 @@ export default async function Batches() {
           <h1>{tr("batches")}</h1>
           <p>{(batches || []).length} باتش</p>
         </div>
-        {canManage && <AddBatch />}
+        {canManage && <AddBatch diplomas={(allDips || []).map((d: any) => ({ id: d.id, name: d.name_ar }))} />}
       </div>
       <div className="bgrid">
         {(batches || []).map((b) => {
@@ -47,6 +54,7 @@ export default async function Batches() {
             <div key={b.id as string} className="bcard">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
                 <div>
+                  {dMap.get(b.id as string) && <div style={{ color: "var(--brand)", fontSize: 12.5, fontWeight: 700 }}>{dMap.get(b.id as string)}</div>}
                   <div className="bcode">{b.code}</div>
                   <div style={{ color: "var(--muted)", fontSize: 12.5 }}>{b.notes || ""}</div>
                 </div>
