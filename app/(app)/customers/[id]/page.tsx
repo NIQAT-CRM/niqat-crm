@@ -7,6 +7,9 @@ import CustomerActivity from "./CustomerActivity";
 import AccessPanel from "./AccessPanel";
 import FollowUpPanel from "./FollowUpPanel";
 import RefundPanel from "./RefundPanel";
+import WhatsAppPanel from "./WhatsAppPanel";
+import AddonsPanel from "./AddonsPanel";
+import CopyNumbers from "./CopyNumbers";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +24,9 @@ const ini = (n: string) => { const p = (n || "?").trim().split(/\s+/); return p.
 export default async function CustomerDetail({ params }: { params: { id: string } }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: meProf } = await supabase.from("profiles").select("can_see_finance").eq("id", user?.id || "").maybeSingle();
+  const { data: meProf } = await supabase.from("profiles").select("can_see_finance,can_message").eq("id", user?.id || "").maybeSingle();
   const canFinance = !!meProf?.can_see_finance;
+  const canMessage = !!meProf?.can_message;
 
   const { data: c } = await supabase.from("customers")
     .select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,created_at")
@@ -121,6 +125,26 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     else refund = (rf || [])[0] || null;
   }
 
+  // قوالب واتساب
+  const { data: tplRows } = await supabase.from("wa_templates").select("id,name,body").order("created_at");
+  const templates = tplRows || [];
+  const waCtx = {
+    name: (c.name as string) || "", phone1: (c.phone1 as string) || "",
+    diploma: enrolls[0]?.diploma || "", batch: enrolls[0]?.batch || "", remaining: "",
+  };
+
+  // الإضافات + قوائمها
+  let addons: any[] = []; let addonsMissing = false;
+  const { data: adRows, error: adErr } = await supabase.from("customer_addons")
+    .select("id,type,name,amount,free,note,paid").eq("customer_id", params.id).order("created_at");
+  if (adErr) addonsMissing = true; else addons = (adRows || []).map((a: any) => ({ id: a.id, type: a.type, name: a.name, amount: Number(a.amount) || 0, free: !!a.free, note: a.note || "", paid: !!a.paid }));
+  const [{ data: accredRows }, { data: projRows }] = await Promise.all([
+    supabase.from("accreditations").select("name").order("name"),
+    supabase.from("projects").select("name").order("name"),
+  ]);
+  const accredList = (accredRows || []).map((x: any) => x.name);
+  const projList = (projRows || []).map((x: any) => x.name);
+
   const st = STAGE[c.stage as string] || STAGE.new;
 
   return (
@@ -134,8 +158,9 @@ export default async function CustomerDetail({ params }: { params: { id: string 
           <div className="av">{ini(c.name)}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h2>{c.name}</h2>
-            <div style={{ marginTop: 4 }}>
+            <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span className="stg" style={{ background: st.color + "1a", color: st.color }}>{st.label}</span>
+              <CopyNumbers phones={[c.phone1 as string, c.phone2 as string]} />
             </div>
           </div>
         </div>
@@ -155,6 +180,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
         ))}
       </div>
 
+      <AddonsPanel customerId={c.id as string} initial={addons} accreditations={accredList} projects={projList} canFinance={canFinance} tableMissing={addonsMissing} />
+
       <AccessPanel customerId={c.id as string} handoff={handoff} items={accessItems}
         accessOptions={accOpts || []} meId={user?.id || ""} meName="" />
 
@@ -163,6 +190,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
       {canFinance && <FinancePanel enrollments={finEnrollments} />}
 
       {canFinance && <RefundPanel customerId={c.id as string} refund={refund} meId={user?.id || ""} tableMissing={refundTableMissing} />}
+
+      {canMessage && <WhatsAppPanel customerId={c.id as string} meId={user?.id || ""} ctx={waCtx} templates={templates as any} />}
 
       <CustomerActivity customerId={c.id as string} meId={user?.id || ""} initialTasks={tasks} initialNotes={notes} />
 

@@ -37,6 +37,7 @@ export default function CustomerEdit({ customer, specialties }: { customer: C; s
     grad_year: customer.grad_year ? String(customer.grad_year) : "",
     specialty_id: customer.specialty_id || "", stage: customer.stage || "new",
     affiliate_code: customer.affiliate_code || "",
+    source: customer.source || "", lms_status: customer.lms_status || "",
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -55,6 +56,7 @@ export default function CustomerEdit({ customer, specialties }: { customer: C; s
       grad_year: f.grad_year ? Number(f.grad_year) : null,
       specialty_id: f.specialty_id || null, stage: f.stage,
       affiliate_code: f.affiliate_code.trim(),
+      source: f.source.trim(), lms_status: f.lms_status,
     }).eq("id", customer.id);
     setBusy(false);
     if (error) {
@@ -104,6 +106,17 @@ export default function CustomerEdit({ customer, specialties }: { customer: C; s
           <input className="inp" value={f.residency} onChange={(e) => set("residency", e.target.value)} /></div>
         <div className="fld"><label>كود الأفيلييت</label>
           <input className="inp num" dir="ltr" value={f.affiliate_code} onChange={(e) => set("affiliate_code", e.target.value)} placeholder="اختياري" /></div>
+      </div>
+      <div className="frow">
+        <div className="fld"><label>مصدر العميل</label>
+          <input className="inp" value={f.source} onChange={(e) => set("source", e.target.value)} placeholder="فيسبوك / إحالة / إعلان…" /></div>
+        <div className="fld"><label>حالة المنصة (LMS)</label>
+          <select className="inp" value={f.lms_status} onChange={(e) => set("lms_status", e.target.value)}>
+            <option value="">— غير محدّد —</option>
+            <option value="active">مفعّلة</option>
+            <option value="pending">قيد التفعيل</option>
+            <option value="none">غير مفعّلة</option>
+          </select></div>
       </div>
 
       <div style={{ fontSize: 12, color: "var(--muted)", borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexWrap: "wrap", gap: "4px 20px" }}>
