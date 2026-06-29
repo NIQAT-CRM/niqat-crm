@@ -148,12 +148,9 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const st = STAGE[c.stage as string] || STAGE.new;
 
   return (
-    <div style={{ maxWidth: 820 }}>
-      <div className="page-h">
-        <Link href="/customers" style={{ color: "var(--muted)", fontSize: 13 }}>← رجوع للعملاء</Link>
-      </div>
-
-      <div className="card" style={{ padding: 0, marginBottom: 14 }}>
+    <>
+      <Link href="/customers" className="drawer-scrim" aria-label="إغلاق" />
+      <aside className="drawer-panel">
         <div className="dr-h">
           <div className="av">{ini(c.name)}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -163,8 +160,11 @@ export default async function CustomerDetail({ params }: { params: { id: string 
               <CopyNumbers phones={[c.phone1 as string, c.phone2 as string]} />
             </div>
           </div>
+          <Link href="/customers" className="dr-x" aria-label="إغلاق">
+            <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2}><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </Link>
         </div>
-      </div>
+        <div className="dr-b">
 
       <CustomerEdit customer={c as any} specialties={specs || []} />
 
@@ -235,6 +235,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
           </div>
         ))}
       </div>
-    </div>
+        </div>
+      </aside>
+    </>
   );
 }

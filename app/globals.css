@@ -188,3 +188,20 @@ tr.clk{transition:background .14s ease}
 
 .num{font-family:var(--fe)}
 .content{display:flex;flex-direction:column}
+
+/* ===== درج كارت العميل (Drawer) ===== */
+.drawer-scrim{position:fixed;inset:0;background:rgba(15,27,48,.45);z-index:55;animation:scrimIn .2s ease both}
+@keyframes scrimIn{from{opacity:0}to{opacity:1}}
+.drawer-panel{position:fixed;top:0;inset-inline-end:0;height:100vh;width:min(560px,100%);
+  background:var(--surface);z-index:60;display:flex;flex-direction:column;
+  box-shadow:-14px 0 44px rgba(16,27,48,.20);animation:drawerIn .28s cubic-bezier(.22,.61,.36,1) both}
+@keyframes drawerIn{from{transform:translateX(var(--drawer-from,-100%))}to{transform:translateX(0)}}
+[dir=ltr] .drawer-panel{--drawer-from:100%}
+.drawer-panel .dr-h{position:sticky;top:0;background:var(--surface);z-index:2;
+  padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:13px}
+.drawer-panel .dr-h .av{width:46px;height:46px;font-size:17px;background:var(--brand)}
+.drawer-panel .dr-h h2{font-size:17px;font-weight:800;color:var(--ink)}
+.drawer-panel .dr-x{margin-inline-start:auto;width:34px;height:34px;border-radius:9px;
+  display:grid;place-items:center;color:var(--muted);flex-shrink:0}
+.drawer-panel .dr-x:hover{background:#f0f3f8;color:var(--ink)}
+.drawer-panel .dr-b{padding:18px;overflow:auto;flex:1}
