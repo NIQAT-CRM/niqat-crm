@@ -52,6 +52,14 @@ export default async function Dashboard() {
   for (const c of customers) byStage[c.stage] = (byStage[c.stage] || 0) + 1;
   const enrolled = byStage["enrolled"] || 0;
   const leads = customers.filter((c) => c.stage !== "enrolled" && c.stage !== "lost").length;
+  const conv = total ? Math.round((enrolled / total) * 100) : 0;
+  // مهام اليوم: مهامي غير المكتملة المستحقة لغاية النهارده
+  const endToday = new Date(); endToday.setHours(23, 59, 59, 999);
+  const { count: tasksToday } = await supabase.from("tasks")
+    .select("*", { count: "exact", head: true })
+    .eq("assignee_id", user?.id || "")
+    .eq("done", false)
+    .lte("due_at", endToday.toISOString());
 
   // المالية
   let revenue = 0, outstanding = 0, overdueInst: any[] = [], soonInst: any[] = [];
@@ -107,11 +115,12 @@ export default async function Dashboard() {
   const kpis = [
     { label: tr("totalCust"), value: total, color: "#2F6BFF" },
     { label: tr("newLeads"), value: leads, color: "#F08A24" },
+    { label: tr("convRate"), value: conv + "%", color: "#18A957" },
+    { label: tr("tasksToday"), value: tasksToday ?? 0, color: "#7B61FF" },
     ...(canFinance ? [
       { label: tr("revenue"), value: fmtMoney(revenue / 1000) + "K", color: "#0FA3A3" },
       { label: tr("outstanding"), value: fmtMoney(outstanding / 1000) + "K", color: "#E6A700" },
     ] : []),
-    { label: tr("enrolled"), value: enrolled, color: "#18A957" },
     { label: tr("openTk"), value: tkRes.count ?? 0, color: "#E0483B" },
   ];
 
