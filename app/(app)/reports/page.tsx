@@ -58,6 +58,17 @@ export default async function Reports() {
     supabase.from("enrollments").select("customer_id"),
     supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
   ]);
+  // الريفند (دول مؤرشفين فمش في custs) — نجيب أكوادهم
+  const { data: refundRows } = await supabase.from("refunds").select("customer_id");
+  const refundIds = Array.from(new Set((refundRows || []).map((r: any) => r.customer_id)));
+  const refundCodeCount: Record<string, number> = {};
+  if (refundIds.length) {
+    const { data: refCusts } = await supabase.from("customers").select("affiliate_code").in("id", refundIds);
+    (refCusts || []).forEach((c: any) => {
+      const code = (c.affiliate_code || "").trim();
+      if (code) refundCodeCount[code] = (refundCodeCount[code] || 0) + 1;
+    });
+  }
 
   // money (only if allowed; RLS returns empty otherwise)
   let agreed = 0,
@@ -105,6 +116,7 @@ export default async function Reports() {
     affAgg[code].customers++;
     if (enrolledSet.has(c.id)) affAgg[code].enrolled++;
   });
+  Object.keys(refundCodeCount).forEach((code) => { if (!affAgg[code]) affAgg[code] = { customers: 0, enrolled: 0 }; });
   const affRows = Object.entries(affAgg)
     .map(([code, v]) => ({
       code,
@@ -112,6 +124,8 @@ export default async function Reports() {
       discount: affName.get(code)?.discount ?? null,
       customers: v.customers,
       enrolled: v.enrolled,
+      interested: Math.max(0, v.customers - v.enrolled),
+      refunded: refundCodeCount[code] || 0,
     }))
     .sort((a, b) => b.customers - a.customers);
 
@@ -166,12 +180,14 @@ export default async function Reports() {
               <th className="text-start px-4 py-3 font-bold">الخصم</th>
               <th className="text-start px-4 py-3 font-bold">عدد العملاء</th>
               <th className="text-start px-4 py-3 font-bold">مسجّلون</th>
+              <th className="text-start px-4 py-3 font-bold">مهتم (لسه)</th>
+              <th className="text-start px-4 py-3 font-bold">ريفند</th>
             </tr>
           </thead>
           <tbody>
             {affRows.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-muted">
+                <td colSpan={7} className="px-4 py-6 text-center text-muted">
                   لا توجد إحالات بعد.
                 </td>
               </tr>
@@ -183,6 +199,8 @@ export default async function Reports() {
                 <td className="px-4 py-3 num">{r.discount != null ? r.discount + "%" : "—"}</td>
                 <td className="px-4 py-3 num font-bold">{r.customers}</td>
                 <td className="px-4 py-3 num font-bold text-green">{r.enrolled}</td>
+                <td className="px-4 py-3 num font-bold" style={{ color: "#E6A700" }}>{r.interested}</td>
+                <td className="px-4 py-3 num font-bold" style={{ color: "#E0483B" }}>{r.refunded}</td>
               </tr>
             ))}
           </tbody>

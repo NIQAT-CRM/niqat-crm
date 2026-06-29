@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import AffiliatesManager from "./AffiliatesManager";
+import AffiliateExport from "./AffiliateExport";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ export default async function Affiliates() {
     .maybeSingle();
 
   const list = Array.isArray(setting?.value) ? (setting!.value as any[]) : [];
+  const { data: bts } = await supabase.from("batches").select("id,code").order("code");
 
   return (
     <div className="max-w-2xl">
@@ -43,6 +45,7 @@ export default async function Affiliates() {
         </div>
       </div>
       <AffiliatesManager initial={list} />
+      <AffiliateExport batches={(bts || []).map((b: any) => ({ id: b.id, code: b.code }))} affiliates={list as any} />
     </div>
   );
 }
