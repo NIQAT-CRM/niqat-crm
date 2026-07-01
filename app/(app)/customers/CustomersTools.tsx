@@ -8,10 +8,11 @@ type Tpl = { id: string; name: string; body: string };
 
 export default function CustomersTools({
   stages, owners, diplomas, batches, companies, canFinance, canMessage,
-  phones, templates,
+  phones, templates, sortBy, sortDir, sortOpts,
 }: {
   stages: Opt[]; owners: Opt[]; diplomas: Opt[]; batches: Opt[]; companies: Opt[];
   canFinance: boolean; canMessage: boolean; phones: string[]; templates: Tpl[];
+  sortBy?: string; sortDir?: boolean; sortOpts?: Opt[];
 }) {
   const router = useRouter();
   const sp = useSearchParams();
@@ -31,6 +32,15 @@ export default function CustomersTools({
     </select>
   );
 
+  function setSort(v: string) {
+    const p = new URLSearchParams(sp.toString());
+    const [col, dir] = v.split(":");
+    if (col) p.set("sort", col); else p.delete("sort");
+    if (dir) p.set("dir", dir); else p.delete("dir");
+    router.push("/customers" + (p.toString() ? "?" + p.toString() : ""));
+  }
+  const sortVal = (sortBy || "") + ":" + (sortDir ? "asc" : "desc");
+
   const nums = phones.filter(Boolean);
   function copyNums() {
     if (navigator.clipboard) navigator.clipboard.writeText(nums.join("\n"));
@@ -48,6 +58,17 @@ export default function CustomersTools({
         {canFinance && Sel("pay", "كل حالات الدفع", [
           { v: "bal", label: "عليه رصيد" }, { v: "due", label: "له موعد استحقاق" }, { v: "overdue", label: "متأخر" },
         ])}
+        {sortOpts && (
+          <select className="inp" style={{ width: "auto", minWidth: 130, height: 36, flex: "0 0 auto" }} value={sortVal} onChange={(e) => setSort(e.target.value)}>
+            <option value="created_at:desc">ترتيب: الأحدث</option>
+            {sortOpts.map((o) => (
+              <>
+                <option key={o.v + ":asc"} value={o.v + ":asc"}>ترتيب: {o.label} ↑</option>
+                <option key={o.v + ":desc"} value={o.v + ":desc"}>ترتيب: {o.label} ↓</option>
+              </>
+            ))}
+          </select>
+        )}
         {(sp.toString()) && (
           <button className="btn ghost" style={{ height: 36, padding: "0 12px", fontSize: 12.5 }} onClick={() => router.push("/customers")}>مسح الفلاتر</button>
         )}
