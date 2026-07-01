@@ -1,19 +1,24 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabaseRef = useRef<any>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (!supabaseRef.current) supabaseRef.current = createClient();
+  }, []);
+
   async function signIn() {
+    if (!supabaseRef.current) { setErr("جارٍ التحميل…"); return; }
     setErr(""); setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabaseRef.current.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) { setErr("بيانات الدخول غير صحيحة"); return; }
     router.push("/"); router.refresh();
