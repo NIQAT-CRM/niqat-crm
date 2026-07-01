@@ -5,6 +5,7 @@ import Burger from "./Burger";
 import TopSearch from "./TopSearch";
 import NotificationsBell from "./NotificationsBell";
 import LangToggle from "./LangToggle";
+import ThemeToggle from "./ThemeToggle";
 import Toaster from "./Toaster";
 import AnimatedMain from "./AnimatedMain";
 import { LangProvider } from "@/lib/i18n/client";
@@ -28,18 +29,13 @@ function initials(name: string) {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select(
-      "full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users"
-    )
-    .eq("id", user.id)
-    .maybeSingle();
+    .select("full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users")
+    .eq("id", user.id).maybeSingle();
 
   const tomorrow = new Date(); tomorrow.setHours(0, 0, 0, 0); tomorrow.setDate(tomorrow.getDate() + 1);
   const [dueRes, handoffRes] = await Promise.all([
@@ -50,7 +46,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const dueCount = dueRes.count ?? 0;
   const handoffCount = handoffRes.count ?? 0;
 
-  // عناصر الإشعارات (متابعات مستحقة + تسليمات معلّقة + أقساط متأخرة)
   const nowIso = new Date().toISOString();
   const [fuRes, hoListRes, profRes] = await Promise.all([
     supabase.from("follow_ups").select("id,customer_id,due_at,note").eq("done", false).lte("due_at", nowIso).order("due_at").limit(10),
@@ -93,7 +88,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="app">
       <aside className="sb" id="sb">
         <div className="sb-logo">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon.png" alt="N" />
           <div>
             <b>CRM-NIQAT</b>
@@ -135,6 +129,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Burger />
           <TopSearch />
           <div className="spacer" />
+          <ThemeToggle />
           <LangToggle />
           <NotificationsBell items={notif} />
         </header>
