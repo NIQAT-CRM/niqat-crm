@@ -73,7 +73,7 @@ export default function CustomersTools({
           <button className="btn ghost" style={{ height: 36, padding: "0 12px", fontSize: 12.5 }} onClick={() => router.push("/customers")}>مسح الفلاتر</button>
         )}
         {canMessage && nums.length > 0 && (
-          <button className="btn" style={{ height: 36, padding: "0 12px", fontSize: 12.5, marginInlineStart: "auto" }} onClick={() => setOpenBulk(true)}>
+          <button className="btn wa" style={{ height: 36, padding: "0 12px", fontSize: 12.5, marginInlineStart: "auto" }} onClick={() => setOpenBulk(true)}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ width: 15, height: 15 }}><path d="M21 11.5a8.5 8.5 0 0 1-12.5 7.5L3 21l2-5.5A8.5 8.5 0 1 1 21 11.5z" /></svg>
             إرسال جماعي ({nums.length})
           </button>

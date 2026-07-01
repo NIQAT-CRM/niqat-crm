@@ -27,6 +27,14 @@ export default function ChecklistToggle({
     }
   }
 
+  const allDone = done === total && total > 0;
+
+  async function completeAll() {
+    if (!allDone) return;
+    const { error } = await supabase.from("handoffs").update({ status: "completed" }).eq("id", handoffId);
+    if (!error) router.refresh();
+  }
+
   if (total === 0) return null;
 
   return (
@@ -53,6 +61,10 @@ export default function ChecklistToggle({
           </div>
         ))}
       </div>
+      <button className="btn sm" disabled={!allDone} onClick={completeAll}
+        style={allDone ? { background: "var(--green)", width: "100%" } : { width: "100%", opacity: 0.5 }}>
+        إتمام التفعيل
+      </button>
     </>
   );
 }

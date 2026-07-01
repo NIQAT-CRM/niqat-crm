@@ -51,6 +51,11 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
   const [overCol, setOverCol] = useState<string | null>(null);
   const [colQ, setColQ] = useState<Record<string, string>>({});
   const [colSort, setColSort] = useState<Record<string, string>>({});
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editPriority, setEditPriority] = useState("medium");
+  const [editStatus, setEditStatus] = useState("open");
+  const [editSaving, setEditSaving] = useState(false);
 
   function sortItems(items: Ticket[], colKey: string): Ticket[] {
     const mode = colSort[colKey] || "";
@@ -79,6 +84,23 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
       setTickets(prev);
       alert("تعذّر نقل التذكرة: " + error.message);
     }
+  }
+
+  function openEdit(tk: Ticket) {
+    setEditId(tk.id);
+    setEditTitle(tk.title);
+    setEditPriority(tk.priority);
+    setEditStatus(tk.status);
+  }
+
+  async function saveEdit() {
+    if (!editId) return;
+    setEditSaving(true);
+    const { error } = await supabase.from("tickets").update({ title: editTitle.trim(), priority: editPriority, status: editStatus }).eq("id", editId);
+    setEditSaving(false);
+    if (error) { alert("خطأ: " + error.message); return; }
+    setTickets((list) => list.map((t) => t.id === editId ? { ...t, title: editTitle.trim(), priority: editPriority, status: editStatus } : t));
+    setEditId(null);
   }
 
   async function archive(id: string) {
@@ -159,7 +181,7 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
                       onMouseUp={(e) => {
                         const d = downRef.current; downRef.current = null;
                         if (!d) return;
-                        if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 6) router.push(`/support/${t.id}`);
+                        if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 6) openEdit(t);
                       }}
                       style={{ cursor: "pointer" }}
                     >
@@ -201,6 +223,48 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
           );
         })}
       </div>
+      {editId && (
+        <>
+          <div className="scrim show" onClick={() => setEditId(null)} />
+          <div className="modal show">
+            <div className="modal-h">
+              <h3>{tr("editTicket")}</h3>
+              <button className="x" onClick={() => setEditId(null)}>
+                <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </div>
+            <div className="modal-b">
+              <div className="fld">
+                <label>{tr("subject")}</label>
+                <input className="inp" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+              </div>
+              <div className="frow">
+                <div className="fld">
+                  <label>{tr("priority")}</label>
+                  <select className="inp" value={editPriority} onChange={(e) => setEditPriority(e.target.value)}>
+                    <option value="high">{tr("high")}</option>
+                    <option value="medium">{tr("medium")}</option>
+                    <option value="low">{tr("low")}</option>
+                  </select>
+                </div>
+                <div className="fld">
+                  <label>{tr("status")}</label>
+                  <select className="inp" value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
+                    <option value="open">{tr("open")}</option>
+                    <option value="progress">{tr("progress")}</option>
+                    <option value="resolved">{tr("resolved")}</option>
+                    <option value="closed">{tr("closed")}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="modal-f">
+              <button className="btn" onClick={saveEdit} disabled={editSaving}>{editSaving ? "..." : tr("save")}</button>
+              <button className="btn ghost" onClick={() => setEditId(null)}>{tr("cancel")}</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
