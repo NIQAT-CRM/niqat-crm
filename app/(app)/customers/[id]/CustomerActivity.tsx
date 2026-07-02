@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n/client";
 
 type Task = { id: string; title: string; due: string; done: boolean };
 type Note = { id: string; body: string; by: string; at: string };
@@ -10,6 +11,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 export default function CustomerActivity({
   customerId, meId, initialTasks, initialNotes,
 }: { customerId: string; meId: string; initialTasks: Task[]; initialNotes: Note[] }) {
+  const tr = useT();
   const supabase = createClient();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [notes, setNotes] = useState<Note[]>(initialNotes);
@@ -40,20 +42,20 @@ export default function CustomerActivity({
       .insert({ customer_id: customerId, body, channel: "note", direction: "out", by_id: meId })
       .select("id, at").single();
     if (error) return alert("تعذّر إضافة الملاحظة: " + error.message);
-    setNotes((l) => [{ id: data!.id as string, body, by: "أنا", at: String((data as any).at || "").replace("T", " ").slice(0, 16) }, ...l]);
+    setNotes((l) => [{ id: data!.id as string, body, by: tr("me"), at: String((data as any).at || "").replace("T", " ").slice(0, 16) }, ...l]);
     setNoteText("");
   }
 
   return (
     <>
       <div className="card" style={{ padding: 18, marginBottom: 14 }}>
-        <div className="sec-t">المهام</div>
+        <div className="sec-t">{tr("tasksT")}</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <input className="inp" placeholder="مهمة جديدة…" value={tTitle} onChange={(e) => setTTitle(e.target.value)} />
+          <input className="inp" placeholder={tr("addTask")} value={tTitle} onChange={(e) => setTTitle(e.target.value)} />
           <input className="inp num" type="date" style={{ width: 150 }} value={tDue} onChange={(e) => setTDue(e.target.value)} />
-          <button className="btn" style={{ height: 38 }} onClick={addTask}>إضافة</button>
+           <button className="btn" style={{ height: 38 }} onClick={addTask}>{tr("addOpt")}</button>
         </div>
-        {tasks.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا توجد مهام.</div>}
+        {tasks.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noTasks")}</div>}
         {tasks.map((k) => (
           <div key={k.id} className={"task" + (k.done ? " done" : "")}>
             <div className={"cb" + (k.done ? " on" : "")} onClick={() => toggleTask(k.id)}>
@@ -68,13 +70,13 @@ export default function CustomerActivity({
       </div>
 
       <div className="card" style={{ padding: 18, marginBottom: 14 }}>
-        <div className="sec-t">الملاحظات والتواصل</div>
+        <div className="sec-t">{tr("commsT")}</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <input className="inp" placeholder="أضف ملاحظة…" value={noteText} onChange={(e) => setNoteText(e.target.value)}
+          <input className="inp" placeholder={tr("addNote")} value={noteText} onChange={(e) => setNoteText(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") addNote(); }} />
-          <button className="btn" style={{ height: 38 }} onClick={addNote}>حفظ</button>
+           <button className="btn" style={{ height: 38 }} onClick={addNote}>{tr("save")}</button>
         </div>
-        {notes.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا توجد ملاحظات.</div>}
+        {notes.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noActivity")}</div>}
         {notes.map((n) => (
           <div key={n.id} className="comm">
             <div className="ci" style={{ background: "#eef2f8", color: "var(--muted)" }}>

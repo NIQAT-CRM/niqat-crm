@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
+import { useT } from "@/lib/i18n/client";
 
 type Inst = { id: string; amount: number; currency: string; due: string; status: string; paidAt: string | null; shot: string | null };
 type Enr = { id: string; diploma: string; status: string; free: boolean; freeReason: string; agreed: number; currency: string; installments: Inst[] };
@@ -14,6 +15,7 @@ const paidOf = (e: Enr) => e.installments.filter((i) => i.status === "paid" || i
 const isOverdue = (i: Inst) => !(i.status === "paid" || i.paidAt || !i.due) && new Date(i.due) < new Date(new Date().toDateString());
 
 export default function FinancePanel({ enrollments, customerId, meId }: { enrollments: Enr[]; customerId: string; meId: string }) {
+  const tr = useT();
   const supabase = createClient();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -76,8 +78,8 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
 
   return (
     <div className="card" style={{ padding: 18, marginBottom: 14 }}>
-      <div className="sec-t">المالية والأقساط 🔒</div>
-      {enrollments.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا توجد اشتراكات لهذا العميل.</div>}
+      <div className="sec-t">{tr("financeAndInstallments")}</div>
+      {enrollments.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noEnrolls")}</div>}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {enrollments.map((e) => {
           const paid = paidOf(e);
@@ -85,23 +87,23 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
           return (
             <div key={e.id} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                <b style={{ color: "var(--ink)" }}>{e.diploma}{e.free && <span style={{ color: "var(--brand)", fontSize: 12, marginInlineStart: 6 }}>🎁 هدية</span>}</b>
+                <b style={{ color: "var(--ink)" }}>{e.diploma}{e.free && <span style={{ color: "var(--brand)", fontSize: 12, marginInlineStart: 6 }}>🎁 {tr("gift")}</span>}</b>
                 <div style={{ display: "flex", gap: 12, fontSize: 12.5 }}>
-                  <span style={{ color: "var(--muted)" }}>المتفق: {editAgreedId === e.id ? (
+                  <span style={{ color: "var(--muted)" }}>{tr("agreed")}: {editAgreedId === e.id ? (
                     <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
                       <input className="inp num" style={{ width: 100, height: 32, fontSize: 13 }} value={editAgreedVal} onChange={ev => setEditAgreedVal(ev.target.value)} />
-                      <button onClick={() => saveAgreed(e)} disabled={busy === "agreed"} className="btn" style={{ height: 32, padding: "0 10px", fontSize: 12 }}>حفظ</button>
-                      <button onClick={() => setEditAgreedId(null)} className="btn ghost" style={{ height: 32, padding: "0 10px", fontSize: 12 }}>إلغاء</button>
+                      <button onClick={() => saveAgreed(e)} disabled={busy === "agreed"} className="btn" style={{ height: 32, padding: "0 10px", fontSize: 12 }}>{tr("save")}</button>
+                      <button onClick={() => setEditAgreedId(null)} className="btn ghost" style={{ height: 32, padding: "0 10px", fontSize: 12 }}>{tr("cancel")}</button>
                     </span>
                   ) : (
                     <b className="num" style={{ color: "var(--ink)", cursor: "pointer" }} onClick={() => { setEditAgreedId(e.id); setEditAgreedVal(String(e.agreed)); }}>{money(e.agreed, e.currency)}</b>
                   )}</span>
-                  <span style={{ color: "var(--green)" }}>المدفوع: <b className="num">{money(paid, e.currency)}</b></span>
-                  <span style={{ color: "var(--amber)" }}>المتبقّي: <b className="num">{money(remaining, e.currency)}</b></span>
+                  <span style={{ color: "var(--green)" }}>{tr("paid")}: <b className="num">{money(paid, e.currency)}</b></span>
+                  <span style={{ color: "var(--amber)" }}>{tr("remaining")}: <b className="num">{money(remaining, e.currency)}</b></span>
                 </div>
               </div>
               <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                {e.installments.length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>لا توجد أقساط مسجّلة.</div>}
+                {e.installments.length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{tr("noInstallments")}</div>}
                 {e.installments.map((i) => {
                   const paidNow = i.status === "paid" || i.paidAt;
                   const over = isOverdue(i);
@@ -110,9 +112,9 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
                       <span className="num" dir="ltr" style={{ fontWeight: 700 }}>{money(i.amount, i.currency)}</span>
                       <span className="num" dir="ltr" style={{ color: "var(--muted)", fontSize: 12 }}>{i.due || "—"}</span>
                       {i.shot && <a href={i.shot} target="_blank" rel="noreferrer" style={{ fontSize: 11.5, color: "var(--brand)", fontWeight: 700 }}>إيصال</a>}
-                      {paidNow ? badge("مدفوع", "#18A957") : over ? badge("متأخر", "#E0483B") : badge("مستحق", "#94A2BB")}
+                      {paidNow ? badge(tr("paid"), "#18A957") : over ? badge(tr("overdue"), "#E0483B") : badge(tr("pending"), "#94A2BB")}
                       {!paidNow ? (
-                        <button onClick={() => markPaid(i.id)} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>تم الدفع</button>
+                        <button onClick={() => markPaid(i.id)} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{tr("paid")}</button>
                       ) : <span style={{ width: 70 }} />}
                     </div>
                   );
@@ -121,20 +123,20 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
               {addFor === e.id ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <input className="inp num" style={{ width: 110 }} placeholder="المبلغ" value={amt} onChange={(ev) => setAmt(ev.target.value)} />
+                    <input className="inp num" style={{ width: 110 }} placeholder={tr("instAmount")} value={amt} onChange={(ev) => setAmt(ev.target.value)} />
                     <input type="date" className="inp num" style={{ width: 150 }} value={due} onChange={(ev) => setDue(ev.target.value)} />
                   </div>
                   <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--brand)", fontWeight: 700, cursor: "pointer" }}>
-                    🖼️ {file ? file.name : "صورة التحويل (اختياري)"}
+                    🖼️ {file ? file.name : tr("addShot")}
                     <input type="file" accept="image/*" style={{ display: "none" }} onChange={(ev) => setFile(ev.target.files?.[0] || null)} />
                   </label>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => addInstallment(e)} disabled={busy === "add"} className="btn" style={{ height: 38 }}>{busy === "add" ? "جاري الحفظ..." : "حفظ"}</button>
-                    <button onClick={() => { setAddFor(null); setFile(null); }} className="btn ghost" style={{ height: 38 }}>إلغاء</button>
+                    <button onClick={() => addInstallment(e)} disabled={busy === "add"} className="btn" style={{ height: 38 }}>{busy === "add" ? tr("saving") : tr("save")}</button>
+                    <button onClick={() => { setAddFor(null); setFile(null); }} className="btn ghost" style={{ height: 38 }}>{tr("cancel")}</button>
                   </div>
                 </div>
               ) : (
-                <button onClick={() => { setAddFor(e.id); setAmt(""); setDue(""); }} style={{ color: "var(--brand)", fontWeight: 700, fontSize: 12.5, marginTop: 10, background: "none" }}>+ قسط</button>
+                <button onClick={() => { setAddFor(e.id); setAmt(""); setDue(""); }} style={{ color: "var(--brand)", fontWeight: 700, fontSize: 12.5, marginTop: 10, background: "none" }}>{tr("addInst")}</button>
               )}
             </div>
           );

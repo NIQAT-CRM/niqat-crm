@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n/client";
 
 type FU = { id: string; due_at: string; note: string; done: boolean };
 
@@ -15,6 +16,7 @@ export default function FollowUpPanel({
 }: {
   customerId: string; meId: string; open: FU | null; history: FU[];
 }) {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [date, setDate] = useState("");
@@ -45,7 +47,7 @@ export default function FollowUpPanel({
 
   return (
     <div className="card" style={{ padding: 18, marginBottom: 14 }}>
-      <div className="sec-t">موعد المتابعة</div>
+      <div className="sec-t">{tr("followUp")}</div>
 
       {open && (
         <div style={{
@@ -55,29 +57,29 @@ export default function FollowUpPanel({
         }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, color: overdue ? "#E0483B" : "var(--ink)" }}>
-              {overdue ? "⏰ متأخرة — " : "📅 "}<span className="num">{fmt(open.due_at)}</span>
+              {overdue ? "⏰ " + tr("overdue") + " — " : "📅 "}<span className="num">{fmt(open.due_at)}</span>
             </div>
             {open.note && <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>{open.note}</div>}
           </div>
-          <button onClick={() => markDone(open.id)} disabled={busy} className="btn ghost" style={{ height: 32, padding: "0 12px", fontSize: 13, flexShrink: 0 }}>تمّت</button>
+          <button onClick={() => markDone(open.id)} disabled={busy} className="btn ghost" style={{ height: 32, padding: "0 12px", fontSize: 13, flexShrink: 0 }}>{tr("done")}</button>
         </div>
       )}
 
       <div className="frow">
-        <div className="fld"><label>تاريخ ووقت المتابعة</label>
+        <div className="fld"><label>{tr("followUpDate")}</label>
           <input className="inp num" type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-        <div className="fld"><label>ملاحظة</label>
-          <input className="inp" value={note} onChange={(e) => setNote(e.target.value)} placeholder="اختياري" /></div>
+        <div className="fld"><label>{tr("addonNote")}</label>
+          <input className="inp" value={note} onChange={(e) => setNote(e.target.value)} placeholder={tr("optional")} /></div>
       </div>
-      <button onClick={setFollowUp} disabled={busy} className="btn">{busy ? "..." : (open ? "تحديد موعد جديد" : "تحديد موعد متابعة")}</button>
+      <button onClick={setFollowUp} disabled={busy} className="btn">{busy ? "..." : tr("setFollowUp")}</button>
 
       {history.length > 0 && (
         <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
-          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>متابعات سابقة</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>{tr("pastFollowUps")}</div>
           {history.map((h) => (
             <div key={h.id} style={{ fontSize: 12.5, color: "var(--muted)", display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
               <span className="num">{fmt(h.due_at)}</span>
-              <span style={{ color: "var(--green)" }}>تمّت ✓</span>
+              <span style={{ color: "var(--green)" }}>{tr("done")} ✓</span>
             </div>
           ))}
         </div>

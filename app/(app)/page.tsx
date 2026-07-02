@@ -111,7 +111,7 @@ export default async function Dashboard() {
     ) : null;
 
   const overdueRows = overdueInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customers"), `${tr("overdue")} · ${fmtDate(i.due_date)}`, "#E5484D") : null; }).filter(Boolean);
-  const soonRows = soonInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customers"), `يستحق ${fmtDate(i.due_date)}`, "#F5A623") : null; }).filter(Boolean);
+  const soonRows = soonInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customers"), `${tr("dueSoon")} ${fmtDate(i.due_date)}`, "#F5A623") : null; }).filter(Boolean);
   const followRows = followItems.map((f) => actionRow(f.customer_id, cName.get(f.customer_id) || tr("customers"), f.note || tr("followDue"), "#2F6BFF"));
   const handoffRows = handoffItems.map((h) => actionRow(h.customer_id, cName.get(h.customer_id) || tr("customers"), tr("pendingAccessT"), "#F08A24"));
   const actionCount = overdueRows.length + soonRows.length + followRows.length + handoffRows.length;
@@ -161,7 +161,7 @@ export default async function Dashboard() {
   return (
     <div>
       <div className="page-h">        <div><h1>{tr("dash")}</h1><p>{tr("dashDesc")}</p>
-          {canDailySales && todayEGP + todayUSD > 0 && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{tr("salesToday")}: {fmtMoney(todayEGP)} {tr("dailySalesEGP")}{todayUSD > 0 ? ` · ${fmtMoney(todayUSD)} $` : ""}</p>}
+          {canDailySales && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{tr("salesToday")}: {todayEGP + todayUSD === 0 ? "—" : `${fmtMoney(todayEGP)} ${tr("dailySalesEGP")}${todayUSD > 0 ? ` · ${fmtMoney(todayUSD)} $` : ""}`}</p>}
         </div></div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 14 }}>
@@ -172,10 +172,10 @@ export default async function Dashboard() {
           </div>
         ))}
         {canDailySales && (
-          <div className="card" style={{ padding: 18, background: "linear-gradient(135deg,#0FA3A310,#18A95710)" }}>
+          <div className="card sales-card">
             <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}><span style={{ marginInlineEnd: 6 }}>🟢</span>{tr("salesToday")}</div>
-            <div className="num" style={{ fontSize: 28, fontWeight: 800, color: "#0FA3A3" }}>{fmtMoney(todayEGP)} <span style={{ fontSize: 15 }}>{tr("dailySalesEGP")}</span></div>
-            {todayUSD > 0 && <div className="num" style={{ fontSize: 20, fontWeight: 700, color: "#0FA3A3", marginTop: 4 }}>{fmtMoney(todayUSD)} <span style={{ fontSize: 13 }}>$</span></div>}
+            <div className="num sales-amount">{fmtMoney(todayEGP)} <span style={{ fontSize: 15 }}>{tr("dailySalesEGP")}</span></div>
+            {todayUSD > 0 && <div className="num sales-amount" style={{ fontSize: 20, marginTop: 4 }}>{fmtMoney(todayUSD)} <span style={{ fontSize: 13 }}>$</span></div>}
           </div>
         )}
       </div>

@@ -12,6 +12,12 @@ export default async function Onboarding() {
     .eq("status", "pending")
     .order("created_at", { ascending: false });
 
+  const { data: completedRows } = await supabase
+    .from("handoffs")
+    .select("id,customer_id,assignee_id,note,status,created_at")
+    .eq("status", "completed")
+    .order("created_at", { ascending: false });
+
   const { data: custs } = await supabase.from("customers").select("id,name,stage,phone1");
   const cMap = new Map((custs || []).map((c: any) => [c.id, c]));
 
@@ -47,61 +53,77 @@ export default async function Onboarding() {
     return parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : parts[0][0].toUpperCase();
   };
 
+  function card(h: any, completed: boolean) {
+    const customer = cMap.get(h.customer_id) || {};
+    const custName = customer.name || "—";
+    const custPhone = customer.phone1 || "";
+    const stage = customer.stage || "";
+    const dips = custDips.get(h.customer_id) || [];
+    const hItems = itemList.get(h.id) || [];
+    const total = hItems.length;
+
+    return (
+      <div key={h.id} className={`onb-card${completed ? " onb-card--completed" : ""}`}>
+        <div className="oh">
+          <div className="av" style={{ background: "var(--brand)", width: 44, height: 44, fontSize: 16 }}>{initials(custName)}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: 15, color: "var(--ink)" }}>{custName}</div>
+            {custPhone && <div style={{ fontSize: 12.5, color: "var(--muted)", direction: "ltr", textAlign: "start" }}>{custPhone}</div>}
+            <div style={{ marginTop: 4 }}>
+              <span className="chip">{stage === "enrolled" ? tr("dashStageEnrolled") : stage}</span>
+            </div>
+          </div>
+        </div>
+        <div className="ob">
+          {dips.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+              {dips.map((d: string) => <span key={d} className="chip">{d}</span>)}
+            </div>
+          )}
+          {h.note && <div className="onb-note" style={{ marginBottom: 10 }}>📝 {h.note}</div>}
+          {total > 0 && <ChecklistToggle items={hItems as any} handoffId={h.id} />}
+          <div style={{ display: "flex", gap: 8 }}>
+            {custPhone && (
+              <a href={`https://wa.me/${custPhone.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="btn wa sm">{tr("whatsapp")}</a>
+            )}
+            <Link href={`/customers/${h.customer_id}`} className="btn sm">{tr("profile")}</Link>
+            <Link href={`/customers/${h.customer_id}`} className="btn sm">{tr("editAccess")}</Link>
+          </div>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8 }}>
+            {pMap.get(h.assignee_id || "") ? `${tr("owner")}: ${pMap.get(h.assignee_id)}` : ""}
+            {h.created_at ? ` · ${fmtDate(h.created_at)}` : ""}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="page-h">
         <div>
           <h1>{tr("onboarding")}</h1>
-          <p>{(rows || []).length} في الانتظار</p>
+          <p>{(rows || []).length} {tr("pending")}</p>
         </div>
       </div>
       {(!rows || rows.length === 0) ? (
-        <div className="empty"><b>لا توجد طلبات تفعيل معلّقة</b></div>
+        <div className="empty"><b>{tr("noPendingHandoffs")}</b></div>
       ) : (
         <div className="onb-grid">
-          {(rows || []).map((h: any) => {
-            const customer = cMap.get(h.customer_id) || {};
-            const custName = customer.name || "—";
-            const custPhone = customer.phone1 || "";
-            const stage = customer.stage || "";
-            const dips = custDips.get(h.customer_id) || [];
-            const hItems = itemList.get(h.id) || [];
-            const total = hItems.length;
-
-            return (
-              <div key={h.id} className="onb-card">
-                <div className="oh">
-                  <div className="av" style={{ background: "var(--brand)", width: 44, height: 44, fontSize: 16 }}>{initials(custName)}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 15, color: "var(--ink)" }}>{custName}</div>
-                    {custPhone && <div style={{ fontSize: 12.5, color: "var(--muted)", direction: "ltr", textAlign: "start" }}>{custPhone}</div>}
-                    <div style={{ marginTop: 4 }}>
-                      <span className="chip">{stage === "enrolled" ? "مسجّل / دفع" : stage}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="ob">
-                  {dips.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
-                      {dips.map((d: string) => <span key={d} className="chip">{d}</span>)}
-                    </div>
-                  )}
-                  {h.note && <div className="onb-note" style={{ marginBottom: 10 }}>📝 {h.note}</div>}
-                  {total > 0 && <ChecklistToggle items={hItems as any} handoffId={h.id} />}
-                  <div style={{ display: "flex", gap: 8 }}>
-                    {custPhone && (
-                      <a href={`https://wa.me/${custPhone.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="btn wa sm">واتساب</a>
-                    )}
-                    <Link href={`/customers/${h.customer_id}`} className="btn sm">{tr("profile")}</Link>
-                  </div>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8 }}>
-                    {pMap.get(h.assignee_id || "") ? `المسؤول: ${pMap.get(h.assignee_id)}` : ""}
-                    {h.created_at ? ` · ${fmtDate(h.created_at)}` : ""}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {(rows || []).map((h: any) => card(h, false))}
+        </div>
+      )}
+      {(completedRows && completedRows.length > 0) && (
+        <div style={{ marginTop: 32 }}>
+          <div className="page-h">
+            <div>
+              <h2 style={{ fontSize: 18, margin: 0 }}>{tr("completedHandoffs")}</h2>
+              <p style={{ margin: 0 }}>{(completedRows || []).length} {tr("completedHandoffs")}</p>
+            </div>
+          </div>
+          <div className="onb-grid">
+            {(completedRows || []).map((h: any) => card(h, true))}
+          </div>
         </div>
       )}
     </div>

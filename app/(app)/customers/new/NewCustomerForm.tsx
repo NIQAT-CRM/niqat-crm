@@ -1,13 +1,19 @@
 "use client";
 import { useState } from "react";
+import { useT } from "@/lib/i18n/client";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 
 type Opt = { id: string; name: string };
 const STAGES = [
+<<<<<<< HEAD
   ["new", "جديد"], ["contacted", "تم التواصل"], ["interested", "مهتم"],
   ["negotiation", "تفاوض"], ["quote", "عرض سعر مُرسل"], ["enrolled", "مسجّل / دفع"], ["onhold", "معلّق"], ["lost", "مؤجل / مرفوض"],
+=======
+  ["new", "new"], ["contacted", "contacted"], ["interested", "interested"],
+  ["negotiation", "negotiation"], ["enrolled", "enrolled"], ["onhold", "onhold"], ["lost", "lost"],
+>>>>>>> df6500c (ترجمة كاملة + دارك مود مونوكروم + أونبوردينج كارد + إصلاح dashboard + تنظيف CSS)
 ];
 
 type Aff = { name: string; code: string; discount: number };
@@ -15,6 +21,7 @@ type Aff = { name: string; code: string; discount: number };
 export default function NewCustomerForm({
   specialties, diplomas, batches, meId, affiliates = [],
 }: { specialties: Opt[]; diplomas: Opt[]; batches: Opt[]; meId: string; affiliates?: Aff[] }) {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [f, setF] = useState({
@@ -208,7 +215,7 @@ export default function NewCustomerForm({
         </div>
         <div className="fld"><label>المرحلة</label>
           <select className="inp" value={f.stage} onChange={(e) => set("stage", e.target.value)}>
-            {STAGES.map((s) => <option key={s[0]} value={s[0]}>{s[1]}</option>)}
+            {STAGES.map((s) => <option key={s[0]} value={s[0]}>{tr("dashStage" + s[0].charAt(0).toUpperCase() + s[0].slice(1))}</option>)}
           </select></div>
       </div>
 

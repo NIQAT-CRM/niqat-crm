@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n/client";
 
 type Spec = { id: string; name_ar: string };
 type C = {
@@ -31,6 +32,7 @@ function waLink(phone: string | null) {
 }
 
 export default function CustomerEdit({ customer, specialties }: { customer: C; specialties: Spec[] }) {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [f, setF] = useState({
@@ -73,11 +75,11 @@ export default function CustomerEdit({ customer, specialties }: { customer: C; s
 
   return (
     <div className="card" style={{ padding: 18, marginBottom: 14 }}>
-      <div className="sec-t">المعلومات الأساسية</div>
+      <div className="sec-t">{tr("basicInfo")}</div>
       <div className="frow">
-        <div className="fld"><label>الاسم</label>
+        <div className="fld"><label>{tr("name")}</label>
           <input className="inp" value={f.name} onChange={(e) => set("name", e.target.value)} /></div>
-        <div className="fld"><label>المرحلة</label>
+        <div className="fld"><label>{tr("stage")}</label>
           <select className="inp" value={f.stage} onChange={(e) => set("stage", e.target.value)}>
             {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
           </select></div>
@@ -88,61 +90,61 @@ export default function CustomerEdit({ customer, specialties }: { customer: C; s
             placeholder="مثلاً: عملية الدفع معلّقة من البنك" /></div>
       )}
       <div className="frow">
-        <div className="fld"><label>الموبايل 1</label>
+        <div className="fld"><label>{tr("phone1")}</label>
           <input className="inp num" dir="ltr" value={f.phone1} onChange={(e) => set("phone1", e.target.value)} /></div>
-        <div className="fld"><label>الموبايل 2</label>
+        <div className="fld"><label>{tr("phone2")}</label>
           <input className="inp num" dir="ltr" value={f.phone2} onChange={(e) => set("phone2", e.target.value)} /></div>
       </div>
       <div className="frow">
-        <div className="fld"><label>الإيميل</label>
+        <div className="fld"><label>{tr("email")}</label>
           <input className="inp num" dir="ltr" value={f.email} onChange={(e) => set("email", e.target.value)} /></div>
-        <div className="fld"><label>الشركة</label>
+        <div className="fld"><label>{tr("company")}</label>
           <input className="inp" value={f.company} onChange={(e) => set("company", e.target.value)} /></div>
       </div>
 
-      <div className="sec-t" style={{ marginTop: 6 }}>معلومات المبيعات</div>
+      <div className="sec-t" style={{ marginTop: 6 }}>{tr("salesInfo")}</div>
       <div className="frow">
-        <div className="fld"><label>التخصص الهندسي</label>
+        <div className="fld"><label>{tr("specialty")}</label>
           <select className="inp" value={f.specialty_id} onChange={(e) => set("specialty_id", e.target.value)}>
-            <option value="">— غير محدد —</option>
+            <option value="">{tr("unselected")}</option>
             {specialties.map((s) => <option key={s.id} value={s.id}>{s.name_ar}</option>)}
           </select></div>
-        <div className="fld"><label>سنة التخرج</label>
+        <div className="fld"><label>{tr("gradYear")}</label>
           <input className="inp num" dir="ltr" inputMode="numeric" value={f.grad_year} onChange={(e) => set("grad_year", e.target.value)} /></div>
       </div>
       <div className="frow">
-        <div className="fld"><label>محل الإقامة</label>
+        <div className="fld"><label>{tr("residency")}</label>
           <input className="inp" value={f.residency} onChange={(e) => set("residency", e.target.value)} /></div>
-        <div className="fld"><label>كود الأفيلييت</label>
-          <input className="inp num" dir="ltr" value={f.affiliate_code} onChange={(e) => set("affiliate_code", e.target.value)} placeholder="اختياري" /></div>
+        <div className="fld"><label>{tr("affiliate")}</label>
+          <input className="inp num" dir="ltr" value={f.affiliate_code} onChange={(e) => set("affiliate_code", e.target.value)} placeholder={tr("optional")} /></div>
       </div>
       <div className="frow">
-        <div className="fld"><label>مصدر العميل</label>
-          <input className="inp" value={f.source} onChange={(e) => set("source", e.target.value)} placeholder="فيسبوك / إحالة / إعلان…" /></div>
-        <div className="fld"><label>حالة المنصة (LMS)</label>
+        <div className="fld"><label>{tr("source")}</label>
+          <input className="inp" value={f.source} onChange={(e) => set("source", e.target.value)} placeholder={tr("sourcePlaceholder")} /></div>
+        <div className="fld"><label>{tr("lmsStatus")}</label>
           <select className="inp" value={f.lms_status} onChange={(e) => set("lms_status", e.target.value)}>
-            <option value="">— غير محدّد —</option>
-            <option value="active">مفعّلة</option>
-            <option value="pending">قيد التفعيل</option>
-            <option value="none">غير مفعّلة</option>
+            <option value="">{tr("unselected")}</option>
+            <option value="active">{tr("lmsActive")}</option>
+            <option value="pending">{tr("lmsPending")}</option>
+            <option value="none">{tr("lmsNone")}</option>
           </select></div>
       </div>
 
       <div style={{ fontSize: 12, color: "var(--muted)", borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexWrap: "wrap", gap: "4px 20px" }}>
-        <span>المصدر: {customer.source || "—"}</span>
-        <span>حالة المنصة: {customer.lms_status || "—"}</span>
-        <span>تاريخ الإضافة: {new Date(customer.created_at).toLocaleDateString("ar-EG")}</span>
+        <span>{tr("source")}: {customer.source || "—"}</span>
+        <span>{tr("lmsStatus")}: {customer.lms_status || "—"}</span>
+        <span>{tr("createdDate")}: {new Date(customer.created_at).toLocaleDateString("ar-EG")}</span>
       </div>
 
       {err && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 8 }}>{err}</div>}
       {msg && <div style={{ color: "var(--green)", fontSize: 13, marginTop: 8 }}>{msg}</div>}
 
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-        <button onClick={save} disabled={busy} className="btn">{busy ? "بيحفظ..." : "حفظ التعديلات"}</button>
+        <button onClick={save} disabled={busy} className="btn">{busy ? tr("saving") : tr("saveEdits")}</button>
         {wa && (
           <a href={wa} target="_blank" rel="noreferrer" className="btn wa" style={{ textDecoration: "none" }}>
             <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor"><path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.6-4A8 8 0 1 1 20 11.5z"/></svg>
-            واتساب
+            {tr("whatsapp")}
           </a>
         )}
       </div>

@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
+import { useT } from "@/lib/i18n/client";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+<<<<<<< HEAD
 const STAGES = [
   { key: "new", label: "جديد" },
   { key: "contacted", label: "تم التواصل" },
@@ -14,7 +16,19 @@ const STAGES = [
   { key: "lost", label: "خسارة" },
 ];
 
+=======
+>>>>>>> df6500c (ترجمة كاملة + دارك مود مونوكروم + أونبوردينج كارد + إصلاح dashboard + تنظيف CSS)
 export default function StageMover({ id, current }: { id: string; current: string }) {
+  const tr = useT();
+  const STAGES = [
+    { key: "new", label: tr("dashStageNew") },
+    { key: "contacted", label: tr("dashStageContacted") },
+    { key: "interested", label: tr("dashStageInterested") },
+    { key: "negotiation", label: tr("dashStageNegotiation") },
+    { key: "enrolled", label: tr("dashStageEnrolled") },
+    { key: "onhold", label: tr("dashStageOnhold") },
+    { key: "lost", label: tr("dashStageLost") },
+  ];
   const router = useRouter();
   const supabase = createClient();
   const [val, setVal] = useState(current);

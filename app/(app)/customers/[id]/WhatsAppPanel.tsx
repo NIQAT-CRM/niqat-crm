@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
+import { useT } from "@/lib/i18n/client";
 
 type Tpl = { id: string; name: string; body: string };
 type Ctx = { name: string; phone1: string; diploma: string; batch: string; remaining: string };
@@ -21,6 +22,7 @@ function waLink(phone: string, text: string) {
 export default function WhatsAppPanel({
   customerId, meId, ctx, templates,
 }: { customerId: string; meId: string; ctx: Ctx; templates: Tpl[] }) {
+  const tr = useT();
   const supabase = createClient();
   const [preview, setPreview] = useState<string>("");
 
@@ -36,17 +38,17 @@ export default function WhatsAppPanel({
   if (!ctx.phone1) {
     return (
       <div className="card" style={{ padding: 18, marginBottom: 14 }}>
-        <div className="sec-t">واتساب</div>
-        <div style={{ fontSize: 13, color: "var(--muted)" }}>مفيش رقم موبايل للعميل.</div>
+        <div className="sec-t">{tr("whatsapp")}</div>
+        <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noMobile")}</div>
       </div>
     );
   }
 
   return (
     <div className="card" style={{ padding: 18, marginBottom: 14 }}>
-      <div className="sec-t">واتساب — قوالب جاهزة</div>
+      <div className="sec-t">{tr("manageTpl")}</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 8 }}>
-        {templates.length === 0 && <span style={{ fontSize: 12.5, color: "var(--muted)" }}>مفيش قوالب — تتضاف من الإعدادات.</span>}
+        {templates.length === 0 && <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("noTemplates")}</span>}
         {templates.map((t) => (
           <button key={t.id} className="btn ghost" style={{ height: 32, padding: "0 12px", fontSize: 12.5 }}
             onMouseEnter={() => setPreview(fill(t.body, ctx))} onMouseLeave={() => setPreview("")}
@@ -55,7 +57,7 @@ export default function WhatsAppPanel({
           </button>
         ))}
         <a className="btn wa" style={{ height: 32, padding: "0 12px", fontSize: 12.5 }}
-          href={waLink(ctx.phone1, "")} target="_blank" rel="noreferrer">فتح محادثة فارغة</a>
+          href={waLink(ctx.phone1, "")} target="_blank" rel="noreferrer">{tr("openBlankChat")}</a>
       </div>
       {preview && (
         <div style={{ fontSize: 12.5, color: "var(--muted)", background: "rgba(24,169,87,.07)", border: "1px solid var(--line)", borderRadius: 8, padding: 10, whiteSpace: "pre-wrap" }}>

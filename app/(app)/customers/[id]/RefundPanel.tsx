@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
+import { useT } from "@/lib/i18n/client";
 
 type Refund = { id: string; amount: number; currency: string; reason: string; shot_url: string; status: string; created_at: string } | null;
 
@@ -11,9 +12,9 @@ function money(n: number, cur: string) {
 }
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  requested: { label: "طلب ريفند — منتظر التحويل", color: "#E6A700", bg: "#FFF6E0" },
-  refunded: { label: "تم الريفند — بانتظار إغلاق الأكسس", color: "#2F6BFF", bg: "#E8F0FF" },
-  closed: { label: "مؤرشف (تم الإغلاق)", color: "#94A2BB", bg: "#EEF1F6" },
+  requested: { label: "awaitRefund", color: "#E6A700", bg: "#FFF6E0" },
+  refunded: { label: "awaitClose", color: "#2F6BFF", bg: "#E8F0FF" },
+  closed: { label: "refundClosedBadge", color: "#94A2BB", bg: "#EEF1F6" },
 };
 
 export default function RefundPanel({
@@ -21,6 +22,7 @@ export default function RefundPanel({
 }: {
   customerId: string; refund: Refund; meId: string; tableMissing: boolean;
 }) {
+  const tr = useT();
   const supabase = createClient();
   const router = useRouter();
   const [amount, setAmount] = useState("");
@@ -75,9 +77,9 @@ export default function RefundPanel({
   if (tableMissing) {
     return (
       <div className="card" style={{ padding: 18, marginBottom: 14 }}>
-        <div className="sec-t">الاسترداد (Refund)</div>
+        <div className="sec-t">{tr("refundSection")}</div>
         <div style={{ fontSize: 13, color: "var(--muted)" }}>
-          جدول الاسترداد لسه مش متعمل في قاعدة البيانات. شغّل SQL الـ refunds مرة واحدة في Supabase وهيشتغل.
+          {tr("noTableMsg")}
         </div>
       </div>
     );
@@ -86,10 +88,10 @@ export default function RefundPanel({
   return (
     <div className="card" style={{ padding: 18, marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div className="sec-t" style={{ margin: 0 }}>الاسترداد (Refund)</div>
+        <div className="sec-t" style={{ margin: 0 }}>{tr("refundSection")}</div>
         {refund && (
           <span className="stg" style={{ background: STATUS[refund.status]?.bg, color: STATUS[refund.status]?.color }}>
-            {STATUS[refund.status]?.label || refund.status}
+            {tr(STATUS[refund.status]?.label) || refund.status}
           </span>
         )}
       </div>
@@ -97,41 +99,41 @@ export default function RefundPanel({
       {!refund ? (
         <div style={{ marginTop: 10 }}>
           <div className="frow">
-            <div className="fld"><label>مبلغ الاسترداد</label>
+            <div className="fld"><label>{tr("refundAmount")}</label>
               <input className="inp num" dir="ltr" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
-            <div className="fld"><label>العملة</label>
+            <div className="fld"><label>{tr("currency")}</label>
               <select className="inp" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                <option value="EGP">جنيه</option><option value="USD">دولار</option>
+                <option value="EGP">{tr("egp")}</option><option value="USD">{tr("usd")}</option>
               </select></div>
           </div>
-          <div className="fld"><label>سبب الاسترداد</label>
+          <div className="fld"><label>{tr("refundReason")}</label>
             <textarea className="inp" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></div>
-          <button onClick={request} disabled={busy} className="btn danger">{busy ? "..." : "طلب ريفند"}</button>
+          <button onClick={request} disabled={busy} className="btn danger">{busy ? "..." : tr("refundReq")}</button>
         </div>
       ) : (
         <div style={{ marginTop: 10 }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 20px", fontSize: 13.5, color: "var(--ink)", marginBottom: 10 }}>
-            <span>المبلغ: <b className="num" dir="ltr">{money(refund.amount, refund.currency)}</b></span>
-            {refund.reason && <span>السبب: {refund.reason}</span>}
+            <span>{tr("refundAmount")}: <b className="num" dir="ltr">{money(refund.amount, refund.currency)}</b></span>
+            {refund.reason && <span>{tr("refundReason")}: {refund.reason}</span>}
           </div>
           {refund.shot_url && (
-            <a href={refund.shot_url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: "var(--brand)", fontWeight: 700 }}>📎 صورة التحويل</a>
+            <a href={refund.shot_url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: "var(--brand)", fontWeight: 700 }}>📎 {tr("transferShot")}</a>
           )}
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
             {refund.status === "requested" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
-                <div style={{ fontSize: 12, color: "var(--muted)" }}>منتظر التحويل (أول 10 أيام بالشهر). بعد التحويل ارفع السكرين وعلّم تم.</div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>{tr("awaitTransfer")}</div>
                 <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--brand)", fontWeight: 700, cursor: "pointer" }}>
-                  🖼️ {file ? file.name : "صورة تحويل الاسترداد"}
+                  🖼️ {file ? file.name : tr("refundShot")}
                   <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => setFile(e.target.files?.[0] || null)} />
                 </label>
-                <button onClick={() => setStatus("refunded", false, true)} disabled={busy} className="btn">{busy ? "..." : "تم التحويل + رفع السكرين"}</button>
+                <button onClick={() => setStatus("refunded", false, true)} disabled={busy} className="btn">{busy ? "..." : tr("refundTransfer")}</button>
               </div>
             )}
             {refund.status === "refunded" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
-                <div style={{ fontSize: 12, color: "var(--muted)" }}>الدعم: اقفل الأكسس من «التفعيل والاعتمادات» ثم اضغط أرشفة.</div>
-                <button onClick={() => setStatus("closed", true)} disabled={busy} className="btn ghost">تم قفل الأكسس — أرشفة العميل</button>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>{tr("supportCloseHint")}</div>
+                <button onClick={() => setStatus("closed", true)} disabled={busy} className="btn ghost">{tr("closeAndArchive")}</button>
               </div>
             )}
           </div>

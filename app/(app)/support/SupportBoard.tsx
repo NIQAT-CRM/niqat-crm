@@ -17,10 +17,10 @@ type Ticket = {
 };
 
 const STATUSES = [
-  { key: "open", label: "مفتوحة", color: "#2F6BFF" },
-  { key: "progress", label: "قيد المعالجة", color: "#E6A700" },
-  { key: "resolved", label: "محلولة", color: "#18A957" },
-  { key: "closed", label: "مغلقة", color: "#94A2BB" },
+  { key: "open", color: "#2F6BFF" },
+  { key: "progress", color: "#E6A700" },
+  { key: "resolved", color: "#18A957" },
+  { key: "closed", color: "#94A2BB" },
 ];
 
 const PRC: Record<string, string> = {
@@ -115,6 +115,7 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
 
   return (
     <div>
+      <style>{`[data-theme="dark"] .col .dot{filter:grayscale(100%) brightness(1.5);}`}</style>
       <div className="page-h">
         <div>
           <h1>{tr("support")}</h1>
@@ -122,7 +123,7 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
         </div>
         <Link href="/support/new" className="btn">
           <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
-          تذكرة جديدة
+          {tr("newTicket")}
         </Link>
       </div>
 
@@ -150,17 +151,17 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
               <div className="col-h">
                 <span className="nm">
                   <span className="dot" style={{ background: s.color }} />
-                  {s.label}
+                  {tr(s.key)}
                 </span>
                 <select className="sortsel" value={colSort[s.key] || ""} onChange={(e) => setColSort((q) => ({ ...q, [s.key]: e.target.value }))}>
-                  <option value="">ترتيب</option>
-                  <option value="name">بالموضوع</option>
-                  <option value="new">الأحدث</option>
-                  <option value="pri">الأولوية</option>
+                  <option value="">{tr("sortPlaceholder")}</option>
+                  <option value="name">{tr("bySubject")}</option>
+                  <option value="new">{tr("newestLabel")}</option>
+                  <option value="pri">{tr("byPriority")}</option>
                 </select>
                 <span className="ct">{items.length}</span>
               </div>
-              <input className="inp" placeholder="فلترة العمود…" value={colQ[s.key] || ""}
+              <input className="inp" placeholder={tr("filterColumn")} value={colQ[s.key] || ""}
                 onChange={(e) => setColQ((q) => ({ ...q, [s.key]: e.target.value }))}
                 style={{ height: 30, fontSize: 12, margin: "0 0 8px" }} />
               <div className="col-b enter">
@@ -185,7 +186,7 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
                       }}
                       style={{ cursor: "pointer" }}
                     >
-                      <button className="cardx" title="تم — إخفاء من البورد" onMouseDown={(ev) => ev.stopPropagation()} onMouseUp={(ev) => ev.stopPropagation()} onClick={(ev) => { ev.stopPropagation(); archive(t.id); }}>
+                      <button className="cardx" title={tr("archiveCard")} onMouseDown={(ev) => ev.stopPropagation()} onMouseUp={(ev) => ev.stopPropagation()} onClick={(ev) => { ev.stopPropagation(); archive(t.id); }}>
                         <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 12l5 5L20 7" /></svg>
                       </button>
                       <div className="th">

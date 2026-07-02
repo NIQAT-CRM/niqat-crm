@@ -184,6 +184,7 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .onb-card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
 .onb-card .oh{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;gap:11px;align-items:center}
 .onb-card .ob{padding:14px 16px}
+.onb-card--completed{opacity:.75;border-color:var(--line);box-shadow:none}
 .prog{height:6px;background:#eef2f8;border-radius:20px;overflow:hidden;margin-top:4px}.prog i{display:block;height:100%;background:var(--green);border-radius:20px}
 .empty{text-align:center;padding:50px 20px;color:var(--muted)}.empty svg{width:42px;height:42px;color:#c4cddd;margin-bottom:12px}.empty b{display:block;color:var(--text);font-size:15px;font-weight:700;margin-bottom:4px}
 .ucard{border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;background:#fff;margin-bottom:14px}.ucard-h{display:flex;align-items:center;gap:11px;margin-bottom:14px}
@@ -247,3 +248,18 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
   display:grid;place-items:center;color:var(--muted);flex-shrink:0}
 .drawer-panel .dr-x:hover{background:#f0f3f8;color:var(--ink)}
 .drawer-panel .dr-b{padding:18px;overflow:auto;flex:1}
+
+/* Dark mode monochrome */
+[data-theme="dark"] .onb-card--completed{border-color:#334155}
+[data-theme="dark"] .wa{background:#334155!important;color:#94A3B8!important}
+[data-theme="dark"] .curtog button.on{background:#334155!important;color:#94A3B8!important}
+[data-theme="dark"] .kpi,.card,.bcard,.rmd,.sw,.sw i,.stg,.chip,.opt-chip,.nav button,.btn,.pill,.icon-btn,.task{transition:none!important}
+[data-theme="dark"] .sch .stg{color:#94A3B8!important}
+[data-theme="dark"] .card .num span{color:#94A3B8!important}
+
+.sales-card{background:linear-gradient(135deg,var(--brand),var(--green))}
+[data-theme="dark"] .sales-card{background:var(--surface)!important}
+.sales-amount{font-size:28px;font-weight:800;color:var(--green)}
+[data-theme="dark"] .sales-amount{color:var(--muted)!important}
+
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}

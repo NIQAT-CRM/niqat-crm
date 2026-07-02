@@ -15,6 +15,7 @@ type Cust = {
   createdAt: string;
 };
 
+<<<<<<< HEAD
 // مراحل قاعدة البيانات (stage_t) + ألوان وتسميات البروتوتايب
 const STAGES = [
   { key: "new", label: "جديد", color: "#2F6BFF" },
@@ -27,6 +28,8 @@ const STAGES = [
   { key: "lost", label: "مؤجل / مرفوض", color: "#94A2BB" },
 ];
 
+=======
+>>>>>>> df6500c (ترجمة كاملة + دارك مود مونوكروم + أونبوردينج كارد + إصلاح dashboard + تنظيف CSS)
 const AV = ["#F08A24", "#0FA3A3", "#2F6BFF", "#7B61FF", "#18A957", "#E0483B", "#E6A700"];
 function avColor(id: string) {
   let h = 0;
@@ -40,6 +43,15 @@ function initials(name: string) {
 
 export default function PipelineBoard({ initial }: { initial: Cust[] }) {
   const tr = useT();
+  const STAGES = [
+    { key: "new", label: tr("dashStageNew"), color: "#2F6BFF" },
+    { key: "contacted", label: tr("dashStageContacted"), color: "#0FA3A3" },
+    { key: "interested", label: tr("dashStageInterested"), color: "#7B61FF" },
+    { key: "negotiation", label: tr("dashStageNegotiation"), color: "#F08A24" },
+    { key: "enrolled", label: tr("dashStageEnrolled"), color: "#18A957" },
+    { key: "onhold", label: tr("dashStageOnhold"), color: "#E6A700" },
+    { key: "lost", label: tr("dashStageLost"), color: "#94A2BB" },
+  ];
   const router = useRouter();
   const downRef = useRef<{ x: number; y: number } | null>(null);
   const supabase = createClient();
@@ -102,7 +114,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
             <path d="M12 5v14M5 12h14" />
           </svg>
-          إضافة عميل
+          {tr("addCust")}
         </Link>
       </div>
 
@@ -134,13 +146,13 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                   {s.label}
                 </span>
                 <select className="sortsel" value={colSort[s.key] || ""} onChange={(e) => setColSort((q) => ({ ...q, [s.key]: e.target.value }))}>
-                  <option value="">ترتيب</option>
-                  <option value="name">بالاسم</option>
-                  <option value="new">الأحدث</option>
+                  <option value="">{tr("sortLabel")}</option>
+                  <option value="name">{tr("sortName")}</option>
+                  <option value="new">{tr("sortNew")}</option>
                 </select>
                 <span className="ct">{items.length}</span>
               </div>
-              <input className="inp" placeholder="فلترة العمود…" value={colQ[s.key] || ""}
+              <input className="inp" placeholder={tr("filterColumn")} value={colQ[s.key] || ""}
                 onChange={(e) => setColQ((q) => ({ ...q, [s.key]: e.target.value }))}
                 style={{ height: 30, fontSize: 12, margin: "0 0 8px" }} />
               <div className="col-b enter">
@@ -164,7 +176,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                   >
                     <button
                       className="cardx"
-                      title="أرشفة الكارت"
+                      title={tr("archiveCard")}
                       onMouseDown={(ev) => ev.stopPropagation()}
                       onClick={(ev) => { ev.stopPropagation(); archive(c.id); }}
                     >
@@ -177,7 +189,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                         <span className="av-xs" style={{ background: avColor(c.ownerId) }}>
                           {initials(c.ownerName || "؟")}
                         </span>
-                        {c.ownerName || "غير معيّن"}
+                        {c.ownerName || tr("unassigned")}
                       </span>
                     </div>
                   </div>

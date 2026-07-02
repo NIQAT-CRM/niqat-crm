@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n/client";
 
 type Ticket = {
   id: string; title: string; body: string | null; status: string;
@@ -13,15 +14,15 @@ type Prof = { id: string; full_name: string | null; team: string | null };
 type Note = { id: string; body: string; created_at: string; author: string };
 
 const STATUSES = [
-  { key: "open", label: "مفتوحة" },
-  { key: "progress", label: "قيد المعالجة" },
-  { key: "resolved", label: "محلولة" },
-  { key: "closed", label: "مغلقة" },
+  { key: "open" },
+  { key: "progress" },
+  { key: "resolved" },
+  { key: "closed" },
 ];
 const PRIOS = [
-  { key: "high", label: "عالية" },
-  { key: "medium", label: "متوسطة" },
-  { key: "low", label: "منخفضة" },
+  { key: "high" },
+  { key: "medium" },
+  { key: "low" },
 ];
 
 function fmt(d: string) {
@@ -37,6 +38,7 @@ export default function TicketDetail({
 }: {
   ticket: Ticket; customer: Customer; assignees: Prof[]; notes: Note[]; currentUserId: string | null;
 }) {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
 
@@ -58,7 +60,7 @@ export default function TicketDetail({
     }).eq("id", ticket.id);
     setSaving(false);
     if (error) { setSavedMsg("خطأ: " + error.message); return; }
-    setSavedMsg("تم الحفظ ✓");
+    setSavedMsg(tr("saved") + " ✓");
     router.refresh();
   }
 
@@ -70,7 +72,7 @@ export default function TicketDetail({
       ticket_id: ticket.id, author_id: currentUserId, body: b,
     });
     setAddingNote(false);
-    if (error) { alert("تعذّر إضافة الملاحظة: " + error.message); return; }
+    if (error) { alert(tr("addNoteFailed") + error.message); return; }
     setNoteText("");
     router.refresh();
   }
@@ -80,7 +82,7 @@ export default function TicketDetail({
       {/* بيانات التذكرة */}
       <div className="card" style={{ padding: 20 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <div className="sec-t" style={{ margin: 0 }}>تعديل التذكرة</div>
+          <div className="sec-t" style={{ margin: 0 }}>{tr("editTicket")}</div>
           {customer && (
             <Link href={`/customers/${customer.id}`} style={{ fontSize: 12, color: "var(--brand)", fontWeight: 700 }}>
               {customer.name}
@@ -89,50 +91,49 @@ export default function TicketDetail({
         </div>
 
         <div className="fld">
-          <label>الموضوع</label>
+          <label>{tr("subject")}</label>
           <input className="inp" value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div className="fld">
-            <label>الأولوية</label>
+            <label>{tr("priority")}</label>
             <select className="inp" value={priority} onChange={(e) => setPriority(e.target.value)}>
-              {PRIOS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+              {PRIOS.map((p) => <option key={p.key} value={p.key}>{tr(p.key)}</option>)}
             </select>
           </div>
           <div className="fld">
-            <label>الحالة</label>
+            <label>{tr("status")}</label>
             <select className="inp" value={status} onChange={(e) => setStatus(e.target.value)}>
-              {STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+              {STATUSES.map((s) => <option key={s.key} value={s.key}>{tr(s.key)}</option>)}
             </select>
           </div>
         </div>
 
         <div className="fld">
-          <label>المكلّف</label>
+          <label>{tr("assignee")}</label>
           <select className="inp" value={assignee} onChange={(e) => setAssignee(e.target.value)}>
-            <option value="">— غير محدّد —</option>
+            <option value="">{tr("unassigned")}</option>
             {assignees.map((a) => <option key={a.id} value={a.id}>{a.full_name || "—"}</option>)}
           </select>
         </div>
 
         <div className="fld">
-          <label>تفاصيل</label>
+          <label>{tr("details")}</label>
           <textarea className="inp" rows={3} value={body} onChange={(e) => setBody(e.target.value)} />
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4 }}>
-          <button onClick={save} disabled={saving} className="btn">{saving ? "جاري الحفظ…" : "حفظ"}</button>
+          <button onClick={save} disabled={saving} className="btn">{saving ? tr("saving") : tr("save")}</button>
           {savedMsg && <span style={{ fontSize: 12, color: "var(--muted)" }}>{savedMsg}</span>}
         </div>
       </div>
 
-      {/* ملاحظات التذكرة */}
       <div className="card" style={{ padding: 20 }}>
-        <div className="sec-t" style={{ marginTop: 0 }}>ملاحظات التذكرة</div>
+        <div className="sec-t" style={{ marginTop: 0 }}>{tr("ticketNotes")}</div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-          {notes.length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>لا توجد ملاحظات بعد.</div>}
+          {notes.length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{tr("noNotes")}</div>}
           {notes.map((n) => (
             <div key={n.id} style={{ background: "rgba(240,138,36,.07)", border: "1px solid var(--line)", borderRadius: 10, padding: 10 }}>
               <div style={{ fontSize: 14 }}>{n.body}</div>
@@ -142,11 +143,11 @@ export default function TicketDetail({
         </div>
 
         <div style={{ display: "flex", gap: 8 }}>
-          <input className="inp" placeholder="أضف ملاحظة…" value={noteText}
+          <input className="inp" placeholder={tr("addTicketNote")} value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") addNote(); }} />
           <button onClick={addNote} disabled={addingNote || !noteText.trim()} className="btn" style={{ flexShrink: 0 }}>
-            إضافة
+            {tr("addOpt")}
           </button>
         </div>
       </div>

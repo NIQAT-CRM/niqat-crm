@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
+import { useT } from "@/lib/i18n/client";
 
 type Addon = { id: string; type: string; name: string; amount: number; free: boolean; note: string; paid: boolean };
 
@@ -12,6 +13,7 @@ export default function AddonsPanel({
   customerId: string; initial: Addon[]; accreditations: string[]; projects: string[];
   canFinance: boolean; tableMissing: boolean;
 }) {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [list, setList] = useState<Addon[]>(initial);
@@ -61,8 +63,8 @@ export default function AddonsPanel({
   if (tableMissing) {
     return (
       <div className="card" style={{ padding: 18, marginBottom: 14 }}>
-        <div className="sec-t">الإضافات (اعتمادات / مشاريع)</div>
-        <div style={{ fontSize: 13, color: "var(--muted)" }}>جدول الإضافات لسه مش متعمل — شغّل batch4-tables.sql في Supabase.</div>
+        <div className="sec-t">{tr("addonsT")}</div>
+        <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noTableMsg")}</div>
       </div>
     );
   }
@@ -70,44 +72,44 @@ export default function AddonsPanel({
   return (
     <div className="card" style={{ padding: 18, marginBottom: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div className="sec-t" style={{ margin: 0 }}>الإضافات (اعتمادات / مشاريع)</div>
-        <button onClick={() => setOpen((v) => !v)} className="btn ghost" style={{ height: 30, padding: "0 10px", fontSize: 12.5 }}>{open ? "إغلاق" : "+ إضافة"}</button>
+        <div className="sec-t" style={{ margin: 0 }}>{tr("addonsT")}</div>
+        <button onClick={() => setOpen((v) => !v)} className="btn ghost" style={{ height: 30, padding: "0 10px", fontSize: 12.5 }}>{open ? tr("close") : tr("addAddon")}</button>
       </div>
 
       {open && (
         <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12, margin: "10px 0", background: "rgba(240,138,36,.05)" }}>
           <div className="frow">
-            <div className="fld"><label>النوع</label>
+            <div className="fld"><label>{tr("addonType")}</label>
               <select className="inp" value={type} onChange={(e) => { setType(e.target.value); setName(""); }}>
-                <option value="accred">اعتماد</option><option value="project">مشروع</option>
+                <option value="accred">{tr("accredType")}</option><option value="project">{tr("projectType")}</option>
               </select></div>
-            <div className="fld"><label>العنصر</label>
+            <div className="fld"><label>{tr("addonItem")}</label>
               <select className="inp" value={name} onChange={(e) => setName(e.target.value)}>
                 {names.map((n) => <option key={n} value={n}>{n}</option>)}
               </select></div>
           </div>
           {canFinance && !free && (
-            <div className="fld"><label>المبلغ</label>
+            <div className="fld"><label>{tr("price")}</label>
               <input className="inp num" dir="ltr" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
           )}
-          <label className="chkrow"><input type="checkbox" checked={free} onChange={(e) => setFree(e.target.checked)} /> هدية / مجاني</label>
-          <div className="fld"><label>ملاحظة</label><input className="inp" value={note} onChange={(e) => setNote(e.target.value)} /></div>
-          <label className="chkrow"><input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} /> مدفوع (يتسلّم للدعم للتفعيل)</label>
-          <button onClick={add} disabled={busy} className="btn" style={{ marginTop: 8 }}>{busy ? "..." : "إضافة"}</button>
+          <label className="chkrow"><input type="checkbox" checked={free} onChange={(e) => setFree(e.target.checked)} /> {tr("gift")} / {tr("isFree")}</label>
+          <div className="fld"><label>{tr("addonNote")}</label><input className="inp" value={note} onChange={(e) => setNote(e.target.value)} /></div>
+          <label className="chkrow"><input type="checkbox" checked={paid} onChange={(e) => setPaid(e.target.checked)} /> {tr("addonPaid")}</label>
+          <button onClick={add} disabled={busy} className="btn" style={{ marginTop: 8 }}>{busy ? "..." : tr("addOpt")}</button>
         </div>
       )}
 
       <div style={{ marginTop: 8 }}>
-        {list.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا توجد إضافات.</div>}
+        {list.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noAddons")}</div>}
         {list.map((a) => (
           <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
             <span className="chip" style={{ background: a.type === "accred" ? "#7B61FF1a" : "#0FA3A31a", color: a.type === "accred" ? "#7B61FF" : "#0FA3A3" }}>
-              {a.type === "accred" ? "اعتماد" : "مشروع"}
+              {a.type === "accred" ? tr("accredType") : tr("projectType")}
             </span>
-            <span style={{ flex: 1, fontWeight: 700, color: "var(--ink)" }}>{a.name}{a.free && <span style={{ color: "var(--green)", fontSize: 12, marginInlineStart: 6 }}>🎁 هدية</span>}</span>
+            <span style={{ flex: 1, fontWeight: 700, color: "var(--ink)" }}>{a.name}{a.free && <span style={{ color: "var(--green)", fontSize: 12, marginInlineStart: 6 }}>🎁 {tr("gift")}</span>}</span>
             {canFinance && !a.free && <span className="num" dir="ltr" style={{ fontSize: 13, color: "var(--muted)" }}>{new Intl.NumberFormat("en").format(a.amount)} ج</span>}
-            <div className={"sw" + (a.paid ? " on" : "")} onClick={() => togglePaid(a)} title="مدفوع"><i /></div>
-            <button onClick={() => del(a)} style={{ color: "var(--red)", fontSize: 12, background: "none" }}>حذف</button>
+            <div className={"sw" + (a.paid ? " on" : "")} onClick={() => togglePaid(a)} title={tr("addonPaid")}><i /></div>
+            <button onClick={() => del(a)} style={{ color: "var(--red)", fontSize: 12, background: "none" }}>{tr("del")}</button>
           </div>
         ))}
       </div>
