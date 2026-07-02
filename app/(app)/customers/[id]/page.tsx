@@ -192,7 +192,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
         </div>
         <div className="dr-b">
 
-      <CustomerEdit customer={c as any} specialties={specs || []} />
+      <CustomerEdit customer={c as any} specialties={specs || []}
+        docsSection={<DocsPanel customerId={c.id as string} initial={docs} tableMissing={docsMissing} />} />
 
       <SubscriptionsPanel customerId={c.id as string} meId={user?.id || ""} enrolls={enrolls}
         dipOpts={dipOpts} batchOpts={batchOpts} canFinance={canFinance} />
@@ -210,8 +211,6 @@ export default async function CustomerDetail({ params }: { params: { id: string 
       {canFinance && <RefundPanel customerId={c.id as string} refund={refund} meId={user?.id || ""} tableMissing={refundTableMissing} />}
 
       {canMessage && <WhatsAppPanel customerId={c.id as string} meId={user?.id || ""} ctx={waCtx} templates={templates as any} />}
-
-      <DocsPanel customerId={c.id as string} initial={docs} tableMissing={docsMissing} />
 
       <CustomerActivity customerId={c.id as string} meId={user?.id || ""} initialTasks={tasks} initialNotes={notes} />
 

@@ -45,5 +45,5 @@ export default async function Support({ searchParams }: { searchParams: { q?: st
     date: t.created_at ? String(t.created_at).slice(0, 10) : "",
   }));
 
-  return <SupportBoard key={q || "all"} initial={items} assignees={assignees} subjects={subjects} meId={user?.id || ""} />;
+  return <SupportBoard key={q || "all"} initial={items} assignees={assignees} subjects={subjects} meId={user?.id || ""} customers={(custs || []).map((c: any) => ({ id: c.id, name: c.name }))} />;
 }

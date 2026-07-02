@@ -4,6 +4,7 @@ import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import NewTicketModal from "./NewTicketModal";
 
 type Ticket = {
   id: string;
@@ -43,11 +44,12 @@ function initials(name: string) {
   return p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2);
 }
 
-export default function SupportBoard({ initial, assignees, subjects, meId }: {
+export default function SupportBoard({ initial, assignees, subjects, meId, customers = [] }: {
   initial: Ticket[];
   assignees: { id: string; name: string }[];
   subjects: string[];
   meId: string;
+  customers?: { id: string; name: string }[];
 }) {
   const tr = useT();
   const router = useRouter();
@@ -58,6 +60,7 @@ export default function SupportBoard({ initial, assignees, subjects, meId }: {
   const [overCol, setOverCol] = useState<string | null>(null);
   const [colSort, setColSort] = useState<Record<string, string>>({});
   const [openId, setOpenId] = useState<string | null>(null);
+  const [newOpen, setNewOpen] = useState(false);
   const [notes, setNotes] = useState<{ id: string; body: string; author: string; at: string }[]>([]);
   const [noteText, setNoteText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -141,10 +144,10 @@ export default function SupportBoard({ initial, assignees, subjects, meId }: {
           <h1>{tr("support")}</h1>
           <p>{tickets.length} تذكرة — اسحب التذكرة بين الأعمدة</p>
         </div>
-        <Link href="/support/new" className="btn">
+        <button type="button" className="btn" onClick={() => setNewOpen(true)}>
           <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
           تذكرة جديدة
-        </Link>
+        </button>
       </div>
 
       <div className="pipe">
@@ -322,6 +325,8 @@ export default function SupportBoard({ initial, assignees, subjects, meId }: {
           </div>
         </>
       )}
+
+      <NewTicketModal open={newOpen} onClose={() => setNewOpen(false)} customers={customers} problems={subjects} />
     </div>
   );
 }
