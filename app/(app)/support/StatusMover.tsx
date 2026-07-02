@@ -36,7 +36,7 @@ export default function StatusMover({ id, current }: { id: string; current: stri
       value={val}
       disabled={busy}
       onChange={(e) => change(e.target.value)}
-      className="w-full text-xs border border-line rounded-md px-2 py-1 bg-white disabled:opacity-50"
+      className="w-full text-xs border border-line rounded-md px-2 py-1 bg-surface disabled:opacity-50"
     >
       {STATUSES.map((s) => (
         <option key={s.key} value={s.key}>

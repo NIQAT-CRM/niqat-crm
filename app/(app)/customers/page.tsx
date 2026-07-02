@@ -149,7 +149,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
                     {dips.length ? (
                       <>
                         <span className="chip">{dips[0]}</span>
-                        {dips.length > 1 && <span className="chip" style={{ background: "#fff4e9", color: "var(--brand)" }}>+{dips.length - 1}</span>}
+                        {dips.length > 1 && <span className="chip" style={{ background: "var(--brand-soft)", color: "var(--brand)" }}>+{dips.length - 1}</span>}
                       </>
                     ) : "—"}
                   </td>
@@ -158,7 +158,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
                   {canFinance && (
                     <td className="num" dir="ltr" style={{ fontWeight: 700 }}>
                       {rem > 0 ? money(rem) + " ج" : "—"}
-                      {od && <span className="stg" style={{ background: "#FDECEA", color: "#E0483B", marginInlineStart: 6, fontSize: 10 }}>متأخر</span>}
+                      {od && <span className="stg" style={{ background: "var(--red-soft)", color: "var(--red)", marginInlineStart: 6, fontSize: 10 }}>متأخر</span>}
                     </td>
                   )}
                   <td>{pName.get(r.owner_id) || "غير معيّن"}</td>

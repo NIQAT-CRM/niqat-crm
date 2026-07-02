@@ -179,7 +179,7 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
             <button type="button" onClick={toggleTerms}
               className={"relative w-[44px] h-[24px] rounded-full transition-colors flex-shrink-0 " +
                 (terms ? "bg-orange-500" : "bg-slate-600")}>
-              <span className={"absolute top-[3px] w-[18px] h-[18px] rounded-full bg-white shadow transition-all duration-200 " +
+              <span className={"absolute top-[3px] w-[18px] h-[18px] rounded-full bg-slate-300 shadow transition-all duration-200 " +
                 (terms ? "left-[23px]" : "left-[3px]")} />
             </button>
             <div className="flex-1 min-w-0">

@@ -1,9 +1,9 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type Cust = { id: string; name: string };
+type Cust = { id: string; name: string; phone1?: string; phone2?: string; email?: string };
 const PRIOS = [
   { key: "high", label: "عالية" },
   { key: "medium", label: "متوسطة" },
@@ -18,10 +18,34 @@ export default function NewTicketModal({
   const router = useRouter();
   const supabase = createClient();
   const [customerId, setCustomerId] = useState("");
+  const [search, setSearch] = useState("");
+  const [dropOpen, setDropOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState("medium");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = customers.filter((c) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      c.name.toLowerCase().includes(q) ||
+      (c.phone1 || "").includes(q) ||
+      (c.phone2 || "").includes(q) ||
+      (c.email || "").toLowerCase().includes(q)
+    );
+  });
+
+  const selected = customers.find((c) => c.id === customerId);
+
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setDropOpen(false);
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
 
   const create = useCallback(async () => {
     setErr("");
@@ -38,7 +62,7 @@ export default function NewTicketModal({
       await supabase.from("app_settings").upsert({ key: "ticket_problems", value: next, updated_at: new Date().toISOString() });
     }
     setSaving(false);
-    setCustomerId(""); setTitle(""); setPriority("medium");
+    setCustomerId(""); setSearch(""); setTitle(""); setPriority("medium");
     onClose();
     router.refresh();
   }, [customerId, title, priority, problems, supabase, onClose, router]);
@@ -56,10 +80,27 @@ export default function NewTicketModal({
         <div className="modal-b">
           <div className="fld">
             <label>العميل</label>
-            <select className="inp" value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
-              <option value="">— اختر العميل —</option>
-              {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <div ref={ref} style={{ position: "relative" }}>
+              <input className="inp" value={selected ? selected.name : search}
+                onChange={(e) => { setSearch(e.target.value); setDropOpen(true); setCustomerId(""); }}
+                onFocus={() => setDropOpen(true)} placeholder="ابحث باسم العميل أو الموبايل أو الإيميل"
+                style={{ width: "100%", boxSizing: "border-box" }} />
+              {dropOpen && (
+                <div className="suggest-drop" style={{ position: "absolute", top: "100%", left: 0, right: 0 }}>
+                  {filtered.length === 0 ? (
+                    <div style={{ padding: "10px 14px", fontSize: 13, color: "var(--muted)" }}>لا توجد نتائج</div>
+                  ) : filtered.map((c) => (
+                    <div key={c.id} className="suggest-item" onClick={() => { setCustomerId(c.id); setSearch(c.name); setDropOpen(false); }}>
+                      <span>{c.name}</span>
+                      <span>
+                        {c.phone1 && <span dir="ltr">{c.phone1}</span>}
+                        {c.email && <span>{c.email}</span>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="fld">
             <label>الموضوع</label>

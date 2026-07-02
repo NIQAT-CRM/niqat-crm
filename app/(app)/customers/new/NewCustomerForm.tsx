@@ -116,8 +116,8 @@ export default function NewCustomerForm({
       {affUnknown && <div style={{ fontSize: 12.5, color: "#E0483B", marginTop: -6, marginBottom: 8 }}>الكود ده مش في القائمة</div>}
 
       {dup && (
-        <div style={{ border: "1px solid #E0483B", background: "#FBE9E7", borderRadius: 10, padding: 12, marginBottom: 10, fontSize: 13.5 }}>
-          <b style={{ color: "#E0483B" }}>العميل ده موجود قبل كده: {dup.name}</b>
+        <div style={{ border: "1px solid var(--red)", background: "var(--red-soft)", borderRadius: 10, padding: 12, marginBottom: 10, fontSize: 13.5 }}>
+          <b style={{ color: "var(--red)" }}>العميل ده موجود قبل كده: {dup.name}</b>
           <div style={{ marginTop: 6 }}>
             <a href={`/customers/${dup.id}`} style={{ color: "var(--brand)", fontWeight: 700 }}>افتح كارت العميل وعدّل عليه ←</a>
           </div>
@@ -168,7 +168,7 @@ export default function NewCustomerForm({
             </div>
           </div>
           <div className="fld"><label>المستحق بعد الخصم</label>
-            <input className="inp num" dir="ltr" readOnly value={discPct > 0 ? `${net} (خصم ${discPct}%)` : (gross || "")} style={{ background: "#f4f6fa", fontWeight: 700 }} /></div>
+            <input className="inp num" dir="ltr" readOnly value={discPct > 0 ? `${net} (خصم ${discPct}%)` : (gross || "")} style={{ background: "var(--muted-soft)", fontWeight: 700 }} /></div>
         </div>
       )}
 

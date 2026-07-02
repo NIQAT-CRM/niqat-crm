@@ -11,10 +11,10 @@ function money(n: number, cur: string) {
   return new Intl.NumberFormat("en").format(Math.round(n || 0)) + (cur === "USD" ? " $" : " ج");
 }
 
-const STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  requested: { label: "awaitRefund", color: "#E6A700", bg: "#FFF6E0" },
-  refunded: { label: "awaitClose", color: "#2F6BFF", bg: "#E8F0FF" },
-  closed: { label: "refundClosedBadge", color: "#94A2BB", bg: "#EEF1F6" },
+const STATUS: Record<string, { label: string; color: string }> = {
+  requested: { label: "awaitRefund", color: "var(--amber)" },
+  refunded: { label: "awaitClose", color: "var(--blue)" },
+  closed: { label: "refundClosedBadge", color: "var(--muted)" },
 };
 
 export default function RefundPanel({
@@ -90,7 +90,7 @@ export default function RefundPanel({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div className="sec-t" style={{ margin: 0 }}>{tr("refundSection")}</div>
         {refund && (
-          <span className="stg" style={{ background: STATUS[refund.status]?.bg, color: STATUS[refund.status]?.color }}>
+          <span className="stg" style={{ background: (STATUS[refund.status]?.color || "var(--muted)") + "1a", color: STATUS[refund.status]?.color }}>
             {tr(STATUS[refund.status]?.label) || refund.status}
           </span>
         )}

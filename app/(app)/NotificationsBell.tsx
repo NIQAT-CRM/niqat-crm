@@ -30,7 +30,7 @@ export default function NotificationsBell({ items }: { items: Item[] }) {
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-          <div style={{ position: "absolute", insetInlineEnd: 0, top: 44, width: 320, maxHeight: 420, overflow: "auto", background: "#fff", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "0 20px 50px rgba(16,27,48,.18)", zIndex: 50 }}>
+          <div style={{ position: "absolute", insetInlineEnd: 0, top: 44, width: 320, maxHeight: 420, overflow: "auto", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "0 20px 50px rgba(16,27,48,.18)", zIndex: 50 }}>
             <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--line)", fontWeight: 800, fontSize: 14 }}>
               التنبيهات {n > 0 && <span className="num" style={{ color: "var(--muted)" }}>({n})</span>}
             </div>

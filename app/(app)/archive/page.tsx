@@ -43,7 +43,7 @@ export default async function Archive() {
                     </Link>
                   </td>
                   <td className="num" dir="ltr">{c.phone1 || c.email || "—"}</td>
-                  <td><span className="stg" style={{ background: "#FBE9E7", color: "#E0483B" }}>ريفند{reasonMap.get(c.id as string) && reasonMap.get(c.id as string) !== "ريفند" ? " — " + reasonMap.get(c.id as string) : ""}</span></td>
+                  <td><span className="stg" style={{ background: "var(--red-soft)", color: "var(--red)" }}>ريفند{reasonMap.get(c.id as string) && reasonMap.get(c.id as string) !== "ريفند" ? " — " + reasonMap.get(c.id as string) : ""}</span></td>
                   <td><RestoreBtn id={c.id as string} /></td>
                 </tr>
               ))}

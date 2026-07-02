@@ -85,7 +85,7 @@ export default function NewTicketForm({
         <div ref={ref} style={{ position: "relative" }}>
           <input className="inp" value={locked ? search : search} onChange={(e) => { setSearch(e.target.value); setOpen(true); if (!locked) setCustomerId(""); }}
             onFocus={() => setOpen(true)} placeholder={tr("selectCustomer")} disabled={locked}
-            style={{ width: "100%", boxSizing: "border-box", ...(locked ? { background: "#f1f3f8" } : {}) }} />
+            style={{ width: "100%", boxSizing: "border-box", ...(locked ? { background: "var(--muted-soft)" } : {}) }} />
           {open && !locked && (
             <div className="suggest-drop" style={{
               position: "absolute", top: "100%", left: 0, right: 0,

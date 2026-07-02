@@ -262,7 +262,7 @@ export default function SupportBoard({ initial, assignees, subjects, meId, custo
             <div className="modal-b">
               <div className="fld">
                 <label>العميل</label>
-                <div className="inp" style={{ background: "#f7f9fc", display: "flex", alignItems: "center" }}>{openTk.customerName || "—"}</div>
+                <div className="inp" style={{ background: "var(--muted-soft)", display: "flex", alignItems: "center" }}>{openTk.customerName || "—"}</div>
               </div>
               <div className="fld">
                 <label>الموضوع</label>

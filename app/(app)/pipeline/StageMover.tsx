@@ -39,7 +39,7 @@ export default function StageMover({ id, current }: { id: string; current: strin
       value={val}
       disabled={busy}
       onChange={(e) => change(e.target.value)}
-      className="w-full text-xs border border-line rounded-md px-2 py-1 bg-white disabled:opacity-50"
+      className="w-full text-xs border border-line rounded-md px-2 py-1 bg-surface disabled:opacity-50"
     >
       {STAGES.map((s) => (
         <option key={s.key} value={s.key}>
