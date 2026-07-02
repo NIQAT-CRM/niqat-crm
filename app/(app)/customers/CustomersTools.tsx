@@ -52,11 +52,11 @@ export default function CustomersTools({
   return (
     <>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14, alignItems: "center" }}>
-        {Sel("stage", "كل المراحل", stages)}
-        {Sel("dip", "كل الدبلومات", diplomas)}
-        {Sel("batch", "كل الباتشات", batches)}
-        {owners.length > 0 && Sel("owner", "كل المسؤولين", owners)}
-        {companies.length > 0 && Sel("company", "كل الشركات", companies)}
+        {Sel("stage", tr("filterStage"), stages)}
+        {Sel("dip", tr("filterDip"), diplomas)}
+        {Sel("batch", tr("filterBatch"), batches)}
+        {owners.length > 0 && Sel("owner", tr("filterOwner"), owners)}
+        {companies.length > 0 && Sel("company", tr("filterCompany"), companies)}
         {canFinance && Sel("pay", tr("filterPay"), [
           { v: "bal", label: tr("payBal") }, { v: "due", label: tr("payDue") }, { v: "overdue", label: tr("overdue") },
         ])}

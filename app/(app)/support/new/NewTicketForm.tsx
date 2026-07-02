@@ -1,10 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/lib/i18n/client";
 
-type Cust = { id: string; name: string };
+type Cust = { id: string; name: string; phone1?: string; phone2?: string; email?: string };
 
 const PRIOS = [
   { key: "high" },
@@ -26,8 +26,39 @@ export default function NewTicketForm({
   const [priority, setPriority] = useState("medium");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   const locked = !!presetCustomer;
+
+  const filtered = customers.filter((c) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      c.name.toLowerCase().includes(q) ||
+      (c.phone1 || "").includes(q) ||
+      (c.phone2 || "").includes(q) ||
+      (c.email || "").toLowerCase().includes(q)
+    );
+  });
+
+  const selected = customers.find((c) => c.id === customerId);
+
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
+
+  useEffect(() => {
+    if (presetCustomer) {
+      const c = customers.find((x) => x.id === presetCustomer);
+      if (c) setSearch(c.name);
+    }
+  }, [presetCustomer, customers]);
 
   async function create() {
     setErr("");
@@ -38,7 +69,6 @@ export default function NewTicketForm({
       customer_id: customerId, title: title.trim(), priority, status: "open", archived: false,
     }).select("id").single();
     if (error) { setSaving(false); setErr(tr("createFailed") + error.message); return; }
-    // حفظ المشكلة في القائمة المتكررة لو جديدة
     const tt = title.trim();
     if (tt && !problems.some((p) => p.toLowerCase() === tt.toLowerCase())) {
       const next = [...problems, tt].slice(-50);
@@ -52,12 +82,28 @@ export default function NewTicketForm({
     <div className="card" style={{ padding: 20, maxWidth: 560 }}>
       <div className="fld">
         <label>{tr("customer")}</label>
-        <select className="inp" value={customerId} disabled={locked}
-          onChange={(e) => setCustomerId(e.target.value)}
-          style={locked ? { background: "#f1f3f8" } : undefined}>
-          <option value="">{tr("selectCustomer")}</option>
-          {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        <div ref={ref} style={{ position: "relative" }}>
+          <input className="inp" value={locked ? search : search} onChange={(e) => { setSearch(e.target.value); setOpen(true); if (!locked) setCustomerId(""); }}
+            onFocus={() => setOpen(true)} placeholder={tr("selectCustomer")} disabled={locked}
+            style={{ width: "100%", boxSizing: "border-box", ...(locked ? { background: "#f1f3f8" } : {}) }} />
+          {open && !locked && (
+            <div className="suggest-drop" style={{
+              position: "absolute", top: "100%", left: 0, right: 0,
+            }}>
+              {filtered.length === 0 ? (
+                <div style={{ padding: "10px 14px", fontSize: 13, color: "var(--muted)" }}>{tr("noResults")}</div>
+              ) : filtered.map((c) => (
+                <div key={c.id} className="suggest-item" onClick={() => { setCustomerId(c.id); setSearch(c.name); setOpen(false); }}>
+                  <span>{c.name}</span>
+                  <span>
+                    {c.phone1 && <span dir="ltr">{c.phone1}</span>}
+                    {c.email && <span>{c.email}</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {problems.length > 0 && (

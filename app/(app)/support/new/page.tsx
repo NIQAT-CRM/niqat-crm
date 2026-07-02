@@ -13,7 +13,7 @@ export default async function NewTicketPage({
   const supabase = createClient();
   const { data: customers } = await supabase
     .from("customers")
-    .select("id,name")
+    .select("id,name,phone1,phone2,email")
     .eq("deleted", false)
     .order("name", { ascending: true });
 
@@ -23,7 +23,7 @@ export default async function NewTicketPage({
   return (
     <div style={{ maxWidth: 560 }}>
       <div style={{ marginBottom: 12 }}>
-        <Link href="/support" style={{ fontSize: 13, color: "var(--muted)" }}>← رجوع للدعم</Link>
+        <Link href="/support" style={{ fontSize: 13, color: "var(--muted)" }}>← {tr("supportTickets")}</Link>
       </div>
       <div className="page-h"><h1>{tr("newTicket")}</h1></div>
       <NewTicketForm
