@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import CustomerEdit from "./CustomerEdit";
+import DrawerTabs from "./DrawerTabs";
 import FinancePanel from "./FinancePanel";
 import CustomerActivity from "./CustomerActivity";
 import DocsPanel from "./DocsPanel";
@@ -192,68 +193,73 @@ export default async function CustomerDetail({ params }: { params: { id: string 
         </div>
         <div className="dr-b">
 
-      <CustomerEdit customer={c as any} specialties={specs || []}
-        docsSection={<DocsPanel customerId={c.id as string} initial={docs} tableMissing={docsMissing} />} />
+      <DrawerTabs
+        basic={<CustomerEdit customer={c as any} specialties={specs || []} />}
+        sales={<>
+          <SubscriptionsPanel customerId={c.id as string} meId={user?.id || ""} enrolls={enrolls}
+            dipOpts={dipOpts} batchOpts={batchOpts} canFinance={canFinance} />
 
-      <SubscriptionsPanel customerId={c.id as string} meId={user?.id || ""} enrolls={enrolls}
-        dipOpts={dipOpts} batchOpts={batchOpts} canFinance={canFinance} />
+          <AddonsPanel customerId={c.id as string} initial={addons} accreditations={accredList} projects={projList} libraries={(libOpts || []).map((l: any) => l.name)} canFinance={canFinance} tableMissing={addonsMissing} />
 
-      <AddonsPanel customerId={c.id as string} initial={addons} accreditations={accredList} projects={projList} canFinance={canFinance} tableMissing={addonsMissing} />
+          <AccessPanel customerId={c.id as string} handoff={handoff} items={accessItems}
+            accessOptions={[...(accOpts || []), ...enrolls.map((e, i) => ({ id: "dip-" + i, label: "تفعيل: " + e.diploma }))]}
+            libraries={(libOpts || []).map((l: any) => ({ id: l.id, name: l.name }))} meId={user?.id || ""} meName="" />
 
-      <AccessPanel customerId={c.id as string} handoff={handoff} items={accessItems}
-        accessOptions={[...(accOpts || []), ...enrolls.map((e, i) => ({ id: "dip-" + i, label: "تفعيل: " + e.diploma }))]}
-        libraries={(libOpts || []).map((l: any) => ({ id: l.id, name: l.name }))} meId={user?.id || ""} meName="" />
+          <FollowUpPanel customerId={c.id as string} meId={user?.id || ""} open={fuOpen} history={fuHistory} />
 
-      <FollowUpPanel customerId={c.id as string} meId={user?.id || ""} open={fuOpen} history={fuHistory} />
+          {canFinance && <FinancePanel enrollments={finEnrollments} customerId={c.id as string} meId={user?.id || ""} />}
 
-      {canFinance && <FinancePanel enrollments={finEnrollments} customerId={c.id as string} meId={user?.id || ""} />}
+          {canFinance && <RefundPanel customerId={c.id as string} refund={refund} meId={user?.id || ""} tableMissing={refundTableMissing} />}
+        </>}
+        docs={<>
+          <DocsPanel customerId={c.id as string} initial={docs} tableMissing={docsMissing} />
 
-      {canFinance && <RefundPanel customerId={c.id as string} refund={refund} meId={user?.id || ""} tableMissing={refundTableMissing} />}
+          {canMessage && <WhatsAppPanel customerId={c.id as string} meId={user?.id || ""} ctx={waCtx} templates={templates as any} />}
 
-      {canMessage && <WhatsAppPanel customerId={c.id as string} meId={user?.id || ""} ctx={waCtx} templates={templates as any} />}
+          <CustomerActivity customerId={c.id as string} meId={user?.id || ""} initialTasks={tasks} initialNotes={notes} />
 
-      <CustomerActivity customerId={c.id as string} meId={user?.id || ""} initialTasks={tasks} initialNotes={notes} />
-
-      <div className="card" style={{ padding: 18, marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div className="sec-t" style={{ margin: 0 }}>تذاكر الدعم</div>
-          <Link href={`/support/new?customer=${c.id}`} className="btn" style={{ height: 32, padding: "0 12px", fontSize: 13 }}>+ تذكرة</Link>
-        </div>
-        {(!tickets || tickets.length === 0) ? (
-          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 8 }}>لا توجد تذاكر.</div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-            {(tickets || []).map((t) => {
-              const ts = TK[t.status as string] || TK.open;
-              return (
-                <Link key={t.id as string} href={`/support/${t.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px" }}>
-                  <span style={{ fontWeight: 700, color: "var(--ink)" }}>{t.title}</span>
-                  <span className="stg" style={{ background: ts.color + "1a", color: ts.color }}>{ts.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="card" style={{ padding: 18 }}>
-        <div className="sec-t">سجل العميل (Timeline)</div>
-        {(!auditRows || auditRows.length === 0) ? (
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>لا يوجد سجل.</div>
-        ) : (auditRows || []).map((a: any, idx) => (
-          <div key={idx} className="comm">
-            <div className="ci" style={{ background: "#eef2f8", color: "var(--muted)" }}>
-              <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+          <div className="card" style={{ padding: 18, marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div className="sec-t" style={{ margin: 0 }}>تذاكر الدعم</div>
+              <Link href={`/support/new?customer=${c.id}`} className="btn" style={{ height: 32, padding: "0 12px", fontSize: 13 }}>+ تذكرة</Link>
             </div>
-            <div>
-              <div style={{ fontSize: 13.5, color: "var(--ink)" }}>{AUDIT_LABELS[a.action] || a.action}{a.detail ? " — " + a.detail : ""}</div>
-              <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
-                <b>{pMap.get(a.actor_id || "") || "—"}</b> • <span className="num">{String(a.at || "").replace("T", " ").slice(0, 16)}</span>
+            {(!tickets || tickets.length === 0) ? (
+              <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 8 }}>لا توجد تذاكر.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                {(tickets || []).map((t) => {
+                  const ts = TK[t.status as string] || TK.open;
+                  return (
+                    <Link key={t.id as string} href={`/support/${t.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px" }}>
+                      <span style={{ fontWeight: 700, color: "var(--ink)" }}>{t.title}</span>
+                      <span className="stg" style={{ background: ts.color + "1a", color: ts.color }}>{ts.label}</span>
+                    </Link>
+                  );
+                })}
               </div>
-            </div>
+            )}
           </div>
-        ))}
-      </div>
+
+          <div className="card" style={{ padding: 18 }}>
+            <div className="sec-t">سجل العميل (Timeline)</div>
+            {(!auditRows || auditRows.length === 0) ? (
+              <div style={{ fontSize: 13, color: "var(--muted)" }}>لا يوجد سجل.</div>
+            ) : (auditRows || []).map((a: any, idx) => (
+              <div key={idx} className="comm">
+                <div className="ci" style={{ background: "#eef2f8", color: "var(--muted)" }}>
+                  <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: 13.5, color: "var(--ink)" }}>{AUDIT_LABELS[a.action] || a.action}{a.detail ? " — " + a.detail : ""}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+                    <b>{pMap.get(a.actor_id || "") || "—"}</b> • <span className="num">{String(a.at || "").replace("T", " ").slice(0, 16)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>}
+      />
         </div>
       </aside>
     </>

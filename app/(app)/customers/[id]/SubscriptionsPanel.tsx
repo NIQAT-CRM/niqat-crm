@@ -60,8 +60,8 @@ export default function SubscriptionsPanel({
       <div className="sec-t" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span>الاشتراكات (الدبلومة / الباتش)</span>
         <button onClick={() => { setAdding((v) => !v); setNd({ dip: "", batch: "", amount: "", currency: "EGP" }); }}
-          style={{ color: "var(--brand)", fontWeight: 700, fontSize: 12.5, background: "none", border: "none", cursor: "pointer" }}>
-          + دبلومة
+          className={adding ? "btn ghost" : "btn"} style={{ height: 34, padding: "0 14px", fontSize: 13 }}>
+          {adding ? "إغلاق" : "＋ إضافة دبلومة"}
         </button>
       </div>
 
