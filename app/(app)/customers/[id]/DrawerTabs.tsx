@@ -1,12 +1,13 @@
 "use client";
 import { useState, type ReactNode } from "react";
 
-export default function DrawerTabs({ basic, sales, docs }: {
+export default function DrawerTabs({ basic, sales, docs, footer }: {
   basic: ReactNode; sales: ReactNode; docs: ReactNode;
+  footer?: (tab: string) => ReactNode;
 }) {
   const [tab, setTab] = useState<"basic" | "sales" | "docs">("basic");
   return (
-    <div>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
       <div className="tabs-row" style={{ position: "sticky", top: 0, background: "var(--bg)", zIndex: 3, paddingTop: 2 }}>
         <button type="button" className="tabbtn" data-active={tab === "basic" ? "1" : "0"} onClick={() => setTab("basic")}>أساسية</button>
         <button type="button" className="tabbtn" data-active={tab === "sales" ? "1" : "0"} onClick={() => setTab("sales")}>مبيعات واشتراكات</button>
@@ -17,6 +18,7 @@ export default function DrawerTabs({ basic, sales, docs }: {
         {tab === "sales" && sales}
         {tab === "docs" && docs}
       </div>
+      {footer?.(tab)}
     </div>
   );
 }

@@ -256,7 +256,7 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .tabbtn:hover:not([data-active="1"]){background:var(--line);color:var(--ink)}
 .tab-pane{animation:fadeIn .2s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.drawer-footer{display:flex;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.drawer-footer{display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--line);background:var(--surface);position:sticky;bottom:0;z-index:5}
 
 /* Dark mode monochrome */
 [data-theme="dark"] .onb-card--completed{border-color:#334155}

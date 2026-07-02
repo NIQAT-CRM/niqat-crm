@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, memo } from "react";
+import { useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -23,16 +23,12 @@ const STAGES = [
   { key: "lost", label: "مؤجل / مرفوض" },
 ];
 
-function waLink(phone: string | null) {
-  if (!phone) return null;
-  const d = (phone || "").replace(/\D/g, "");
-  if (!d) return null;
-  return "https://wa.me/" + (d.startsWith("0") ? "20" + d.slice(1) : d);
-}
 function toEngUpper(v: string) { return v.replace(/[\u0600-\u06FF]/g, "").toUpperCase(); }
 const hasArabic = (v: string) => /[\u0600-\u06FF]/.test(v);
 
-function CustomerEdit({ customer, specialties }: { customer: C; specialties: Spec[] }) {
+export type CustomerEditHandle = { save: () => Promise<void> };
+
+const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: Spec[] }>(({ customer, specialties }, ref) => {
   const router = useRouter();
   const supabase = createClient();
   const [f, setF] = useState({
@@ -45,13 +41,11 @@ function CustomerEdit({ customer, specialties }: { customer: C; specialties: Spe
   });
   const [terms, setTerms] = useState(!!customer.terms_signed);
   const [termsAt, setTermsAt] = useState(customer.terms_signed_at || "");
-  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
 
   const set = useCallback((k: string, v: string) => setF((s) => ({ ...s, [k]: v })), []);
   const setName = useCallback((v: string) => setF((s) => ({ ...s, name: toEngUpper(v) })), []);
-  const wa = waLink(f.phone1);
 
   const toggleTerms = useCallback(async () => {
     const next = !terms;
@@ -64,7 +58,6 @@ function CustomerEdit({ customer, specialties }: { customer: C; specialties: Spe
     setErr(""); setMsg("");
     if (!f.name.trim()) { setErr("الاسم مطلوب"); return; }
     if (hasArabic(f.name)) { setErr("اسم العميل لازم يكون إنجليزي فقط."); return; }
-    setBusy(true);
     const { error } = await supabase.from("customers").update({
       name: f.name.trim().toUpperCase(), phone1: f.phone1.trim() || null, phone2: f.phone2.trim() || null,
       email: f.email.trim() || null, company: f.company.trim() || null, residency: f.residency.trim() || null,
@@ -72,7 +65,6 @@ function CustomerEdit({ customer, specialties }: { customer: C; specialties: Spe
       specialty_id: f.specialty_id || null, stage: f.stage,
       affiliate_code: f.affiliate_code.trim(), source: f.source.trim(), lms_status: f.lms_status,
     }).eq("id", customer.id);
-    setBusy(false);
     if (error) {
       setErr((error as any).code === "23505" ? "الموبايل أو الإيميل ده موجود عند عميل تاني." : "حصل خطأ: " + error.message);
       return;
@@ -81,8 +73,18 @@ function CustomerEdit({ customer, specialties }: { customer: C; specialties: Spe
     router.refresh();
   }, [f, supabase, customer.id, router]);
 
+  useImperativeHandle(ref, () => ({ save }), [save]);
+
+  const wa = (phone: string | null) => {
+    if (!phone) return null;
+    const d = phone.replace(/\D/g, "");
+    if (!d) return null;
+    return "https://wa.me/" + (d.startsWith("0") ? "20" + d.slice(1) : d);
+  };
+  const waLink = wa(f.phone1);
+
   return (
-    <div className="card" style={{ padding: 18, marginBottom: 14 }}>
+    <>
       <div className="sec-t" style={{ marginTop: 0 }}>البيانات الأساسية</div>
       <div className="frow">
         <div className="fld"><label>الاسم (إنجليزي)</label>
@@ -148,18 +150,9 @@ function CustomerEdit({ customer, specialties }: { customer: C; specialties: Spe
 
       {err && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 8 }}>{err}</div>}
       {msg && <div style={{ color: "var(--green)", fontSize: 13, marginTop: 8 }}>{msg}</div>}
-
-      <div className="drawer-footer">
-        <button onClick={save} disabled={busy} className="btn">{busy ? "بيحفظ..." : "حفظ التعديلات"}</button>
-        {wa && (
-          <a href={wa} target="_blank" rel="noreferrer" className="btn wa" style={{ textDecoration: "none", marginInlineStart: "auto" }}>
-            <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor"><path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.6-4A8 8 0 1 1 20 11.5z"/></svg>
-            واتساب
-          </a>
-        )}
-      </div>
-    </div>
+    </>
   );
-}
+});
 
-export default memo(CustomerEdit);
+CustomerEdit.displayName = "CustomerEdit";
+export default CustomerEdit;
