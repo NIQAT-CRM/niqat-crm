@@ -29,7 +29,7 @@ export default function CustomerDrawer(props: {
 
   return (
     <DrawerTabs
-      basic={<div className="card" style={{ padding: 18, marginBottom: 14 }}>
+      basic={<div className="px-5 py-5">
         <CustomerEdit ref={editRef} customer={props.c as any} specialties={props.specs || []} />
       </div>}
       sales={<>
@@ -98,7 +98,8 @@ export default function CustomerDrawer(props: {
       </>}
       footer={(tab: string) => tab === "basic" ? (
         <div className="drawer-footer">
-          <button onClick={() => editRef.current?.save()} className="btn">
+          <button onClick={() => editRef.current?.save()}
+            className="flex-1 h-[46px] rounded-xl bg-brand text-white font-extrabold text-[14px] tracking-wide hover:bg-brand-dark active:scale-[.98] transition-all duration-150 shadow-lg shadow-brand/20">
             حفظ التعديلات
           </button>
         </div>

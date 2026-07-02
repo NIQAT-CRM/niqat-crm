@@ -6,12 +6,20 @@ export default function DrawerTabs({ basic, sales, docs, footer }: {
   footer?: (tab: string) => ReactNode;
 }) {
   const [tab, setTab] = useState<"basic" | "sales" | "docs">("basic");
+  const TabBtn = ({ val, label }: { val: typeof tab; label: string }) => (
+    <button type="button" onClick={() => setTab(val)}
+      className={"relative px-4 py-2.5 text-[12.5px] font-bold transition-colors duration-150 " +
+        (tab === val ? "text-brand" : "text-muted hover:text-ink")}>
+      {label}
+      {tab === val && <span className="absolute bottom-0 left-2 right-2 h-[2.5px] rounded-full bg-brand" />}
+    </button>
+  );
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-      <div className="tabs-row" style={{ position: "sticky", top: 0, background: "var(--bg)", zIndex: 3, paddingTop: 2 }}>
-        <button type="button" className="tabbtn" data-active={tab === "basic" ? "1" : "0"} onClick={() => setTab("basic")}>أساسية</button>
-        <button type="button" className="tabbtn" data-active={tab === "sales" ? "1" : "0"} onClick={() => setTab("sales")}>مبيعات واشتراكات</button>
-        <button type="button" className="tabbtn" data-active={tab === "docs" ? "1" : "0"} onClick={() => setTab("docs")}>مستندات وتواصل</button>
+    <div className="flex flex-col flex-1">
+      <div className="flex items-center border-b border-line px-1 sticky top-0 bg-[var(--bg)] z-3">
+        <TabBtn val="basic" label="أساسية" />
+        <TabBtn val="sales" label="مبيعات واشتراكات" />
+        <TabBtn val="docs" label="مستندات وتواصل" />
       </div>
       <div className="tab-pane" key={tab}>
         {tab === "basic" && basic}
