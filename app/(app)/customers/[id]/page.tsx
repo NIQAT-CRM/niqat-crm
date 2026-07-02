@@ -204,9 +204,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
         </div>
         <div className="dr-b">
 
-      <AccordionSection title="بيانات العميل" defaultOpen>
       <CustomerEdit customer={c as any} specialties={specs || []} />
-      </AccordionSection>
 
       <AccordionSection title="الاشتراكات والإضافات">
       <SubscriptionsPanel customerId={c.id as string} meId={user?.id || ""} enrolls={enrolls}
