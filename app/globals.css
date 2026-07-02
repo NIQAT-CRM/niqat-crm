@@ -97,7 +97,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}input,sele
 .content{padding:24px 26px;flex:1;overflow:auto}
 .page-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
 .page-h h1{font-size:22px;font-weight:800;color:var(--ink)}.page-h p{color:var(--muted);font-size:13.5px;margin-top:2px}
-.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:10px;background:var(--brand);color:#fff;font-weight:700;font-size:14px}.btn:hover{background:var(--brand-d)}.btn svg{width:17px;height:17px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-radius:10px;background:var(--brand);color:#fff;font-weight:700;font-size:14px;transition:transform .12s ease,box-shadow .15s ease,background .15s ease,border-color .15s ease,color .15s ease}.btn:hover{background:var(--brand-d);transform:translateY(-1px);box-shadow:0 4px 12px rgba(16,27,48,.13)}.btn:active{transform:translateY(0) scale(.97);box-shadow:none}.btn svg{width:17px;height:17px}
 .btn.ghost{background:#fff;color:var(--text);border:1px solid var(--line)}.btn.ghost:hover{border-color:var(--brand);color:var(--brand)}
 .btn.danger{background:#fff;color:var(--red);border:1px solid #f3c9c4}.btn.danger:hover{background:var(--red);color:#fff}
 .btn.wa{background:var(--wa)}.btn.wa:hover{background:#1da851}
@@ -249,20 +249,29 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .drawer-panel .dr-x:hover{background:#f0f3f8;color:var(--ink)}
 .drawer-panel .dr-b{padding:18px;overflow:auto;flex:1}
 
-/* Dark mode monochrome */
+/* Dark mode — keep brand identity + healthy contrast (colored, not monochrome) */
 [data-theme="dark"] .onb-card--completed{border-color:#334155}
-[data-theme="dark"] .wa{background:#334155!important;color:#94A3B8!important}
-[data-theme="dark"] .curtog button.on{background:#334155!important;color:#94A3B8!important}
-[data-theme="dark"] .kpi,.card,.bcard,.rmd,.sw,.sw i,.stg,.chip,.opt-chip,.nav button,.btn,.pill,.icon-btn,.task{transition:none!important}
-[data-theme="dark"] .sch .stg{color:#94A3B8!important}
-[data-theme="dark"] .card .num span{color:#94A3B8!important}
 
 .sales-card{background:linear-gradient(135deg,var(--brand),var(--green))}
-[data-theme="dark"] .sales-card{background:var(--surface)!important}
+[data-theme="dark"] .sales-card{background:linear-gradient(135deg,rgba(240,138,36,.20),rgba(24,169,87,.16));border-color:#284a78}
 .sales-amount{font-size:28px;font-weight:800;color:var(--green)}
-[data-theme="dark"] .sales-amount{color:var(--muted)!important}
+[data-theme="dark"] .sales-amount{color:#5cd48a}
 
 .suggest-drop{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);box-shadow:0 4px 16px rgba(16,27,48,.12);max-height:240px;overflow-y:auto;z-index:50}
 .suggest-item{padding:9px 14px;cursor:pointer;font-size:13.5px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid var(--line);transition:background .12s ease}.suggest-item:last-child{border-bottom:none}.suggest-item:hover{background:var(--bg)}.suggest-item span:first-child{font-weight:600}.suggest-item span:last-child{font-size:11.5px;color:var(--muted);display:flex;gap:8px}
 
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* ===== UX Overhaul: card hover depth + button/control micro-interactions ===== */
+.kpi,.bcard,.onb-card,.ucard{transition:transform .18s ease,box-shadow .18s ease}
+.kpi:hover,.bcard:hover,.onb-card:hover,.ucard:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(16,27,48,.10)}
+.card{transition:box-shadow .18s ease}
+.card:hover{box-shadow:0 8px 26px rgba(16,27,48,.09)}
+.onb-card--completed:hover{transform:none;box-shadow:none}
+[data-theme="dark"] .kpi:hover,[data-theme="dark"] .bcard:hover,[data-theme="dark"] .onb-card:hover,[data-theme="dark"] .ucard:hover{box-shadow:0 12px 30px rgba(0,0,0,.5)}
+[data-theme="dark"] .card:hover{box-shadow:0 10px 28px rgba(0,0,0,.45)}
+.pill,.icon-btn{transition:transform .12s ease,border-color .15s ease,color .15s ease,background .15s ease}
+.pill:active,.icon-btn:active{transform:scale(.94)}
+.btn.ghost:hover,.btn.danger:hover,.btn.wa:hover{transform:translateY(-1px)}
+.sw{transition:background .18s ease}.sw i{transition:inset-inline-start .18s cubic-bezier(.4,0,.2,1)}
+.chip,.stg{transition:background .15s ease,color .15s ease}
