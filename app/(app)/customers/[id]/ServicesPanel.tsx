@@ -52,7 +52,9 @@ export default function ServicesPanel({
     const path = `services/${customerId}/${Date.now()}-${file.name}`;
     const up = await supabase.storage.from("receipts").upload(path, file, { upsert: false });
     if (up.error) { toast("تعذّر رفع الاسكرين"); return ""; }
-    return supabase.storage.from("receipts").getPublicUrl(path).data.publicUrl;
+    const url = supabase.storage.from("receipts").getPublicUrl(path).data.publicUrl;
+    await supabase.from("customer_docs").insert({ customer_id: customerId, url, name: `إثبات دفع — خدمة (${file.name})` });
+    return url;
   }
 
   async function addService() {

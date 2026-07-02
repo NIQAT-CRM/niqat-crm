@@ -24,6 +24,7 @@ export default function NewCustomerForm({
     amount: "", currency: "EGP",
   });
   const [saving, setSaving] = useState(false);
+  const [payFile, setPayFile] = useState<File | null>(null);
   const [dup, setDup] = useState<{ id: string; name: string } | null>(null);
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
   // الاسم: لو إنجليزي خليه CAPITAL تلقائيًا (العربي زي ما هو)
@@ -69,7 +70,15 @@ export default function NewCustomerForm({
       return;
     }
     const cid = cust.id;
-    // اشتراك
+    // صورة تحويل الفلوس المتفق عليها → تخزين + تسجيل في المستندات
+    if (payFile) {
+      const path = `docs/${cid}/${Date.now()}-${payFile.name}`;
+      const up = await supabase.storage.from("receipts").upload(path, payFile, { upsert: false });
+      if (!up.error) {
+        const url = supabase.storage.from("receipts").getPublicUrl(path).data.publicUrl;
+        await supabase.from("customer_docs").insert({ customer_id: cid, url, name: `صورة تحويل — المبلغ المتفق عليه (${payFile.name})` });
+      }
+    }
     if (f.diploma_id) {
       const { data: enr } = await supabase.from("enrollments").insert({
         customer_id: cid, diploma_id: f.diploma_id, batch_id: f.batch_id || null,
@@ -169,6 +178,18 @@ export default function NewCustomerForm({
           </div>
           <div className="fld"><label>المستحق بعد الخصم</label>
             <input className="inp num" dir="ltr" readOnly value={discPct > 0 ? `${net} (خصم ${discPct}%)` : (gross || "")} style={{ background: "var(--muted-soft)", fontWeight: 700 }} /></div>
+        </div>
+      )}
+
+      {!f.free && (
+        <div className="fld" style={{ marginTop: 8 }}>
+          <label>صورة تحويل الفلوس المتفق عليها (اختياري)</label>
+          <label className="addshot" style={{ width: "100%" }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
+            {payFile ? payFile.name : "ارفع صورة التحويل"}
+            <input type="file" accept="image/*" onChange={(e) => setPayFile(e.target.files?.[0] || null)} />
+          </label>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>هتتخزّن وتظهر في سكشن المستندات في ملف العميل.</div>
         </div>
       )}
 
