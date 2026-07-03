@@ -2,15 +2,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n/client";
 
 const STATUSES = [
-  { key: "open", label: "مفتوحة" },
-  { key: "progress", label: "قيد المعالجة" },
-  { key: "resolved", label: "محلولة" },
-  { key: "closed", label: "مغلقة" },
+  { key: "open", labelKey: "openLabel" },
+  { key: "progress", labelKey: "inProgressLabel" },
+  { key: "resolved", labelKey: "resolvedLabel" },
+  { key: "closed", labelKey: "closedLabel" },
 ];
 
 export default function StatusMover({ id, current }: { id: string; current: string }) {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [val, setVal] = useState(current);
@@ -25,7 +27,7 @@ export default function StatusMover({ id, current }: { id: string; current: stri
     setBusy(false);
     if (error) {
       setVal(prev);
-      alert("تعذّر تغيير الحالة: " + error.message);
+      alert(tr("changeStatusFailed") + error.message);
       return;
     }
     router.refresh();
@@ -41,7 +43,7 @@ export default function StatusMover({ id, current }: { id: string; current: stri
     >
       {STATUSES.map((s) => (
         <option key={s.key} value={s.key}>
-          {s.label}
+          {tr(s.labelKey)}
         </option>
       ))}
     </select>

@@ -3,6 +3,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
+import { useT } from "@/lib/i18n/client";
 
 type Doc = { id: string; url: string; name: string; at: string };
 
@@ -11,6 +12,7 @@ export default function DocsPanel({
 }: {
   customerId: string; initial: Doc[]; tableMissing: boolean;
 }) {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [docs, setDocs] = useState<Doc[]>(initial);
@@ -24,46 +26,46 @@ export default function DocsPanel({
     setBusy(true);
     const path = `docs/${customerId}/${Date.now()}-${file.name}`;
     const up = await supabase.storage.from("receipts").upload(path, file, { upsert: false });
-    if (up.error) { setBusy(false); toast("تعذّر رفع الملف"); return; }
+    if (up.error) { setBusy(false); toast(tr("uploadFailed")); return; }
     const { data: pub } = supabase.storage.from("receipts").getPublicUrl(path);
     const url = pub.publicUrl;
     const { data, error } = await supabase.from("customer_docs")
       .insert({ customer_id: customerId, url, name: file.name }).select("id,created_at").single();
     setBusy(false);
-    if (error) { toast("اترفع بس تعذّر حفظه"); return; }
+    if (error) { toast(tr("uploadedButSaveFailed")); return; }
     setDocs((d) => [{ id: data!.id, url, name: file.name, at: String(data!.created_at || "").slice(0, 10) }, ...d]);
     setFile(null);
-    toast("تم رفع المستند");
+    toast(tr("docUploaded"));
   }, [file, customerId, supabase]);
 
   async function del(id: string) {
-    if (!confirm("حذف المستند؟")) return;
+    if (!confirm(tr("deleteDocQ"))) return;
     setDocs((d) => d.filter((x) => x.id !== id));
     const { error } = await supabase.from("customer_docs").delete().eq("id", id);
-    if (error) { toast("تعذّر الحذف"); router.refresh(); }
+    if (error) { toast(tr("deleteFailed")); router.refresh(); }
   }
 
   return (
     <div className="card" style={{ padding: 18, marginBottom: 14 }}>
-      <div className="sec-t" style={{ margin: 0 }}>المستندات</div>
+      <div className="sec-t" style={{ margin: 0 }}>{tr("documents")}</div>
       {tableMissing ? (
         <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 10 }}>
-          شغّل ملف <b>customer_docs.sql</b> في Supabase عشان قسم المستندات يشتغل.
+          {tr("docsSqlHint")}
         </div>
       ) : (
         <>
           <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "12px 0" }}>
             <label className="addshot">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
-              {file ? file.name : "اختر ملف / صورة"}
+              {file ? file.name : tr("pickFileImage")}
               <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </label>
             <button className="btn" type="button" disabled={!file || busy} onClick={upload}>
-              {busy ? "بيرفع..." : "رفع"}
+              {busy ? tr("uploading") : tr("upload")}
             </button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {docs.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا توجد مستندات بعد.</div>}
+            {docs.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noDocsYet")}</div>}
             {docs.map((d) => (
               <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px" }}>
                 {isImg(d.name) ? (
@@ -75,7 +77,7 @@ export default function DocsPanel({
                   <a href={d.url} target="_blank" rel="noreferrer" style={{ flex: 1, fontWeight: 600, color: "var(--blue)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📎 {d.name}</a>
                 )}
                 <span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--fe)" }}>{d.at}</span>
-                <button className="x" type="button" onClick={() => del(d.id)} title="حذف" style={{ border: "none", background: "none", color: "var(--muted)", cursor: "pointer" }}>✕</button>
+                <button className="x" type="button" onClick={() => del(d.id)} title={tr("delete")} style={{ border: "none", background: "none", color: "var(--muted)", cursor: "pointer" }}>✕</button>
               </div>
             ))}
           </div>
@@ -94,8 +96,8 @@ export default function DocsPanel({
               <img src={preview.url} alt={preview.name} style={{ maxWidth: "100%", maxHeight: "70vh", borderRadius: 10 }} />
             </div>
             <div className="modal-f">
-              <a href={preview.url} target="_blank" rel="noreferrer" className="btn ghost" style={{ textDecoration: "none" }}>فتح بالحجم الكامل</a>
-              <button className="btn" type="button" style={{ marginInlineStart: "auto" }} onClick={() => setPreview(null)}>تمام</button>
+              <a href={preview.url} target="_blank" rel="noreferrer" className="btn ghost" style={{ textDecoration: "none" }}>{tr("openFullSize")}</a>
+              <button className="btn" type="button" style={{ marginInlineStart: "auto" }} onClick={() => setPreview(null)}>{tr("ok")}</button>
             </div>
           </div>
         </>

@@ -24,13 +24,13 @@ export default function FollowUpPanel({
   const [busy, setBusy] = useState(false);
 
   async function setFollowUp() {
-    if (!date) { alert("اختر تاريخ المتابعة."); return; }
+    if (!date) { alert(tr("pickFollowDate")); return; }
     setBusy(true);
     const { error } = await supabase.from("follow_ups").insert({
       customer_id: customerId, owner_id: meId, due_at: new Date(date).toISOString(), note: note.trim(), done: false,
     });
     setBusy(false);
-    if (error) { alert("تعذّر الحفظ: " + error.message); return; }
+    if (error) { alert(tr("saveFailed") + error.message); return; }
     setDate(""); setNote("");
     router.refresh();
   }
@@ -39,7 +39,7 @@ export default function FollowUpPanel({
     setBusy(true);
     const { error } = await supabase.from("follow_ups").update({ done: true }).eq("id", id);
     setBusy(false);
-    if (error) { alert("تعذّر التحديث: " + error.message); return; }
+    if (error) { alert(tr("updateFailed") + error.message); return; }
     router.refresh();
   }
 

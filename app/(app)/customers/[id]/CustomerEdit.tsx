@@ -2,6 +2,7 @@
 import { useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n/client";
 
 type Spec = { id: string; name_ar: string };
 type C = {
@@ -13,14 +14,14 @@ type C = {
 };
 
 const STAGES = [
-  { key: "new", label: "جديد" },
-  { key: "contacted", label: "تم التواصل" },
-  { key: "interested", label: "مهتم" },
-  { key: "quote", label: "عرض سعر مُرسل" },
-  { key: "negotiation", label: "تفاوض" },
-  { key: "onhold", label: "معلّق" },
-  { key: "enrolled", label: "مسجّل / دفع" },
-  { key: "lost", label: "مؤجل / مرفوض" },
+  { key: "new", labelKey: "dashStageNew" },
+  { key: "contacted", labelKey: "dashStageContacted" },
+  { key: "interested", labelKey: "dashStageInterested" },
+  { key: "quote", labelKey: "dashStageQuote" },
+  { key: "negotiation", labelKey: "dashStageNegotiation" },
+  { key: "onhold", labelKey: "dashStageOnhold" },
+  { key: "enrolled", labelKey: "dashStageEnrolled" },
+  { key: "lost", labelKey: "dashStageLost" },
 ];
 
 export type CustomerEditHandle = { save: () => Promise<void> };
@@ -33,6 +34,7 @@ const lblStyle = { color: "var(--muted)" } as const;
 const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: Spec[] }>(({ customer, specialties }, ref) => {
   const router = useRouter();
   const supabase = createClient();
+  const tr = useT();
   const [activeTab, setActiveTab] = useState<string>("basic");
   const [f, setF] = useState({
     name: customer.name || "", phone1: customer.phone1 || "", phone2: customer.phone2 || "",
@@ -58,8 +60,8 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
 
   const save = useCallback(async () => {
     setErr(""); setMsg("");
-    if (!f.name.trim()) { setErr("الاسم مطلوب"); return; }
-    if (/[\u0600-\u06FF]/.test(f.name)) { setErr("اسم العميل لازم يكون إنجليزي فقط."); return; }
+    if (!f.name.trim()) { setErr(tr("nameRequired")); return; }
+    if (/[\u0600-\u06FF]/.test(f.name)) { setErr(tr("nameEnglishOnly")); return; }
     const { error } = await supabase.from("customers").update({
       name: f.name.trim().toUpperCase(), phone1: f.phone1.trim() || null, phone2: f.phone2.trim() || null,
       email: f.email.trim() || null, company: f.company.trim() || null, residency: f.residency.trim() || null,
@@ -68,10 +70,10 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
       affiliate_code: f.affiliate_code.trim(), source: f.source.trim(), lms_status: f.lms_status,
     }).eq("id", customer.id);
     if (error) {
-      setErr((error as any).code === "23505" ? "الموبايل أو الإيميل ده موجود عند عميل تاني." : "حصل خطأ: " + error.message);
+      setErr((error as any).code === "23505" ? tr("dupContact") : tr("errorOccurred") + error.message);
       return;
     }
-    setMsg("اتحفظ ✓");
+    setMsg(tr("saved"));
     router.refresh();
   }, [f, supabase, customer.id, router]);
 
@@ -92,46 +94,46 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
   return (
     <div className="flex flex-col min-h-full">
       <div className="flex border-b border-gray-800 mb-6 gap-6">
-        <TabBtn val="basic" label="بيانات أساسية" />
-        <TabBtn val="sales" label="مبيعات" />
-        <TabBtn val="terms" label="الشروط" />
+        <TabBtn val="basic" label={tr("basicData")} />
+        <TabBtn val="sales" label={tr("sales")} />
+        <TabBtn val="terms" label={tr("terms")} />
       </div>
 
       <div className="flex-1 space-y-5">
         {activeTab === "basic" && (
           <>
             <div className={fld}>
-              <label className={lbl} style={lblStyle}>الاسم <span className="text-orange-400/50 font-normal">(إنجليزي)</span></label>
+              <label className={lbl} style={lblStyle}>{tr("name")} <span className="text-orange-400/50 font-normal">({tr("englishOnlyShort")})</span></label>
               <input className={inp} dir="ltr" value={f.name} placeholder="AHMED ALI"
                 onChange={(e) => setF({...f, name: e.target.value.replace(/[^A-Za-z\s]/g, '').toUpperCase()})} />
             </div>
             <div className={fld}>
-              <label className={lbl} style={lblStyle}>المرحلة</label>
+              <label className={lbl} style={lblStyle}>{tr("stage")}</label>
               <select className={sel} value={f.stage} onChange={(e) => set("stage", e.target.value)}>
-                {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+                {STAGES.map((s) => <option key={s.key} value={s.key}>{tr(s.labelKey)}</option>)}
               </select>
             </div>
             <div className={grid2}>
               <div className={fld}>
-                <label className={lbl} style={lblStyle}>الموبايل 1</label>
+                <label className={lbl} style={lblStyle}>{tr("phone1")}</label>
                 <input className={inp} dir="ltr" value={f.phone1} onChange={(e) => set("phone1", e.target.value)} />
               </div>
               <div className={fld}>
-                <label className={lbl} style={lblStyle}>الموبايل 2</label>
+                <label className={lbl} style={lblStyle}>{tr("phone2")}</label>
                 <input className={inp} dir="ltr" value={f.phone2} onChange={(e) => set("phone2", e.target.value)} />
               </div>
             </div>
             <div className={fld}>
-              <label className={lbl} style={lblStyle}>الإيميل</label>
+              <label className={lbl} style={lblStyle}>{tr("email")}</label>
               <input className={inp} dir="ltr" value={f.email} onChange={(e) => set("email", e.target.value)} />
             </div>
             <div className={grid2}>
               <div className={fld}>
-                <label className={lbl} style={lblStyle}>الشركة</label>
+                <label className={lbl} style={lblStyle}>{tr("company")}</label>
                 <input className={inp} value={f.company} onChange={(e) => set("company", e.target.value)} />
               </div>
               <div className={fld}>
-                <label className={lbl} style={lblStyle}>محل الإقامة</label>
+                <label className={lbl} style={lblStyle}>{tr("residence")}</label>
                 <input className={inp} value={f.residency} onChange={(e) => set("residency", e.target.value)} />
               </div>
             </div>
@@ -141,36 +143,36 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
         {activeTab === "sales" && (
           <>
             <div className={fld}>
-              <label className={lbl} style={lblStyle}>التخصص الهندسي</label>
+              <label className={lbl} style={lblStyle}>{tr("engSpec")}</label>
               <select className={sel} value={f.specialty_id} onChange={(e) => set("specialty_id", e.target.value)}>
-                <option value="">— غير محدد —</option>
+                <option value="">{tr("unselected")}</option>
                 {specialties.map((s) => <option key={s.id} value={s.id}>{s.name_ar}</option>)}
               </select>
             </div>
             <div className={grid2}>
               <div className={fld}>
-                <label className={lbl} style={lblStyle}>سنة التخرج</label>
+                <label className={lbl} style={lblStyle}>{tr("gradYear")}</label>
                 <input className={inp} dir="ltr" inputMode="numeric" value={f.grad_year}
                   onChange={(e) => set("grad_year", e.target.value)} />
               </div>
               <div className={fld}>
-                <label className={lbl} style={lblStyle}>كود الأفيلييت</label>
-                <input className={inp} dir="ltr" value={f.affiliate_code} placeholder="اختياري"
+                <label className={lbl} style={lblStyle}>{tr("affiliateCode")}</label>
+                <input className={inp} dir="ltr" value={f.affiliate_code} placeholder={tr("optional")}
                   onChange={(e) => set("affiliate_code", e.target.value)} />
               </div>
             </div>
             <div className={fld}>
-              <label className={lbl} style={lblStyle}>مصدر العميل</label>
-              <input className={inp} value={f.source} placeholder="فيسبوك / إحالة / إعلان…"
+              <label className={lbl} style={lblStyle}>{tr("source")}</label>
+              <input className={inp} value={f.source} placeholder={tr("sourcePlaceholder")}
                 onChange={(e) => set("source", e.target.value)} />
             </div>
             <div className={fld}>
-              <label className={lbl} style={lblStyle}>حالة المنصة (LMS)</label>
+              <label className={lbl} style={lblStyle}>{tr("lmsStatus")}</label>
               <select className={sel} value={f.lms_status} onChange={(e) => set("lms_status", e.target.value)}>
-                <option value="">— غير محدّد —</option>
-                <option value="active">مفعّلة</option>
-                <option value="pending">قيد التفعيل</option>
-                <option value="none">غير مفعّلة</option>
+                <option value="">{tr("unselected")}</option>
+                <option value="active">{tr("lmsActive")}</option>
+                <option value="pending">{tr("lmsPending")}</option>
+                <option value="none">{tr("lmsNone")}</option>
               </select>
             </div>
           </>
@@ -187,7 +189,7 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
             </button>
             <div className="flex-1 min-w-0">
               <div className="text-[14px] font-bold" style={{ color: terms ? "var(--green)" : "var(--ink)" }}>
-                {terms ? "✓ العميل أمضى على الشروط والأحكام" : "لم يمضِ على الشروط والأحكام بعد"}
+                {terms ? tr("termsSigned") : tr("termsNotSigned")}
               </div>
               {terms && termsAt && (
                 <div className="text-[12px] mt-1 font-num" style={{ color: "var(--muted)" }}>
@@ -213,7 +215,7 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
       <div className="sticky bottom-0 w-full backdrop-blur-md p-4 mt-auto" style={{ background: "var(--surface)", borderTop: "1px solid var(--line)" }}>
         <button onClick={save}
           className="w-full h-[46px] bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-[14px] tracking-wide rounded-lg active:scale-[.98] transition-all duration-150 shadow-lg shadow-orange-500/20">
-          حفظ التعديلات
+          {tr("saveEdits")}
         </button>
       </div>
     </div>

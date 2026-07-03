@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import TicketDetail from "./TicketDetail";
+import { getLang, tFor } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function TicketPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
+  const tr = tFor(getLang());
 
   const { data: ticket } = await supabase
     .from("tickets")
@@ -45,7 +47,7 @@ export default async function TicketPage({ params }: { params: { id: string } })
     <div className="max-w-3xl">
       <div className="mb-4">
         <Link href="/support" className="text-sm text-muted hover:text-ink">
-          ← رجوع للدعم
+          ← {tr("backToSupport")}
         </Link>
       </div>
       <TicketDetail

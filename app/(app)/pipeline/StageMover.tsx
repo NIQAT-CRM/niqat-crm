@@ -2,18 +2,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n/client";
 
 const STAGES = [
-  { key: "new", label: "جديد" },
-  { key: "contacted", label: "تم التواصل" },
-  { key: "interested", label: "مهتم" },
-  { key: "quote", label: "عرض سعر مُرسل" },
-  { key: "negotiation", label: "تفاوض" },
-  { key: "enrolled", label: "مشترك" },
-  { key: "lost", label: "خسارة" },
+  { key: "new", labelKey: "dashStageNew" },
+  { key: "contacted", labelKey: "dashStageContacted" },
+  { key: "interested", labelKey: "dashStageInterested" },
+  { key: "quote", labelKey: "dashStageQuote" },
+  { key: "negotiation", labelKey: "dashStageNegotiation" },
+  { key: "enrolled", labelKey: "dashStageEnrolled" },
+  { key: "lost", labelKey: "dashStageLost" },
 ];
 
 export default function StageMover({ id, current }: { id: string; current: string }) {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [val, setVal] = useState(current);
@@ -28,7 +30,7 @@ export default function StageMover({ id, current }: { id: string; current: strin
     setBusy(false);
     if (error) {
       setVal(prev);
-      alert("تعذّر نقل المرحلة: " + error.message);
+      alert(tr("moveStageFailed") + error.message);
       return;
     }
     router.refresh();
@@ -44,7 +46,7 @@ export default function StageMover({ id, current }: { id: string; current: strin
     >
       {STAGES.map((s) => (
         <option key={s.key} value={s.key}>
-          {s.label}
+          {tr(s.labelKey)}
         </option>
       ))}
     </select>

@@ -20,10 +20,10 @@ type Ticket = {
 };
 
 const STATUSES = [
-  { key: "open", label: "مفتوحة", color: "#2F6BFF" },
-  { key: "progress", label: "قيد المعالجة", color: "#E6A700" },
-  { key: "resolved", label: "محلولة", color: "#18A957" },
-  { key: "closed", label: "مغلقة", color: "#94A2BB" },
+  { key: "open", labelKey: "openLabel", color: "#2F6BFF" },
+  { key: "progress", labelKey: "inProgressLabel", color: "#E6A700" },
+  { key: "resolved", labelKey: "resolvedLabel", color: "#18A957" },
+  { key: "closed", labelKey: "closedLabel", color: "#94A2BB" },
 ];
 
 const PRC: Record<string, string> = {
@@ -106,7 +106,7 @@ export default function SupportBoard({ initial, assignees, subjects, meId, custo
       .select("id,created_at").single();
     setBusy(false);
     if (!error && data) {
-      setNotes((ns) => [{ id: data.id, body: b, author: "أنا", at: String(data.created_at || "").replace("T", " ").slice(0, 16) }, ...ns]);
+      setNotes((ns) => [{ id: data.id, body: b, author: tr("me"), at: String(data.created_at || "").replace("T", " ").slice(0, 16) }, ...ns]);
       setNoteText("");
     }
   }
@@ -123,7 +123,7 @@ export default function SupportBoard({ initial, assignees, subjects, meId, custo
     const { error } = await supabase.from("tickets").update({ status }).eq("id", id);
     if (error) {
       setTickets(prev);
-      alert("تعذّر نقل التذكرة: " + error.message);
+      alert(tr("moveTicketFailed") + error.message);
     }
   }
 
@@ -133,7 +133,7 @@ export default function SupportBoard({ initial, assignees, subjects, meId, custo
     const { error } = await supabase.from("tickets").update({ archived: true }).eq("id", id);
     if (error) {
       setTickets(prev);
-      alert("تعذّر الأرشفة: " + error.message);
+      alert(tr("archiveFailed") + error.message);
     }
   }
 
@@ -142,11 +142,11 @@ export default function SupportBoard({ initial, assignees, subjects, meId, custo
       <div className="page-h">
         <div>
           <h1>{tr("support")}</h1>
-          <p>{tickets.length} تذكرة — اسحب التذكرة بين الأعمدة</p>
+          <p>{tickets.length} {tr("ticketWord")} — {tr("dragTicketHint")}</p>
         </div>
         <button type="button" className="btn" onClick={() => setNewOpen(true)}>
           <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
-          تذكرة جديدة
+          {tr("newTicket")}
         </button>
       </div>
 
@@ -177,16 +177,16 @@ export default function SupportBoard({ initial, assignees, subjects, meId, custo
               <div className="col-h">
                 <span className="nm">
                   <span className="dot" style={{ background: s.color }} />
-                  {s.label}
+                  {tr(s.labelKey)}
                 </span>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <select className="sortsel" value={colSort[s.key] || ""}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => setColSort((q) => ({ ...q, [s.key]: e.target.value }))}>
-                    <option value="">ترتيب</option>
-                    <option value="name">بالاسم</option>
-                    <option value="new">الأحدث</option>
-                    <option value="pr">الأولوية</option>
+                    <option value="">{tr("sortPlaceholder")}</option>
+                    <option value="name">{tr("byName")}</option>
+                    <option value="new">{tr("newestLabel")}</option>
+                    <option value="pr">{tr("byPriority")}</option>
                   </select>
                   <span className="ct">{items.length}</span>
                 </div>
@@ -212,7 +212,7 @@ export default function SupportBoard({ initial, assignees, subjects, meId, custo
                       }}
                       style={{ cursor: "pointer" }}
                     >
-                      <button className="cardx" title="تم — إخفاء من البورد" onMouseDown={(ev) => ev.stopPropagation()} onClick={(ev) => { ev.stopPropagation(); archive(t.id); }}>
+                      <button className="cardx" title={tr("doneHideBoard")} onMouseDown={(ev) => ev.stopPropagation()} onClick={(ev) => { ev.stopPropagation(); archive(t.id); }}>
                         <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 12l5 5L20 7" /></svg>
                       </button>
                       <div className="th">
@@ -256,16 +256,16 @@ export default function SupportBoard({ initial, assignees, subjects, meId, custo
           <div className="scrim show" onClick={() => setOpenId(null)} />
           <div className="modal show" role="dialog">
             <div className="modal-h">
-              <h3>تعديل التذكرة</h3>
+              <h3>{tr("editTicket")}</h3>
               <button className="x" onClick={() => setOpenId(null)}>✕</button>
             </div>
             <div className="modal-b">
               <div className="fld">
-                <label>العميل</label>
+                <label>{tr("customer")}</label>
                 <div className="inp" style={{ background: "var(--muted-soft)", display: "flex", alignItems: "center" }}>{openTk.customerName || "—"}</div>
               </div>
               <div className="fld">
-                <label>الموضوع</label>
+                <label>{tr("subject")}</label>
                 <input className="inp" list="tk_subjlist" value={openTk.title}
                   onChange={(e) => patchTk(openTk.id, { title: e.target.value })}
                   onBlur={(e) => saveField(openTk.id, "title", e.target.value.trim(), { title: e.target.value.trim() })} />
@@ -273,37 +273,37 @@ export default function SupportBoard({ initial, assignees, subjects, meId, custo
               </div>
               <div className="frow">
                 <div className="fld" style={{ margin: 0 }}>
-                  <label>الأولوية</label>
+                  <label>{tr("priority")}</label>
                   <select className="inp" value={openTk.priority} onChange={(e) => saveField(openTk.id, "priority", e.target.value, { priority: e.target.value })}>
-                    <option value="high">عالية</option>
-                    <option value="medium">متوسطة</option>
-                    <option value="low">منخفضة</option>
+                    <option value="high">{tr("priorityHigh")}</option>
+                    <option value="medium">{tr("priorityMedium")}</option>
+                    <option value="low">{tr("priorityLow")}</option>
                   </select>
                 </div>
                 <div className="fld" style={{ margin: 0 }}>
-                  <label>الحالة</label>
+                  <label>{tr("status")}</label>
                   <select className="inp" value={openTk.status} onChange={(e) => saveField(openTk.id, "status", e.target.value, { status: e.target.value })}>
-                    {STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+                    {STATUSES.map((s) => <option key={s.key} value={s.key}>{tr(s.labelKey)}</option>)}
                   </select>
                 </div>
               </div>
               <div className="fld" style={{ marginTop: 12 }}>
-                <label>المكلَّف</label>
+                <label>{tr("assigneeField")}</label>
                 <select className="inp" value={openTk.assigneeId}
                   onChange={(e) => {
                     const nm = assignees.find((a) => a.id === e.target.value)?.name || "—";
                     saveField(openTk.id, "assignee_id", e.target.value, { assigneeId: e.target.value, assigneeName: nm });
                   }}>
-                  <option value="">— غير معيّن —</option>
+                  <option value="">{tr("unassignedDash")}</option>
                   {assignees.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
               </div>
-              <div className="sec-t">ملاحظات التذكرة</div>
+              <div className="sec-t">{tr("ticketNotes")}</div>
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                <input className="inp" placeholder="أضف ملاحظة…" value={noteText}
+                <input className="inp" placeholder={tr("addNotePh")} value={noteText}
                   onChange={(e) => setNoteText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") addNote(); }} />
-                <button className="btn ghost" type="button" disabled={busy} onClick={addNote}>إرسال</button>
+                <button className="btn ghost" type="button" disabled={busy} onClick={addNote}>{tr("send")}</button>
               </div>
               <div>
                 {notes.length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>—</div>}
@@ -319,8 +319,8 @@ export default function SupportBoard({ initial, assignees, subjects, meId, custo
               </div>
             </div>
             <div className="modal-f">
-              <Link className="btn ghost" href={`/support/${openTk.id}`}>فتح الصفحة الكاملة</Link>
-              <button className="btn" style={{ marginInlineStart: "auto" }} onClick={() => { setOpenId(null); router.refresh(); }}>تم</button>
+              <Link className="btn ghost" href={`/support/${openTk.id}`}>{tr("openFullPage")}</Link>
+              <button className="btn" style={{ marginInlineStart: "auto" }} onClick={() => { setOpenId(null); router.refresh(); }}>{tr("done")}</button>
             </div>
           </div>
         </>

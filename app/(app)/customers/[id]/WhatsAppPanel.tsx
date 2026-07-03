@@ -32,7 +32,7 @@ export default function WhatsAppPanel({
     await supabase.from("communications").insert({
       customer_id: customerId, channel: "whatsapp", direction: "out", body: text, by_id: meId,
     });
-    toast("اتفتحت محادثة واتساب");
+    toast(tr("waOpened"));
   }
 
   if (!ctx.phone1) {

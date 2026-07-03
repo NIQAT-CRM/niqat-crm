@@ -9,7 +9,7 @@ type Inst = { id: string; amount: number; currency: string; due: string; status:
 type Enr = { id: string; diploma: string; status: string; free: boolean; freeReason: string; agreed: number; currency: string; installments: Inst[] };
 
 function money(n: number, cur: string) {
-  return new Intl.NumberFormat("en").format(Math.round(n || 0)) + (cur === "USD" ? " $" : " ج");
+  return new Intl.NumberFormat("en").format(Math.round(n || 0)) + (cur === "USD" ? " $" : " EGP");
 }
 const paidOf = (e: Enr) => e.installments.filter((i) => i.status === "paid" || i.paidAt).reduce((s, i) => s + (Number(i.amount) || 0), 0);
 const isOverdue = (i: Inst) => !(i.status === "paid" || i.paidAt || !i.due) && new Date(i.due) < new Date(new Date().toDateString());
@@ -45,48 +45,48 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
     const ext = (theFile.name.split(".").pop() || "jpg").toLowerCase();
     const path = `${customerId}/${Date.now()}.${ext}`;
     const up = await supabase.storage.from("receipts").upload(path, theFile, { upsert: false });
-    if (up.error) { toast("تعذّر رفع الصورة"); return null; }
+    if (up.error) { toast(tr("imgUploadFailed")); return null; }
     const url = supabase.storage.from("receipts").getPublicUrl(path).data?.publicUrl || null;
     // تسجيل نسخة في المستندات عشان تظهر في سكشن المستندات
-    if (url) await supabase.from("customer_docs").insert({ customer_id: customerId, url, name: label || `إيصال قسط (${theFile.name})` });
+    if (url) await supabase.from("customer_docs").insert({ customer_id: customerId, url, name: label || `${tr("instReceipt")} (${theFile.name})` });
     return url;
   }
 
   async function markPaid(id: string, f?: File | null) {
     setBusy(id);
     let shotUrl: string | null = null;
-    if (f) shotUrl = await uploadShot(f, `إيصال دفع قسط (${f.name})`);
+    if (f) shotUrl = await uploadShot(f, `${tr("instReceipt")} (${f.name})`);
     const patch: any = { status: "paid", paid_at: new Date().toISOString() };
     if (shotUrl) patch.screenshot_url = shotUrl;
     const { error } = await supabase.from("installments").update(patch).eq("id", id);
     setBusy(null);
-    if (error) return alert("تعذّر التحديث: " + error.message);
-    await logAudit("installment_paid", "تأكيد دفع قسط" + (shotUrl ? " + إيصال" : ""));
+    if (error) return alert(tr("updateFailed") + error.message);
+    await logAudit("installment_paid", tr("auditInstallmentPaid") + (shotUrl ? " + " + tr("receipt") : ""));
     setPayFor(null); setPayFile(null);
-    toast("اتسجّل الدفع"); router.refresh();
+    toast(tr("paymentLogged")); router.refresh();
   }
   async function addInstallment(e: Enr) {
     const a = Number(amt);
-    if (!a || a <= 0) return alert("اكتب مبلغ صحيح.");
+    if (!a || a <= 0) return alert(tr("enterValidAmount"));
     setBusy("add");
     const shotUrl = await uploadShot();
     const { error } = await supabase.from("installments").insert({ enrollment_id: e.id, amount: a, currency: e.currency || "EGP", due_date: due || null, status: "pending", screenshot_url: shotUrl });
-    if (error) { setBusy(null); return alert("تعذّر إضافة القسط: " + error.message); }
-    await logAudit("installment_add", `إضافة قسط ${money(a, e.currency)}${shotUrl ? " + صورة تحويل" : ""}`);
+    if (error) { setBusy(null); return alert(tr("addInstallmentFailed") + error.message); }
+    await logAudit("installment_add", `${tr("auditInstallmentAdd")} ${money(a, e.currency)}${shotUrl ? " + " + tr("transferShot") : ""}`);
     setBusy(null); setAddFor(null); setAmt(""); setDue(""); setFile(null);
-    toast("اتضاف القسط"); router.refresh();
+    toast(tr("installmentAdded")); router.refresh();
   }
   async function saveAgreed(e: Enr) {
     const amt = Number(editAgreedVal);
-    if (isNaN(amt) || amt < 0) return alert("أدخل مبلغ صحيح");
+    if (isNaN(amt) || amt < 0) return alert(tr("enterValidAmount"));
     setBusy("agreed");
     const { error } = await supabase.from("enrollment_finance")
       .upsert({ enrollment_id: e.id, agreed_amount: amt, currency: e.currency || "EGP" }, { onConflict: "enrollment_id" });
     setBusy(null);
-    if (error) return alert("تعذّر التحديث: " + error.message);
-    await logAudit("agreed_edit", `تعديل المبلغ المتفق من ${money(e.agreed, e.currency)} إلى ${money(amt, e.currency)}`);
+    if (error) return alert(tr("updateFailed") + error.message);
+    await logAudit("agreed_edit", `${tr("agreedAmountUpdated")}: ${money(e.agreed, e.currency)} → ${money(amt, e.currency)}`);
     setEditAgreedId(null);
-    toast("تم تعديل المبلغ المتفق عليه");
+    toast(tr("agreedAmountUpdated"));
     router.refresh();
   }
 
@@ -110,8 +110,8 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
               <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                 <b style={{ color: "var(--ink)" }}>{e.diploma}
                   {e.free && <span style={{ color: "var(--brand)", fontSize: 12, marginInlineStart: 6 }}>🎁 {tr("gift")}</span>}
-                  {!e.free && mode === "cash" && <span style={{ color: "var(--green)", fontSize: 11.5, marginInlineStart: 6, fontWeight: 700 }}>💵 كاش</span>}
-                  {!e.free && mode === "installment" && <span style={{ color: "var(--amber)", fontSize: 11.5, marginInlineStart: 6, fontWeight: 700 }}>🗓️ تقسيط ({instPaid}/{instTotal})</span>}
+                  {!e.free && mode === "cash" && <span style={{ color: "var(--green)", fontSize: 11.5, marginInlineStart: 6, fontWeight: 700 }}>💵 {tr("cashBadge")}</span>}
+                  {!e.free && mode === "installment" && <span style={{ color: "var(--amber)", fontSize: 11.5, marginInlineStart: 6, fontWeight: 700 }}>🗓️ {tr("installmentBadge")} ({instPaid}/{instTotal})</span>}
                 </b>
                 <div style={{ display: "flex", gap: 12, fontSize: 12.5 }}>
                   <span style={{ color: "var(--muted)" }}>{tr("agreed")}: {editAgreedId === e.id ? (
@@ -137,7 +137,7 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                       <span className="num" dir="ltr" style={{ fontWeight: 700 }}>{money(i.amount, i.currency)}</span>
                       <span className="num" dir="ltr" style={{ color: "var(--muted)", fontSize: 12 }}>{i.due || "—"}</span>
-                      {i.shot && <a href={i.shot} target="_blank" rel="noreferrer" style={{ fontSize: 11.5, color: "var(--brand)", fontWeight: 700 }}>إيصال</a>}
+                      {i.shot && <a href={i.shot} target="_blank" rel="noreferrer" style={{ fontSize: 11.5, color: "var(--brand)", fontWeight: 700 }}>{tr("receipt")}</a>}
                       {paidNow ? badge(tr("paid"), "#18A957") : over ? badge(tr("overdue"), "#E0483B") : badge(tr("pending"), "#94A2BB")}
                       {!paidNow ? (
                         <button onClick={() => { setPayFor(payFor === i.id ? null : i.id); setPayFile(null); }} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{tr("paid")}</button>
@@ -146,10 +146,10 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
                      {payFor === i.id && !paidNow && (
                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, borderTop: "1px dashed var(--line)", paddingTop: 8 }}>
                          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--brand)", fontWeight: 700, cursor: "pointer" }}>
-                           🖼️ {payFile ? payFile.name : "ارفع إيصال التحويل (اختياري)"}
+                           🖼️ {payFile ? payFile.name : tr("uploadReceiptOpt")}
                            <input type="file" accept="image/*" style={{ display: "none" }} onChange={(ev) => setPayFile(ev.target.files?.[0] || null)} />
                          </label>
-                         <button onClick={() => markPaid(i.id, payFile)} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{busy === i.id ? "..." : "تأكيد الدفع"}</button>
+                         <button onClick={() => markPaid(i.id, payFile)} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{busy === i.id ? "..." : tr("confirmPayment")}</button>
                          <button onClick={() => { setPayFor(null); setPayFile(null); }} className="btn ghost" style={{ height: 30, padding: "0 10px", fontSize: 12 }}>{tr("cancel")}</button>
                        </div>
                      )}

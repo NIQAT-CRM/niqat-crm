@@ -17,13 +17,13 @@ type Cust = {
 
 // مراحل قاعدة البيانات (stage_t) + ألوان وتسميات البروتوتايب
 const STAGES = [
-  { key: "new", label: "جديد", color: "#2F6BFF" },
-  { key: "contacted", label: "تم التواصل", color: "#0FA3A3" },
-  { key: "interested", label: "مهتم", color: "#7B61FF" },
-  { key: "quote", label: "عرض سعر مُرسل", color: "#E6A700" },
-  { key: "negotiation", label: "تفاوض", color: "#F08A24" },
-  { key: "enrolled", label: "مسجّل / دفع", color: "#18A957" },
-  { key: "lost", label: "مؤجل / مرفوض", color: "#94A2BB" },
+  { key: "new", labelKey: "dashStageNew", color: "#2F6BFF" },
+  { key: "contacted", labelKey: "dashStageContacted", color: "#0FA3A3" },
+  { key: "interested", labelKey: "dashStageInterested", color: "#7B61FF" },
+  { key: "quote", labelKey: "dashStageQuote", color: "#E6A700" },
+  { key: "negotiation", labelKey: "dashStageNegotiation", color: "#F08A24" },
+  { key: "enrolled", labelKey: "dashStageEnrolled", color: "#18A957" },
+  { key: "lost", labelKey: "dashStageLost", color: "#94A2BB" },
 ];
 
 const AV = ["#F08A24", "#0FA3A3", "#2F6BFF", "#7B61FF", "#18A957", "#E0483B", "#E6A700"];
@@ -59,7 +59,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
     const { error } = await supabase.from("customers").update({ stage }).eq("id", id);
     if (error) {
       setCusts(prev);
-      alert("تعذّر نقل العميل: " + error.message);
+      alert(tr("moveCustomerFailed") + error.message);
     }
   }
 
@@ -69,7 +69,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
     const { error } = await supabase.from("customers").update({ board_done: true }).eq("id", id);
     if (error) {
       setCusts(prev);
-      alert("تعذّر الأرشفة: " + error.message);
+      alert(tr("archiveFailed") + error.message);
     }
   }
 
@@ -78,13 +78,13 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
       <div className="page-h">
         <div>
           <h1>{tr("pipeline")}</h1>
-          <p>{custs.length} عميل — اسحب العميل بين المراحل</p>
+          <p>{custs.length} {tr("customer")} — {tr("dragCustomerHint")}</p>
         </div>
         <Link className="btn" href="/customers/new">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
             <path d="M12 5v14M5 12h14" />
           </svg>
-          إضافة عميل
+          {tr("addCustomer")}
         </Link>
       </div>
 
@@ -114,15 +114,15 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
               <div className="col-h">
                 <span className="nm">
                   <span className="dot" style={{ background: s.color }} />
-                  {s.label}
+                  {tr(s.labelKey)}
                 </span>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <select className="sortsel" value={colSort[s.key] || ""}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => setColSort((q) => ({ ...q, [s.key]: e.target.value }))}>
-                    <option value="">ترتيب</option>
-                    <option value="name">بالاسم</option>
-                    <option value="new">الأحدث</option>
+                    <option value="">{tr("sortPlaceholder")}</option>
+                    <option value="name">{tr("byName")}</option>
+                    <option value="new">{tr("newestLabel")}</option>
                   </select>
                   <span className="ct">{items.length}</span>
                 </div>
@@ -148,7 +148,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                   >
                     <button
                       className="cardx"
-                      title="أرشفة الكارت"
+                      title={tr("archiveCard")}
                       onMouseDown={(ev) => ev.stopPropagation()}
                       onClick={(ev) => { ev.stopPropagation(); archive(c.id); }}
                     >
@@ -159,9 +159,9 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                     <div className="pf">
                       <span className="who-mini">
                         <span className="av-xs" style={{ background: avColor(c.ownerId) }}>
-                          {initials(c.ownerName || "؟")}
+                          {initials(c.ownerName || "?")}
                         </span>
-                        {c.ownerName || "غير معيّن"}
+                        {c.ownerName || tr("unassigned")}
                       </span>
                     </div>
                   </div>

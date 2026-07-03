@@ -59,7 +59,7 @@ export default function TicketDetail({
       title: title.trim(), body: body.trim() || null, priority, status, assignee_id: assignee || null,
     }).eq("id", ticket.id);
     setSaving(false);
-    if (error) { setSavedMsg("خطأ: " + error.message); return; }
+    if (error) { setSavedMsg(tr("errorColon") + error.message); return; }
     setSavedMsg(tr("saved") + " ✓");
     router.refresh();
   }

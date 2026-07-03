@@ -25,7 +25,7 @@ export default function CustomerActivity({
     const { data, error } = await supabase.from("tasks")
       .insert({ customer_id: customerId, assignee_id: meId, title, due_at: tDue || null, done: false })
       .select("id").single();
-    if (error) return alert("تعذّر إضافة المهمة: " + error.message);
+    if (error) return alert(tr("addTaskFailed") + error.message);
     setTasks((l) => [{ id: data!.id as string, title, due: tDue, done: false }, ...l]);
     setTTitle("");
   }
@@ -41,7 +41,7 @@ export default function CustomerActivity({
     const { data, error } = await supabase.from("communications")
       .insert({ customer_id: customerId, body, channel: "note", direction: "out", by_id: meId })
       .select("id, at").single();
-    if (error) return alert("تعذّر إضافة الملاحظة: " + error.message);
+    if (error) return alert(tr("addNoteFailed") + error.message);
     setNotes((l) => [{ id: data!.id as string, body, by: tr("me"), at: String((data as any).at || "").replace("T", " ").slice(0, 16) }, ...l]);
     setNoteText("");
   }

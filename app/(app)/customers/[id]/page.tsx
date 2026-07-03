@@ -3,31 +3,33 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import CustomerDrawer from "./CustomerDrawer";
 import CopyNumbers from "./CopyNumbers";
+import { getLang, tFor } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
-const STAGE: Record<string, { label: string; color: string }> = {
-  new: { label: "جديد", color: "#2F6BFF" }, contacted: { label: "تم التواصل", color: "#0FA3A3" },
-  interested: { label: "مهتم", color: "#7B61FF" }, negotiation: { label: "تفاوض", color: "#F08A24" },
-  quote: { label: "عرض سعر مُرسل", color: "#E6A700" },
-  enrolled: { label: "مسجّل / دفع", color: "#18A957" }, onhold: { label: "معلّق", color: "#7C8AA5" },
-  lost: { label: "مؤجل / مرفوض", color: "#94A2BB" },
+const STAGE: Record<string, { labelKey: string; color: string }> = {
+  new: { labelKey: "dashStageNew", color: "#2F6BFF" }, contacted: { labelKey: "dashStageContacted", color: "#0FA3A3" },
+  interested: { labelKey: "dashStageInterested", color: "#7B61FF" }, negotiation: { labelKey: "dashStageNegotiation", color: "#F08A24" },
+  quote: { labelKey: "dashStageQuote", color: "#E6A700" },
+  enrolled: { labelKey: "dashStageEnrolled", color: "#18A957" }, onhold: { labelKey: "dashStageOnhold", color: "#7C8AA5" },
+  lost: { labelKey: "dashStageLost", color: "#94A2BB" },
 };
 
-const AUDIT_LABELS: Record<string, string> = {
-  batch_transfer: "نقل بين الباتشات", enrollment_add: "إضافة دبلومة",
-  installment_add: "إضافة قسط", installment_paid: "تأكيد دفع",
-  create: "إنشاء العميل", update: "تعديل بيانات", stage_change: "تغيير المرحلة",
-  refund_request: "طلب استرداد", refunded: "تم الاسترداد", handoff: "تحويل للدعم",
+const AUDIT_KEYS: Record<string, string> = {
+  batch_transfer: "auditBatchTransfer", enrollment_add: "auditEnrollmentAdd",
+  installment_add: "auditInstallmentAdd", installment_paid: "auditInstallmentPaid",
+  create: "auditCreate", update: "auditUpdate", stage_change: "auditStageChange",
+  refund_request: "auditRefundRequest", refunded: "auditRefunded", handoff: "auditHandoff",
 };
 
-const TK: Record<string, { label: string; color: string }> = {
-  open: { label: "مفتوحة", color: "#2F6BFF" }, progress: { label: "قيد المعالجة", color: "#E6A700" },
-  resolved: { label: "محلولة", color: "#18A957" }, closed: { label: "مغلقة", color: "#94A2BB" },
+const TK: Record<string, { labelKey: string; color: string }> = {
+  open: { labelKey: "openLabel", color: "#2F6BFF" }, progress: { labelKey: "inProgressLabel", color: "#E6A700" },
+  resolved: { labelKey: "resolvedLabel", color: "#18A957" }, closed: { labelKey: "closedLabel", color: "#94A2BB" },
 };
 
 export default async function CustomerDetail({ params }: { params: { id: string } }) {
   const supabase = createClient();
+  const tr = tFor(getLang());
   const { data: { user } } = await supabase.auth.getUser();
   const { data: meProf } = await supabase.from("profiles").select("can_see_finance,can_message").eq("id", user?.id || "").maybeSingle();
   const canFinance = !!meProf?.can_see_finance;
@@ -103,7 +105,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
   const docsRes = await supabase.from("customer_docs").select("id,url,name,created_at").eq("customer_id", params.id).order("created_at", { ascending: false });
   const docsMissing = !!docsRes.error;
-  const docs = (docsRes.data || []).map((d: any) => ({ id: d.id, url: d.url, name: d.name || "مستند", at: String(d.created_at || "").slice(0, 10) }));
+  const docs = (docsRes.data || []).map((d: any) => ({ id: d.id, url: d.url, name: d.name || tr("docFallback"), at: String(d.created_at || "").slice(0, 10) }));
 
   const { data: fuRows } = await supabase.from("follow_ups").select("id,due_at,note,done").eq("customer_id", params.id).order("due_at", { ascending: false });
   const fuAll = (fuRows || []).map((x: any) => ({ id: x.id, due_at: x.due_at, note: x.note || "", done: !!x.done }));
@@ -135,21 +137,21 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
   return (
     <>
-      <Link href="/customers" className="drawer-scrim" aria-label="إغلاق" />
+      <Link href="/customers" className="drawer-scrim" aria-label={tr("close")} />
       <aside className="drawer-panel">
         <div className="dr-h">
           <div className="av">{ini(c.name)}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h2>{c.name}</h2>
             <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span className="stg" style={{ background: st.color + "1a", color: st.color }}>{st.label}</span>
+              <span className="stg" style={{ background: st.color + "1a", color: st.color }}>{tr(st.labelKey)}</span>
               {c.stage === "onhold" && (c as any).onhold_reason && (
                 <span style={{ fontSize: 12, color: "var(--muted)" }}>⏸️ {(c as any).onhold_reason}</span>
               )}
               <CopyNumbers phones={[c.phone1 as string, c.phone2 as string]} />
             </div>
           </div>
-          <Link href="/customers" className="dr-x" aria-label="إغلاق">
+          <Link href="/customers" className="dr-x" aria-label={tr("close")}>
             <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2}><path d="M6 6l12 12M18 6L6 18" /></svg>
           </Link>
         </div>
@@ -166,7 +168,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
             docs={docs} docsMissing={docsMissing}
             waCtx={waCtx} templates={templates as any}
             tasks={tasks} notes={notes}
-            tickets={tickets || []} auditRows={auditRows || []} pMap={pMap} AUDIT_LABELS={AUDIT_LABELS} TK={TK}
+            tickets={tickets || []} auditRows={auditRows || []} pMap={pMap} AUDIT_KEYS={AUDIT_KEYS} TK={TK}
           />
         </div>
       </aside>

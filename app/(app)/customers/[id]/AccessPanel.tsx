@@ -2,6 +2,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n/client";
 
 type Item = { id: string; label: string; done: boolean; done_by: string | null; done_at: string | null };
 type Handoff = { id: string; status: string; note: string; assignee: string; by: string; at: string } | null;
@@ -13,6 +14,7 @@ export default function AccessPanel({
   customerId: string; handoff: Handoff; items: Item[];
   accessOptions: Opt[]; libraries: { id: string; name: string }[]; meId: string; meName: string;
 }) {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [busy, setBusy] = useState<string | null>(null);
@@ -53,20 +55,20 @@ export default function AccessPanel({
       await supabase.from("handoffs").update({ status: allDone ? "done" : "pending" }).eq("id", handoff.id);
     }
     setBusy(null);
-    if (error) { alert("تعذّر التحديث: " + error.message); return; }
+    if (error) { alert(tr("updateFailed") + error.message); return; }
     router.refresh();
   }
 
   // تحويل جديد: ينشئ handoff لو مفيش، أو يضيف بنود للموجود
   async function sendToSupport() {
-    if (picked.length === 0) { alert("اختر بند واحد على الأقل تفعّله."); return; }
+    if (picked.length === 0) { alert(tr("pickAtLeastOne")); return; }
     setBusy("send");
     let hoId = handoff?.id;
     if (!hoId) {
       const { data: h, error } = await supabase.from("handoffs").insert({
         customer_id: customerId, created_by: meId, note: note.trim(), status: "pending",
       }).select("id").single();
-      if (error || !h) { setBusy(null); alert("تعذّر إنشاء التسليم: " + (error?.message || "")); return; }
+      if (error || !h) { setBusy(null); alert(tr("createHandoffFailed") + (error?.message || "")); return; }
       hoId = h.id;
     } else if (note.trim()) {
       await supabase.from("handoffs").update({ note: note.trim(), status: "pending" }).eq("id", hoId);
@@ -76,7 +78,7 @@ export default function AccessPanel({
     const rows = picked.map((label) => ({ handoff_id: hoId, label, done: false }));
     const { error: e2 } = await supabase.from("handoff_items").insert(rows);
     setBusy(null);
-    if (e2) { alert("تعذّر إضافة البنود: " + e2.message); return; }
+    if (e2) { alert(tr("addItemsFailed") + e2.message); return; }
     setNote(""); setPicked([]); setQ(""); setOpenAdd(false);
     router.refresh();
   }
@@ -87,10 +89,10 @@ export default function AccessPanel({
   const picker = (
     <div style={{ marginTop: 10 }}>
       <div className="fld">
-        <label>اكتب أو اختر اللي عايز تفعّله للعميل</label>
+        <label>{tr("accPickLabel")}</label>
         <input className="inp" value={q} onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
-          placeholder="ابحث باسم الدبلومة/الاعتماد/المشروع… أو اكتب بند جديد" />
+          placeholder={tr("accSearchPh")} />
       </div>
 
       {/* المختار */}
@@ -109,11 +111,11 @@ export default function AccessPanel({
       <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 190, overflowY: "auto", border: "1px solid var(--line)", borderRadius: 8, padding: 6 }}>
         {filtered.length === 0 && q.trim() && (
           <button type="button" onClick={addCustom} style={{ textAlign: "start", fontSize: 13, color: "var(--brand)", fontWeight: 700, padding: "6px 8px", background: "none" }}>
-            + إضافة «{q.trim()}» كبند جديد
+            + {tr("accAddNew")} «{q.trim()}»
           </button>
         )}
         {filtered.length === 0 && !q.trim() && (
-          <div style={{ fontSize: 12.5, color: "var(--muted)", padding: "6px 8px" }}>كل العناصر اتبعتت للدعم، أو مفيش عناصر — اكتب بند جديد فوق.</div>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", padding: "6px 8px" }}>{tr("accAllSentOrEmpty")}</div>
         )}
         {filtered.map((o) => {
           const on = picked.includes(o.label);
@@ -127,14 +129,14 @@ export default function AccessPanel({
       </div>
 
       <div className="fld" style={{ marginTop: 10 }}>
-        <label>ملاحظة للدعم (اختياري)</label>
+        <label>{tr("accNoteLabel")}</label>
         <textarea className="inp" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
       </div>
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={sendToSupport} disabled={busy === "send"} className="btn">
-          {busy === "send" ? "..." : (handoff ? "إرسال البنود للدعم" : "تحويل للدعم")}
+          {busy === "send" ? "..." : (handoff ? tr("accSendItems") : tr("accHandoff"))}
         </button>
-        {handoff && <button onClick={() => { setOpenAdd(false); setPicked([]); setQ(""); }} className="btn ghost">إلغاء</button>}
+        {handoff && <button onClick={() => { setOpenAdd(false); setPicked([]); setQ(""); }} className="btn ghost">{tr("cancel")}</button>}
       </div>
     </div>
   );
@@ -142,14 +144,14 @@ export default function AccessPanel({
   return (
     <div className="card" style={{ padding: 18, marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div className="sec-t" style={{ margin: 0 }}>التفعيل والاعتمادات</div>
+        <div className="sec-t" style={{ margin: 0 }}>{tr("accSectionTitle")}</div>
         {handoff && (
           <span className="stg" style={
             handoff.status === "done"
               ? { background: "#18A95722", color: "#18A957" }
               : { background: "#E6A70022", color: "#B8860B" }
           }>
-            {handoff.status === "done" ? "مكتمل ✓" : "في انتظار التفعيل والاعتماد"}
+            {handoff.status === "done" ? tr("accDone") : tr("accPending")}
           </span>
         )}
       </div>
@@ -157,15 +159,15 @@ export default function AccessPanel({
       {!handoff ? (
         <>
           <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 10 }}>
-            العميل لسه ماتسلّمش للدعم. اختار العناصر اللي هتتفعّل (كل عنصر باسمه) وحوّله للدعم.
+            {tr("accNotHandedHint")}
           </div>
           {picker}
         </>
       ) : (
         <div style={{ marginTop: 10 }}>
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 8 }}>
-            {done}/{items.length} بند مكتمل
-            {handoff.assignee ? <> · المكلّف: <b>{handoff.assignee}</b></> : null}
+            {done}/{items.length} {tr("accItemsDone")}
+            {handoff.assignee ? <> · {tr("accAssignee")}: <b>{handoff.assignee}</b></> : null}
           </div>
           {handoff.note && (
             <div style={{ fontSize: 13, background: "rgba(240,138,36,.07)", border: "1px solid var(--line)", borderRadius: 8, padding: 8, marginBottom: 10 }}>
@@ -178,7 +180,7 @@ export default function AccessPanel({
               <label key={it.id} style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", cursor: "pointer", opacity: busy === it.id ? 0.5 : 1 }}>
                 <input type="checkbox" checked={it.done} onChange={() => toggleDone(it)} disabled={busy === it.id} />
                 <span style={{ flex: 1, fontWeight: 600, textDecoration: it.done ? "line-through" : "none", color: it.done ? "var(--muted)" : "var(--ink)" }}>{it.label}</span>
-                {it.done && it.done_by && <span style={{ fontSize: 11, color: "var(--green)" }}>فعّلها {it.done_by}</span>}
+                {it.done && it.done_by && <span style={{ fontSize: 11, color: "var(--green)" }}>{tr("accActivatedBy")} {it.done_by}</span>}
               </label>
             ))}
           </div>
@@ -186,7 +188,7 @@ export default function AccessPanel({
           {/* زر تحويل عناصر جديدة — يفضل ظاهر دايمًا */}
           {!openAdd ? (
             <button onClick={() => setOpenAdd(true)} className="btn ghost" style={{ marginTop: 12 }}>
-              ＋ تحويل عناصر جديدة للدعم
+              ＋ {tr("accTransferNew")}
             </button>
           ) : picker}
         </div>

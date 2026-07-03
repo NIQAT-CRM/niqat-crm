@@ -3,11 +3,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
+import { useT } from "@/lib/i18n/client";
 
 type Opt = { id: string; name: string };
 const STAGES = [
-  ["new", "جديد"], ["contacted", "تم التواصل"], ["interested", "مهتم"],
-  ["quote", "عرض سعر مُرسل"], ["negotiation", "تفاوض"], ["enrolled", "مسجّل / دفع"], ["lost", "مؤجل / مرفوض"],
+  ["new", "dashStageNew"], ["contacted", "dashStageContacted"], ["interested", "dashStageInterested"],
+  ["quote", "dashStageQuote"], ["negotiation", "dashStageNegotiation"], ["enrolled", "dashStageEnrolled"], ["lost", "dashStageLost"],
 ];
 
 type Aff = { name: string; code: string; discount: number };
@@ -15,6 +16,7 @@ type Aff = { name: string; code: string; discount: number };
 export default function NewCustomerForm({
   specialties, diplomas, batches, meId, affiliates = [],
 }: { specialties: Opt[]; diplomas: Opt[]; batches: Opt[]; meId: string; affiliates?: Aff[] }) {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [f, setF] = useState({
@@ -59,8 +61,8 @@ export default function NewCustomerForm({
   const schedule = payMode === "installment" && net > 0 ? buildSchedule(net, Number(instCount), Number(instGap)) : [];
 
   async function save() {
-    if (!f.name.trim()) { toast("الاسم مطلوب"); return; }
-    if (affUnknown) { toast("كود الأفيلييت غير موجود في القائمة — راجعه أو سيبه فاضي"); return; }
+    if (!f.name.trim()) { toast(tr("nameRequired")); return; }
+    if (affUnknown) { toast(tr("affNotInList")); return; }
     setSaving(true);
     setDup(null);
 
@@ -73,8 +75,8 @@ export default function NewCustomerForm({
       .select("id,name").eq("deleted", false).or(ors.join(",")).limit(1).maybeSingle();
     if (exist) {
       setSaving(false);
-      setDup({ id: exist.id as string, name: (exist.name as string) || "العميل" });
-      toast("العميل ده مسجّل قبل كده");
+      setDup({ id: exist.id as string, name: (exist.name as string) || tr("customer") });
+      toast(tr("customerAlreadyExists"));
       return;
     }
 
@@ -87,7 +89,7 @@ export default function NewCustomerForm({
 
     if (error || !cust) {
       setSaving(false);
-      toast((error as any)?.code === "23505" ? "العميل موجود قبل كده" : "حصل خطأ");
+      toast((error as any)?.code === "23505" ? tr("customerAlreadyExists") : tr("errorOccurredShort"));
       return;
     }
     const cid = cust.id;
@@ -99,7 +101,7 @@ export default function NewCustomerForm({
       const up = await supabase.storage.from("receipts").upload(path, payFile, { upsert: false });
       if (!up.error) {
         const url = supabase.storage.from("receipts").getPublicUrl(path).data.publicUrl;
-        await supabase.from("customer_docs").insert({ customer_id: cid, url, name: `صورة تحويل — المبلغ المتفق عليه (${payFile.name})` });
+        await supabase.from("customer_docs").insert({ customer_id: cid, url, name: `${tr("transferShot")} — ${tr("agreedWord")} (${payFile.name})` });
       }
     }
     if (f.diploma_id) {
@@ -129,7 +131,7 @@ export default function NewCustomerForm({
               const u = await supabase.storage.from("receipts").upload(p, payFile, { upsert: false });
               if (!u.error) {
                 firstShot = supabase.storage.from("receipts").getPublicUrl(p).data.publicUrl;
-                await supabase.from("customer_docs").insert({ customer_id: cid, url: firstShot, name: `إيصال القسط الأول (${payFile.name})` });
+                await supabase.from("customer_docs").insert({ customer_id: cid, url: firstShot, name: `${tr("instReceipt")} #1 (${payFile.name})` });
               }
             }
             await supabase.from("installments").insert(
@@ -158,7 +160,7 @@ export default function NewCustomerForm({
       });
     }
     setSaving(false);
-    toast("اتسجّل العميل ✓");
+    toast(tr("customerRegistered"));
     router.push(`/customers/${cid}`); router.refresh();
   }
 
@@ -169,121 +171,121 @@ export default function NewCustomerForm({
 
   return (
     <div className="card" style={{ padding: 20 }}>
-      <div className="sec-t" style={{ marginTop: 0 }}>البيانات الأساسية</div>
-      <div className="fld"><label>الاسم *</label>
-        <input className="inp" value={f.name} onChange={(e) => setName(e.target.value)} placeholder="عربي أو English" /></div>
-      <div className="frow">{I("موبايل ١", "phone1", true)}{I("موبايل ٢", "phone2", true)}</div>
-      <div className="frow">{I("الإيميل", "email", true)}{I("الشركة", "company")}</div>
-      {I("كود الأفيلييت", "affiliate_code", true)}
-      {affMatch && <div style={{ fontSize: 12.5, color: "var(--green)", marginTop: -6, marginBottom: 8 }}>✓ {affMatch.name} — خصم {discPct}%</div>}
-      {affUnknown && <div style={{ fontSize: 12.5, color: "#E0483B", marginTop: -6, marginBottom: 8 }}>الكود ده مش في القائمة</div>}
+      <div className="sec-t" style={{ marginTop: 0 }}>{tr("basicData")}</div>
+      <div className="fld"><label>{tr("name")} *</label>
+        <input className="inp" value={f.name} onChange={(e) => setName(e.target.value)} placeholder={tr("nameArEnPh")} /></div>
+      <div className="frow">{I(tr("phone1"), "phone1", true)}{I(tr("phone2"), "phone2", true)}</div>
+      <div className="frow">{I(tr("email"), "email", true)}{I(tr("company"), "company")}</div>
+      {I(tr("affiliateCode"), "affiliate_code", true)}
+      {affMatch && <div style={{ fontSize: 12.5, color: "var(--green)", marginTop: -6, marginBottom: 8 }}>✓ {affMatch.name} — {tr("discountWord")} {discPct}%</div>}
+      {affUnknown && <div style={{ fontSize: 12.5, color: "#E0483B", marginTop: -6, marginBottom: 8 }}>{tr("codeNotInList")}</div>}
 
       {dup && (
         <div style={{ border: "1px solid var(--red)", background: "var(--red-soft)", borderRadius: 10, padding: 12, marginBottom: 10, fontSize: 13.5 }}>
-          <b style={{ color: "var(--red)" }}>العميل ده موجود قبل كده: {dup.name}</b>
+          <b style={{ color: "var(--red)" }}>{tr("customerExistsColon")} {dup.name}</b>
           <div style={{ marginTop: 6 }}>
-            <a href={`/customers/${dup.id}`} style={{ color: "var(--brand)", fontWeight: 700 }}>افتح كارت العميل وعدّل عليه ←</a>
+            <a href={`/customers/${dup.id}`} style={{ color: "var(--brand)", fontWeight: 700 }}>{tr("openCustomerCardEdit")} ←</a>
           </div>
         </div>
       )}
 
-      <div className="sec-t">بيانات المبيعات</div>
+      <div className="sec-t">{tr("salesData")}</div>
       <div className="frow">
-        <div className="fld"><label>التخصص الهندسي</label>
+        <div className="fld"><label>{tr("engSpec")}</label>
           <select className="inp" value={f.specialty_id} onChange={(e) => set("specialty_id", e.target.value)}>
-            <option value="">— اختر —</option>
+            <option value="">{tr("selectDash")}</option>
             {specialties.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select></div>
-        <div className="fld"><label>المرحلة</label>
+        <div className="fld"><label>{tr("stage")}</label>
           <select className="inp" value={f.stage} onChange={(e) => set("stage", e.target.value)}>
-            {STAGES.map((s) => <option key={s[0]} value={s[0]}>{s[1]}</option>)}
+            {STAGES.map((s) => <option key={s[0]} value={s[0]}>{tr(s[1])}</option>)}
           </select></div>
       </div>
-      <div className="frow">{I("محل الإقامة", "residency")}{I("سنة التخرج", "grad_year", true)}</div>
+      <div className="frow">{I(tr("residence"), "residency")}{I(tr("gradYear"), "grad_year", true)}</div>
       <div className="frow">
-        {I("المصدر", "source")}
-        <div className="fld"><label>موعد المتابعة</label>
+        {I(tr("source"), "source")}
+        <div className="fld"><label>{tr("followUpDate")}</label>
           <input className="inp num" type="datetime-local" dir="ltr" value={f.follow} onChange={(e) => set("follow", e.target.value)} /></div>
       </div>
 
-      <div className="sec-t">الاشتراك (اختياري)</div>
+      <div className="sec-t">{tr("subscriptionOpt")}</div>
       <div className="frow">
-        <div className="fld"><label>الدبلومة</label>
+        <div className="fld"><label>{tr("theDiploma")}</label>
           <select className="inp" value={f.diploma_id} onChange={(e) => set("diploma_id", e.target.value)}>
-            <option value="">— بدون —</option>
+            <option value="">{tr("noneDash")}</option>
             {diplomas.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select></div>
-        <div className="fld"><label>الباتش</label>
+        <div className="fld"><label>{tr("theBatch")}</label>
           <select className="inp" value={f.batch_id} onChange={(e) => set("batch_id", e.target.value)}>
-            <option value="">— بدون —</option>
+            <option value="">{tr("noneDash")}</option>
             {batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select></div>
       </div>
-      <label className="chkrow"><input type="checkbox" checked={f.free} onChange={(e) => set("free", e.target.checked)} /> هدية / مجاني</label>
+      <label className="chkrow"><input type="checkbox" checked={f.free} onChange={(e) => set("free", e.target.checked)} /> {tr("giftFree")}</label>
       {!f.free && (
         <div className="frow" style={{ marginTop: 8 }}>
-          <div className="fld"><label>المبلغ المتفق عليه</label>
+          <div className="fld"><label>{tr("agreedAmount")}</label>
             <div style={{ display: "flex", gap: 8 }}>
               <input className="inp num" dir="ltr" inputMode="numeric" value={f.amount} onChange={(e) => set("amount", e.target.value)} />
               <select className="inp" style={{ width: 80 }} value={f.currency} onChange={(e) => set("currency", e.target.value)}>
-                <option value="EGP">ج</option><option value="USD">$</option>
+                <option value="EGP">{tr("egpShort")}</option><option value="USD">$</option>
               </select>
             </div>
           </div>
-          <div className="fld"><label>المستحق بعد الخصم</label>
-            <input className="inp num" dir="ltr" readOnly value={discPct > 0 ? `${net} (خصم ${discPct}%)` : (gross || "")} style={{ background: "var(--muted-soft)", fontWeight: 700 }} /></div>
+          <div className="fld"><label>{tr("dueAfterDiscount")}</label>
+            <input className="inp num" dir="ltr" readOnly value={discPct > 0 ? `${net} (${tr("discountWord")} ${discPct}%)` : (gross || "")} style={{ background: "var(--muted-soft)", fontWeight: 700 }} /></div>
         </div>
       )}
 
       {!f.free && net > 0 && (
         <div className="fld" style={{ marginTop: 8 }}>
-          <label>طريقة الدفع</label>
+          <label>{tr("paymentMethod")}</label>
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" onClick={() => setPayMode("cash")}
               className={"btn" + (payMode === "cash" ? "" : " ghost")} style={{ flex: 1, justifyContent: "center" }}>
-              💵 كاش (دفع كامل)
+              💵 {tr("cashFull")}
             </button>
             <button type="button" onClick={() => setPayMode("installment")}
               className={"btn" + (payMode === "installment" ? "" : " ghost")} style={{ flex: 1, justifyContent: "center" }}>
-              🗓️ تقسيط
+              🗓️ {tr("installmentWord")}
             </button>
           </div>
 
           {payMode === "cash" && (
             <div style={{ fontSize: 12.5, color: "var(--green)", marginTop: 8, fontWeight: 600 }}>
-              هيتسجّل إن العميل دفع {net} {f.currency === "USD" ? "$" : "ج"} كاش، والمتبقّي 0.
+              {tr("cashPayNote1")} {net} {f.currency === "USD" ? "$" : tr("egpShort")} {tr("cashPayNote2")}
             </div>
           )}
 
           {payMode === "installment" && (
             <div style={{ marginTop: 10 }}>
               <div className="frow">
-                <div className="fld"><label>عدد الأقساط</label>
+                <div className="fld"><label>{tr("installmentCount")}</label>
                   <input className="inp num" dir="ltr" inputMode="numeric" value={instCount} onChange={(e) => setInstCount(e.target.value)} /></div>
-                <div className="fld"><label>كل قسط بعد كام شهر</label>
+                <div className="fld"><label>{tr("installmentGap")}</label>
                   <input className="inp num" dir="ltr" inputMode="numeric" value={instGap} onChange={(e) => setInstGap(e.target.value)} /></div>
               </div>
               {schedule.length > 0 && (
                 <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 10, marginTop: 8 }}>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6, fontWeight: 700 }}>
-                    مواعيد الأقساط (تلقائي):
+                    {tr("installmentDatesAuto")}
                   </div>
                   {schedule.map((s, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "3px 0" }}>
-                      <span>القسط {i + 1}{payFirstNow && i === 0 ? " ✅ مدفوع الآن" : ""}</span>
-                      <b className="num" dir="ltr">{s.amount} {f.currency === "USD" ? "$" : "ج"}</b>
-                      <span className="num" dir="ltr" style={{ color: "var(--muted)" }}>{payFirstNow && i === 0 ? "النهاردة" : s.due}</span>
+                      <span>{tr("installmentWord")} {i + 1}{payFirstNow && i === 0 ? " ✅ " + tr("paidNow") : ""}</span>
+                      <b className="num" dir="ltr">{s.amount} {f.currency === "USD" ? "$" : tr("egpShort")}</b>
+                      <span className="num" dir="ltr" style={{ color: "var(--muted)" }}>{payFirstNow && i === 0 ? tr("today") : s.due}</span>
                     </div>
                   ))}
                 </div>
               )}
               <label className="chkrow" style={{ marginTop: 10 }}>
                 <input type="checkbox" checked={payFirstNow} onChange={(e) => setPayFirstNow(e.target.checked)} />
-                دفع أول قسط دلوقتي مع التسجيل
+                {tr("payFirstNow")}
               </label>
               {payFirstNow && (
                 <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
-                  القسط الأول هيتسجّل مدفوع، وصورة التحويل اللي تحت هتترّبط بيه وتظهر في المستندات.
+                  {tr("payFirstNowHint")}
                 </div>
               )}
             </div>
@@ -293,22 +295,22 @@ export default function NewCustomerForm({
 
       {!f.free && (
         <div className="fld" style={{ marginTop: 8 }}>
-          <label>صورة تحويل الفلوس المتفق عليها (اختياري)</label>
+          <label>{tr("agreedTransferShot")}</label>
           <label className="addshot" style={{ width: "100%" }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
-            {payFile ? payFile.name : "ارفع صورة التحويل"}
+            {payFile ? payFile.name : tr("uploadTransferShot")}
             <input type="file" accept="image/*" onChange={(e) => setPayFile(e.target.files?.[0] || null)} />
           </label>
-          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>هتتخزّن وتظهر في سكشن المستندات في ملف العميل.</div>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>{tr("shotStoredHint")}</div>
         </div>
       )}
 
-      <div className="sec-t">ملاحظة أولية</div>
-      <textarea className="inp" rows={2} value={f.note} onChange={(e) => set("note", e.target.value)} placeholder="ملاحظات عن العميل…" />
+      <div className="sec-t">{tr("initialNote")}</div>
+      <textarea className="inp" rows={2} value={f.note} onChange={(e) => set("note", e.target.value)} placeholder={tr("customerNotesPh")} />
 
       <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-        <button onClick={save} disabled={saving} className="btn">{saving ? "..." : "حفظ العميل"}</button>
-        <button onClick={() => router.back()} className="btn ghost">رجوع</button>
+        <button onClick={save} disabled={saving} className="btn">{saving ? "..." : tr("saveCustomer")}</button>
+        <button onClick={() => router.back()} className="btn ghost">{tr("back")}</button>
       </div>
     </div>
   );
