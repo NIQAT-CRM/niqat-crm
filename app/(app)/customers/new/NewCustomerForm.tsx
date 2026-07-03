@@ -25,6 +25,9 @@ export default function NewCustomerForm({
   });
   const [saving, setSaving] = useState(false);
   const [payFile, setPayFile] = useState<File | null>(null);
+  const [payMode, setPayMode] = useState<"cash" | "installment">("cash");
+  const [instCount, setInstCount] = useState("3");
+  const [instGap, setInstGap] = useState("1");
   const [dup, setDup] = useState<{ id: string; name: string } | null>(null);
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
   // الاسم: لو إنجليزي خليه CAPITAL تلقائيًا (العربي زي ما هو)
@@ -36,6 +39,23 @@ export default function NewCustomerForm({
   const gross = Number(f.amount) || 0;
   const discPct = affMatch ? Number(affMatch.discount) || 0 : 0;
   const net = Math.max(0, Math.round(gross - (gross * discPct) / 100));
+
+  // حساب جدول الأقساط: يقسّم المبلغ ويحسب ميعاد كل قسط
+  function buildSchedule(total: number, count: number, gapMonths: number) {
+    const n = Math.max(1, Math.floor(count) || 1);
+    const per = Math.floor(total / n);
+    const rows: { amount: number; due: string }[] = [];
+    let sum = 0;
+    for (let i = 0; i < n; i++) {
+      const amount = i === n - 1 ? total - sum : per; // آخر قسط ياخد الباقي (لتجنب الكسور)
+      sum += amount;
+      const d = new Date();
+      d.setMonth(d.getMonth() + (i + 1) * (Math.max(1, Math.floor(gapMonths) || 1)));
+      rows.push({ amount, due: d.toISOString().slice(0, 10) });
+    }
+    return rows;
+  }
+  const schedule = payMode === "installment" && net > 0 ? buildSchedule(net, Number(instCount), Number(instGap)) : [];
 
   async function save() {
     if (!f.name.trim()) { toast("الاسم مطلوب"); return; }
@@ -89,6 +109,24 @@ export default function NewCustomerForm({
         await supabase.from("enrollment_finance").insert({
           enrollment_id: enr.id, agreed_amount: net, currency: f.currency,
         });
+        // نظام الدفع: كاش = قسط واحد مدفوع بالكامل / تقسيط = أقساط بمواعيد محسوبة
+        if (payMode === "cash") {
+          await supabase.from("installments").insert({
+            enrollment_id: enr.id, amount: net, currency: f.currency,
+            due_date: new Date().toISOString().slice(0, 10),
+            status: "paid", paid_at: new Date().toISOString(),
+          });
+        } else {
+          const rows = buildSchedule(net, Number(instCount), Number(instGap));
+          if (rows.length) {
+            await supabase.from("installments").insert(
+              rows.map((r) => ({
+                enrollment_id: enr.id, amount: r.amount, currency: f.currency,
+                due_date: r.due, status: "pending",
+              }))
+            );
+          }
+        }
       }
     }
     // متابعة
@@ -178,6 +216,53 @@ export default function NewCustomerForm({
           </div>
           <div className="fld"><label>المستحق بعد الخصم</label>
             <input className="inp num" dir="ltr" readOnly value={discPct > 0 ? `${net} (خصم ${discPct}%)` : (gross || "")} style={{ background: "var(--muted-soft)", fontWeight: 700 }} /></div>
+        </div>
+      )}
+
+      {!f.free && net > 0 && (
+        <div className="fld" style={{ marginTop: 8 }}>
+          <label>طريقة الدفع</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" onClick={() => setPayMode("cash")}
+              className={"btn" + (payMode === "cash" ? "" : " ghost")} style={{ flex: 1, justifyContent: "center" }}>
+              💵 كاش (دفع كامل)
+            </button>
+            <button type="button" onClick={() => setPayMode("installment")}
+              className={"btn" + (payMode === "installment" ? "" : " ghost")} style={{ flex: 1, justifyContent: "center" }}>
+              🗓️ تقسيط
+            </button>
+          </div>
+
+          {payMode === "cash" && (
+            <div style={{ fontSize: 12.5, color: "var(--green)", marginTop: 8, fontWeight: 600 }}>
+              هيتسجّل إن العميل دفع {net} {f.currency === "USD" ? "$" : "ج"} كاش، والمتبقّي 0.
+            </div>
+          )}
+
+          {payMode === "installment" && (
+            <div style={{ marginTop: 10 }}>
+              <div className="frow">
+                <div className="fld"><label>عدد الأقساط</label>
+                  <input className="inp num" dir="ltr" inputMode="numeric" value={instCount} onChange={(e) => setInstCount(e.target.value)} /></div>
+                <div className="fld"><label>كل قسط بعد كام شهر</label>
+                  <input className="inp num" dir="ltr" inputMode="numeric" value={instGap} onChange={(e) => setInstGap(e.target.value)} /></div>
+              </div>
+              {schedule.length > 0 && (
+                <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 10, marginTop: 8 }}>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6, fontWeight: 700 }}>
+                    مواعيد الأقساط (تلقائي):
+                  </div>
+                  {schedule.map((s, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "3px 0" }}>
+                      <span>القسط {i + 1}</span>
+                      <b className="num" dir="ltr">{s.amount} {f.currency === "USD" ? "$" : "ج"}</b>
+                      <span className="num" dir="ltr" style={{ color: "var(--muted)" }}>{s.due}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

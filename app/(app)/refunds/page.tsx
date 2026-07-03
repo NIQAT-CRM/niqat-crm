@@ -31,11 +31,14 @@ export default async function Refunds() {
     .order("created_at", { ascending: false });
 
   if (error) {
+    const missingTable = (error as any)?.code === "42P01" || /does not exist|relation .* does not/i.test((error as any)?.message || "");
     return (
       <div>
         <div className="page-h"><div><h1>{tr("refunds")}</h1></div></div>
         <div className="card" style={{ padding: 20, fontSize: 14, color: "var(--muted)" }}>
-          جدول الاسترداد لسه مش متعمل في قاعدة البيانات. شغّل SQL الـ refunds مرة واحدة في Supabase وهتشتغل الشاشة.
+          {missingTable
+            ? "جدول الاسترداد لسه مش متعمل في قاعدة البيانات. شغّل SQL الـ refunds مرة واحدة في Supabase وهتشتغل الشاشة."
+            : `تعذّر تحميل طلبات الاسترداد: ${(error as any)?.message || "خطأ غير معروف"}. لو المشكلة في الصلاحيات، شغّل تحديث سياسات الـ RLS من ملف refunds.sql.`}
         </div>
       </div>
     );

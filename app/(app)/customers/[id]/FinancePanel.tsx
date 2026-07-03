@@ -13,6 +13,14 @@ function money(n: number, cur: string) {
 }
 const paidOf = (e: Enr) => e.installments.filter((i) => i.status === "paid" || i.paidAt).reduce((s, i) => s + (Number(i.amount) || 0), 0);
 const isOverdue = (i: Inst) => !(i.status === "paid" || i.paidAt || !i.due) && new Date(i.due) < new Date(new Date().toDateString());
+// استنتاج نوع الدفع: كاش = قسط واحد مدفوع بالكامل | تقسيط = أكتر من قسط
+function payMode(e: Enr): "cash" | "installment" | "none" {
+  const n = e.installments.length;
+  if (n === 0) return "none";
+  const allPaid = e.installments.every((i) => i.status === "paid" || i.paidAt);
+  if (n === 1 && allPaid) return "cash";
+  return "installment";
+}
 
 export default function FinancePanel({ enrollments, customerId, meId }: { enrollments: Enr[]; customerId: string; meId: string }) {
   const tr = useT();
@@ -84,10 +92,17 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
         {enrollments.map((e) => {
           const paid = paidOf(e);
           const remaining = (Number(e.agreed) || 0) - paid;
+          const mode = payMode(e);
+          const instTotal = e.installments.length;
+          const instPaid = e.installments.filter((i) => i.status === "paid" || i.paidAt).length;
           return (
             <div key={e.id} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                <b style={{ color: "var(--ink)" }}>{e.diploma}{e.free && <span style={{ color: "var(--brand)", fontSize: 12, marginInlineStart: 6 }}>🎁 {tr("gift")}</span>}</b>
+                <b style={{ color: "var(--ink)" }}>{e.diploma}
+                  {e.free && <span style={{ color: "var(--brand)", fontSize: 12, marginInlineStart: 6 }}>🎁 {tr("gift")}</span>}
+                  {!e.free && mode === "cash" && <span style={{ color: "var(--green)", fontSize: 11.5, marginInlineStart: 6, fontWeight: 700 }}>💵 كاش</span>}
+                  {!e.free && mode === "installment" && <span style={{ color: "var(--amber)", fontSize: 11.5, marginInlineStart: 6, fontWeight: 700 }}>🗓️ تقسيط ({instPaid}/{instTotal})</span>}
+                </b>
                 <div style={{ display: "flex", gap: 12, fontSize: 12.5 }}>
                   <span style={{ color: "var(--muted)" }}>{tr("agreed")}: {editAgreedId === e.id ? (
                     <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
