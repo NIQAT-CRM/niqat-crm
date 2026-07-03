@@ -13,12 +13,12 @@ import { getLang, tFor } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
-const TEAM_AR: Record<string, string> = {
-  sales: "فريق المبيعات",
-  support: "فريق الدعم",
-  admin: "الإدارة",
-  ops: "العمليات",
-  operations: "العمليات",
+const TEAM_LBL: Record<string, { ar: string; en: string }> = {
+  sales: { ar: "فريق المبيعات", en: "Sales Team" },
+  support: { ar: "فريق الدعم", en: "Support Team" },
+  admin: { ar: "الإدارة", en: "Admin" },
+  ops: { ar: "العمليات", en: "Operations" },
+  operations: { ar: "العمليات", en: "Operations" },
 };
 
 function initials(name: string) {
@@ -53,15 +53,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     supabase.from("customers").select("id,name"),
   ]);
   const custName = new Map(((profRes.data as any[]) || []).map((c) => [c.id, c.name]));
+  const lang = getLang();
+  const t = tFor(lang);
   type NItem = { id: string; kind: "follow" | "handoff" | "overdue"; text: string; href: string; sub: string };
   const notif: NItem[] = [];
   for (const f of (fuRes.data as any[]) || []) {
-    notif.push({ id: "fu" + f.id, kind: "follow", text: custName.get(f.customer_id) || "عميل",
-      href: `/customers/${f.customer_id}`, sub: f.note || "متابعة مستحقة" });
+    notif.push({ id: "fu" + f.id, kind: "follow", text: custName.get(f.customer_id) || t("customerFallback"),
+      href: `/customers/${f.customer_id}`, sub: f.note || t("followDueSub") });
   }
   for (const h of (hoListRes.data as any[]) || []) {
-    notif.push({ id: "ho" + h.id, kind: "handoff", text: custName.get(h.customer_id) || "عميل",
-      href: `/customers/${h.customer_id}`, sub: "بانتظار تفعيل الأكسس" });
+    notif.push({ id: "ho" + h.id, kind: "handoff", text: custName.get(h.customer_id) || t("customerFallback"),
+      href: `/customers/${h.customer_id}`, sub: t("awaitAccessSub") });
   }
   if (profile?.can_see_finance) {
     const { data: ov } = await supabase.from("installments")
@@ -72,16 +74,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       const enrCust = new Map(((enrs as any[]) || []).map((e) => [e.id, e.customer_id]));
       for (const i of (ov as any[])) {
         const cid = enrCust.get(i.enrollment_id);
-        notif.push({ id: "in" + i.id, kind: "overdue", text: custName.get(cid) || "عميل",
-          href: cid ? `/customers/${cid}` : "/finance", sub: `قسط متأخر${i.due_date ? " · " + String(i.due_date).slice(0, 10) : ""}` });
+        notif.push({ id: "in" + i.id, kind: "overdue", text: custName.get(cid) || t("customerFallback"),
+          href: cid ? `/customers/${cid}` : "/finance", sub: `${t("overdueInstSub")}${i.due_date ? " · " + String(i.due_date).slice(0, 10) : ""}` });
       }
     }
   }
 
-  const lang = getLang();
-  const t = tFor(lang);
-  const name = profile?.full_name || user.email || "مستخدم";
-  const teamLabel = TEAM_AR[(profile?.team || "").toLowerCase()] || profile?.team || "—";
+  const name = profile?.full_name || user.email || t("userFallback");
+  const teamKey = (profile?.team || "").toLowerCase();
+  const teamLabel = TEAM_LBL[teamKey] ? TEAM_LBL[teamKey][lang] : (profile?.team || "—");
 
   return (
     <LangProvider lang={lang}>

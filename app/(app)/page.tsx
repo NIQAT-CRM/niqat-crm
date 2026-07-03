@@ -6,13 +6,13 @@ import BatchDoneBtn from "./batches/BatchDoneBtn";
 export const dynamic = "force-dynamic";
 
 const STAGES = [
-  { key: "new", label: "جديد", color: "#2F6BFF" },
-  { key: "contacted", label: "تم التواصل", color: "#0FA3A3" },
-  { key: "interested", label: "مهتم", color: "#7B61FF" },
-  { key: "quote", label: "عرض سعر مُرسل", color: "#E6A700" },
-  { key: "negotiation", label: "تفاوض", color: "#F08A24" },
-  { key: "enrolled", label: "مسجّل / دفع", color: "#18A957" },
-  { key: "lost", label: "مؤجل / مرفوض", color: "#94A2BB" },
+  { key: "new", labelKey: "dashStageNew", color: "#2F6BFF" },
+  { key: "contacted", labelKey: "dashStageContacted", color: "#0FA3A3" },
+  { key: "interested", labelKey: "dashStageInterested", color: "#7B61FF" },
+  { key: "quote", labelKey: "dashStageQuote", color: "#E6A700" },
+  { key: "negotiation", labelKey: "dashStageNegotiation", color: "#F08A24" },
+  { key: "enrolled", labelKey: "dashStageEnrolled", color: "#18A957" },
+  { key: "lost", labelKey: "dashStageLost", color: "#94A2BB" },
 ];
 const DC = ["#F08A24", "#2F6BFF", "#0FA3A3", "#7B61FF", "#18A957", "#E6A700", "#E0483B"];
 const fmtMoney = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
@@ -110,10 +110,10 @@ export default async function Dashboard() {
       </div>
     ) : null;
 
-  const overdueRows = overdueInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || "عميل", `قسط متأخر · ${fmtDate(i.due_date)}`, "#E5484D") : null; }).filter(Boolean);
-  const soonRows = soonInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || "عميل", `يستحق ${fmtDate(i.due_date)}`, "#F5A623") : null; }).filter(Boolean);
-  const followRows = followItems.map((f) => actionRow(f.customer_id, cName.get(f.customer_id) || "عميل", f.note || "متابعة مستحقة", "#2F6BFF"));
-  const handoffRows = handoffItems.map((h) => actionRow(h.customer_id, cName.get(h.customer_id) || "عميل", "بانتظار تفعيل الأكسس", "#F08A24"));
+  const overdueRows = overdueInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customerFallback"), `${tr("overdueInstSub")} · ${fmtDate(i.due_date)}`, "#E5484D") : null; }).filter(Boolean);
+  const soonRows = soonInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customerFallback"), `${tr("dueOn")} ${fmtDate(i.due_date)}`, "#F5A623") : null; }).filter(Boolean);
+  const followRows = followItems.map((f) => actionRow(f.customer_id, cName.get(f.customer_id) || tr("customerFallback"), f.note || tr("followDueSub"), "#2F6BFF"));
+  const handoffRows = handoffItems.map((h) => actionRow(h.customer_id, cName.get(h.customer_id) || tr("customerFallback"), tr("awaitAccessSub"), "#F08A24"));
   const actionCount = overdueRows.length + soonRows.length + followRows.length + handoffRows.length;
 
   // by diploma donut
@@ -157,7 +157,7 @@ export default async function Dashboard() {
 
   return (
     <div>
-      <div className="page-h"><div><h1>{tr("dash")}</h1><p>ملخّص حيّ من قاعدة البيانات</p></div></div>
+      <div className="page-h"><div><h1>{tr("dash")}</h1><p>{tr("dashDesc")}</p></div></div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 14 }}>
         {kpis.map((k) => (
@@ -168,8 +168,8 @@ export default async function Dashboard() {
         ))}
         {canDailySales && (
           <div className="card" style={{ padding: 18, background: "linear-gradient(135deg,#0FA3A310,#18A95710)" }}>
-            <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}><span style={{ marginInlineEnd: 6 }}>🟢</span>مبيعات النهاردة</div>
-            <div className="num" style={{ fontSize: 28, fontWeight: 800, color: "#0FA3A3" }}>{fmtMoney(todaySales)} <span style={{ fontSize: 15 }}>ج</span></div>
+            <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}><span style={{ marginInlineEnd: 6 }}>🟢</span>{tr("salesToday")}</div>
+            <div className="num" style={{ fontSize: 28, fontWeight: 800, color: "#0FA3A3" }}>{fmtMoney(todaySales)} <span style={{ fontSize: 15 }}>{tr("egpShort")}</span></div>
           </div>
         )}
       </div>
@@ -181,13 +181,13 @@ export default async function Dashboard() {
         </div>
         <div style={{ marginTop: 10 }}>
           {actionCount === 0 ? (
-            <div style={{ fontSize: 13.5, color: "var(--muted)", textAlign: "center", padding: 14 }}>مفيش حاجة مطلوبة دلوقتي 🎉</div>
+            <div style={{ fontSize: 13.5, color: "var(--muted)", textAlign: "center", padding: 14 }}>{tr("noAlerts")} 🎉</div>
           ) : (
             <>
-              {canFinance && grp("أقساط متأخرة", "#E5484D", overdueRows)}
-              {canFinance && grp("تستحق خلال ٧ أيام", "#F5A623", soonRows)}
-              {grp("متابعات مستحقة", "#2F6BFF", followRows)}
-              {grp("تسليمات معلّقة", "#F08A24", handoffRows)}
+              {canFinance && grp(tr("overdueInst"), "#E5484D", overdueRows)}
+              {canFinance && grp(tr("dueSoon"), "#F5A623", soonRows)}
+              {grp(tr("followDue"), "#2F6BFF", followRows)}
+              {grp(tr("pendingAccessT"), "#F08A24", handoffRows)}
             </>
           )}
         </div>
@@ -199,9 +199,9 @@ export default async function Dashboard() {
           <h3>{tr("schedule")}</h3><span className="chip">{batches.length}</span>
         </div>
         <div style={{ marginTop: 8 }}>
-          {batches.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا توجد باتشات.</div>}
+          {batches.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noBatches")}</div>}
           {batches.map((b) => {
-            const st = b.status === "closed" ? { l: "منتهية", c: "#94A2BB" } : b.status === "full" ? { l: "مكتملة", c: "#E0483B" } : { l: "متاحة", c: "#18A957" };
+            const st = b.status === "closed" ? { l: tr("endedLabel"), c: "#94A2BB" } : b.status === "full" ? { l: tr("fullLabel"), c: "#E0483B" } : { l: tr("availableLabel"), c: "#18A957" };
             const end = endMap.get(b.id);
             const range = (b.start_date || "—") + (end ? " → " + end : "");
             return (
@@ -226,7 +226,7 @@ export default async function Dashboard() {
               return (
                 <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ width: 96, fontSize: 12.5, fontWeight: 700 }}>
-                    <span style={{ background: s.color, display: "inline-block", width: 8, height: 8, borderRadius: "50%", marginInlineEnd: 6 }} />{s.label}
+                    <span style={{ background: s.color, display: "inline-block", width: 8, height: 8, borderRadius: "50%", marginInlineEnd: 6 }} />{tr(s.labelKey)}
                   </span>
                   <div style={{ flex: 1, height: 9, background: "#eef2f8", borderRadius: 20, overflow: "hidden" }}>
                     <div style={{ width: pct + "%", height: "100%", background: s.color }} />
@@ -241,7 +241,7 @@ export default async function Dashboard() {
         <div className="card" style={{ padding: 18 }}>
           <div className="card-h"><h3>{tr("byDiploma")}</h3></div>
           {byDip.length === 0 ? (
-            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 10 }}>لا توجد اشتراكات.</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 10 }}>{tr("noEnrolls")}</div>
           ) : (
             <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
               <div style={{ width: 120, height: 120, borderRadius: "50%", background: `conic-gradient(${segs})`, flexShrink: 0 }} />
@@ -262,10 +262,10 @@ export default async function Dashboard() {
       {/* التخصصات الهندسية (المسجّلين الدافعين) */}
       <div className="card" style={{ padding: 18, marginTop: 16 }}>
         <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3>التخصصات الهندسية (مسجّلين / دافعين)</h3><span className="chip">{spRows.length}</span>
+          <h3>{tr("specDist")}</h3><span className="chip">{spRows.length}</span>
         </div>
         <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9 }}>
-          {spRows.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا يوجد مسجّلون بعد.</div>}
+          {spRows.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noEnrolledYet")}</div>}
           {spRows.map((x, i) => {
             const pct = Math.round((x.n / spMax) * 100);
             return (
@@ -302,7 +302,7 @@ export default async function Dashboard() {
         <div className="card" style={{ padding: 18 }}>
           <div className="card-h"><h3>{tr("recentAct")}</h3></div>
           <div style={{ marginTop: 8 }}>
-            {((logRes.data as any[]) || []).length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا يوجد نشاط بعد.</div>}
+            {((logRes.data as any[]) || []).length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noActivity")}</div>}
             {((logRes.data as any[]) || []).map((l, idx) => (
               <div key={idx} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
                 <span style={{ marginTop: 5, width: 7, height: 7, borderRadius: "50%", background: "#18A957", flexShrink: 0 }} />

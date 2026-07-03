@@ -6,14 +6,14 @@ import CustomersTools from "./CustomersTools";
 
 export const dynamic = "force-dynamic";
 
-const STAGES: Record<string, { label: string; color: string }> = {
-  new: { label: "جديد", color: "#2F6BFF" }, contacted: { label: "تم التواصل", color: "#0FA3A3" },
-  interested: { label: "مهتم", color: "#7B61FF" }, quote: { label: "عرض سعر مُرسل", color: "#E6A700" },
-  negotiation: { label: "تفاوض", color: "#F08A24" },
-  enrolled: { label: "مسجّل / دفع", color: "#18A957" }, onhold: { label: "معلّق", color: "#E6A700" },
-  lost: { label: "مؤجل / مرفوض", color: "#94A2BB" },
+const STAGES: Record<string, { labelKey: string; color: string }> = {
+  new: { labelKey: "dashStageNew", color: "#2F6BFF" }, contacted: { labelKey: "dashStageContacted", color: "#0FA3A3" },
+  interested: { labelKey: "dashStageInterested", color: "#7B61FF" }, quote: { labelKey: "dashStageQuote", color: "#E6A700" },
+  negotiation: { labelKey: "dashStageNegotiation", color: "#F08A24" },
+  enrolled: { labelKey: "dashStageEnrolled", color: "#18A957" }, onhold: { labelKey: "dashStageOnhold", color: "#E6A700" },
+  lost: { labelKey: "dashStageLost", color: "#94A2BB" },
 };
-const STAGE_OPTS = Object.entries(STAGES).map(([v, x]) => ({ v, label: x.label }));
+const STAGE_OPTS = Object.entries(STAGES).map(([v, x]) => ({ v, label: tr(x.labelKey) }));
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -96,19 +96,19 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const exportRows = customers.map((c) => ({
     name: c.name || "", diploma: (custDips.get(c.id) || []).join(" / "),
     phone1: c.phone1 || "", phone2: c.phone2 || "", email: c.email || "", company: c.company || "",
-    stage: (STAGES[c.stage] || STAGES.new).label, owner: pName.get(c.owner_id) || "غير معيّن",
+    stage: tr((STAGES[c.stage] || STAGES.new).labelKey), owner: pName.get(c.owner_id) || tr("unassigned"),
     ...(canFinance ? { remaining: money(remMap.get(c.id) || 0) } : {}),
   }));
   const exportHeaders: [string, string][] = [
-    ["name", "الاسم"], ["diploma", "الدبلومات"], ["phone1", "موبايل ١"], ["phone2", "موبايل ٢"],
-    ["email", "الإيميل"], ["company", "الشركة"], ["stage", "المرحلة"], ["owner", "المسؤول"],
-    ...(canFinance ? [["remaining", "المتبقّي"]] as [string, string][] : []),
+    ["name", tr("name")], ["diploma", tr("diplomas")], ["phone1", tr("phone1")], ["phone2", tr("phone2")],
+    ["email", tr("email")], ["company", tr("company")], ["stage", tr("stage")], ["owner", tr("owner")],
+    ...(canFinance ? [["remaining", tr("remaining")]] as [string, string][] : []),
   ];
 
   return (
     <div>
       <div className="page-h">
-        <div><h1>{tr("customers")}</h1><p>{customers.length} عميل{q ? <> · بحث: «{q}»</> : null}</p></div>
+        <div><h1>{tr("customers")}</h1><p>{customers.length} {tr("customer")}{q ? <> · {tr("searchColon")} «{q}»</> : null}</p></div>
         <div style={{ display: "flex", gap: 8 }}>
           {canExport && <ExportButton rows={exportRows} headers={exportHeaders} />}
           <Link className="btn" href="/customers/new">
@@ -154,19 +154,19 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
                     ) : "—"}
                   </td>
                   <td className="num" dir="ltr">{r.phone1 || "—"}</td>
-                  <td><span className="stg" style={{ background: st.color + "1a", color: st.color }}>{st.label}</span></td>
+                  <td><span className="stg" style={{ background: st.color + "1a", color: st.color }}>{tr(st.labelKey)}</span></td>
                   {canFinance && (
                     <td className="num" dir="ltr" style={{ fontWeight: 700 }}>
-                      {rem > 0 ? money(rem) + " ج" : "—"}
-                      {od && <span className="stg" style={{ background: "#FDECEA", color: "#E0483B", marginInlineStart: 6, fontSize: 10 }}>متأخر</span>}
+                      {rem > 0 ? money(rem) + " " + tr("egpShort") : "—"}
+                      {od && <span className="stg" style={{ background: "#FDECEA", color: "#E0483B", marginInlineStart: 6, fontSize: 10 }}>{tr("overdueTag")}</span>}
                     </td>
                   )}
-                  <td>{pName.get(r.owner_id) || "غير معيّن"}</td>
+                  <td>{pName.get(r.owner_id) || tr("unassigned")}</td>
                 </tr>
               );
             })}
             {customers.length === 0 && (
-              <tr><td colSpan={canFinance ? 6 : 5} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>لا يوجد عملاء مطابقين.</td></tr>
+              <tr><td colSpan={canFinance ? 6 : 5} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>{tr("noResultsTable")}</td></tr>
             )}
           </tbody>
         </table>
