@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import AddBatch from "./AddBatch";
+import BatchActions from "./BatchActions";
 import EmptyState from "../EmptyState";
 export const dynamic = "force-dynamic";
 
@@ -82,6 +83,17 @@ export default async function Batches() {
                   <div className="brow"><span>{tr("batchPrice")}</span><b className="num" dir="ltr">{new Intl.NumberFormat("en").format(Number((b as any).price))} {(b as any).currency === "USD" ? "$" : tr("egpShort")}</b></div>
                 )}
               </div>
+              {canManage && (
+                <BatchActions
+                  batch={{
+                    id: b.id as string, code: b.code as string, status: (b.status as string) || "open",
+                    start_date: (b.start_date as string) || null, end_date: (b.end_date as string) || null,
+                    capacity: (b.capacity as number) ?? null, notes: (b.notes as string) || null,
+                    price: ((b as any).price as number) ?? null, currency: ((b as any).currency as string) || "EGP",
+                  }}
+                  enrolledCount={en}
+                />
+              )}
             </div>
           );
         })}
