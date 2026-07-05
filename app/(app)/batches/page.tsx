@@ -17,7 +17,7 @@ export default async function Batches() {
     { data: enr },
   ] = await Promise.all([
     supabase.from("profiles").select("can_manage_batches").eq("id", user?.id || "").maybeSingle(),
-    supabase.from("batches").select("id,code,status,start_date,end_date,capacity,notes").order("created_at", { ascending: false }),
+    supabase.from("batches").select("id,code,status,start_date,end_date,capacity,notes,price,currency").order("created_at", { ascending: false }),
     supabase.from("batches").select("id,diploma_id"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
     supabase.from("enrollments").select("batch_id"),
@@ -78,6 +78,9 @@ export default async function Batches() {
               <div style={{ marginTop: 14 }}>
                 <div className="brow"><span>{tr("startDate")}</span><b className="num">{b.start_date ? String(b.start_date).slice(0, 10) : "—"}</b></div>
                 <div className="brow"><span>{tr("endDate")}</span><b className="num">{b.end_date ? String(b.end_date).slice(0, 10) : "—"}</b></div>
+                {Number((b as any).price) > 0 && (
+                  <div className="brow"><span>{tr("batchPrice")}</span><b className="num" dir="ltr">{new Intl.NumberFormat("en").format(Number((b as any).price))} {(b as any).currency === "USD" ? "$" : tr("egpShort")}</b></div>
+                )}
               </div>
             </div>
           );

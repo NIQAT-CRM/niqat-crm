@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 
-type Opt = { v: string; label: string };
+type Opt = { v: string; label: string; price?: number; currency?: string };
 type Enr = { id: string; diploma: string; batch: string; diplomaId: string; batchId: string };
 type Addon = { id: string; type: string; name: string; amount: number; free: boolean; note: string; paid: boolean; shot_url?: string };
 
@@ -45,6 +45,16 @@ export default function ServicesPanel({
 
   const svNames = svType === "diploma" ? dipOpts : svType === "accred" ? accreditations.map((n) => ({ v: n, label: n })) : svType === "project" ? projects.map((n) => ({ v: n, label: n })) : libraries.map((n) => ({ v: n, label: n }));
   const batchLabel = (id: string) => batchOpts.find((b) => b.v === id)?.label || "—";
+
+  // بند 5: ملء المبلغ تلقائياً من سعر الباتش عند اختياره (قابل للتعديل)
+  useEffect(() => {
+    if (!svBatch) return;
+    const b = batchOpts.find((x) => x.v === svBatch);
+    if (b && Number(b.price) > 0) {
+      setSvAmount(String(b.price));
+      setSvCurrency(b.currency || "EGP");
+    }
+  }, [svBatch]);
 
   async function logAudit(action: string, detail: string) {
     await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action, detail });

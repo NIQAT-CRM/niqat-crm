@@ -10,7 +10,7 @@ export default function AddBatch({ diplomas = [] }: { diplomas?: { id: string; n
   const router = useRouter();
   const supabase = createClient();
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ code: "", diploma_id: "", start_date: "", end_date: "", capacity: "", notes: "" });
+  const [f, setF] = useState({ code: "", diploma_id: "", start_date: "", end_date: "", capacity: "", notes: "", price: "", currency: "EGP" });
   const [busy, setBusy] = useState(false);
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
 
@@ -21,14 +21,15 @@ export default function AddBatch({ diplomas = [] }: { diplomas?: { id: string; n
       code: f.code.trim(), start_date: f.start_date || null,
       capacity: f.capacity ? Number(f.capacity) : null, notes: f.notes.trim(), status: "open",
     };
-    const full = { ...base, end_date: f.end_date || null, diploma_id: f.diploma_id || null };
+    const priceFields = { price: f.price ? Number(f.price) : 0, currency: f.currency || "EGP" };
+    const full = { ...base, ...priceFields, end_date: f.end_date || null, diploma_id: f.diploma_id || null };
     let error = (await supabase.from("batches").insert(full)).error;
-    if (error && /end_date|diploma_id/.test((error as any).message || "")) {
+    if (error && /end_date|diploma_id|price|currency/.test((error as any).message || "")) {
       error = (await supabase.from("batches").insert(base)).error; // أعمدة لسه مش موجودة
     }
     setBusy(false);
     if (error) { toast((error as any).code === "23505" ? tr("codeExists") : tr("saveFailed")); return; }
-    setF({ code: "", diploma_id: "", start_date: "", end_date: "", capacity: "", notes: "" }); setOpen(false);
+    setF({ code: "", diploma_id: "", start_date: "", end_date: "", capacity: "", notes: "", price: "", currency: "EGP" }); setOpen(false);
     toast(tr("batchAdded")); router.refresh();
   }
 
@@ -55,6 +56,14 @@ export default function AddBatch({ diplomas = [] }: { diplomas?: { id: string; n
         <div className="frow">
           <div className="fld"><label>{tr("startDate")}</label><input className="inp num" type="date" dir="ltr" value={f.start_date} onChange={(e) => set("start_date", e.target.value)} /></div>
           <div className="fld"><label>{tr("endDate")}</label><input className="inp num" type="date" dir="ltr" value={f.end_date} onChange={(e) => set("end_date", e.target.value)} /></div>
+        </div>
+        <div className="fld"><label>{tr("batchPrice")}</label>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input className="inp num" dir="ltr" inputMode="numeric" style={{ flex: 1 }} placeholder="0" value={f.price} onChange={(e) => set("price", e.target.value)} />
+            <select className="inp" style={{ width: 80 }} value={f.currency} onChange={(e) => set("currency", e.target.value)}>
+              <option value="EGP">{tr("egpShort")}</option><option value="USD">$</option>
+            </select>
+          </div>
         </div>
         <div className="fld"><label>{tr("notes")}</label><input className="inp" value={f.notes} onChange={(e) => set("notes", e.target.value)} /></div>
         <div style={{ display: "flex", gap: 8 }}>

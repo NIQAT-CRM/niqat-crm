@@ -1,12 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 import { autoHandoffIfNeeded } from "@/lib/handoff";
+import { COUNTRIES, DEFAULT_DIAL, combineDialAndNumber, normalizePhone } from "@/lib/phone";
 
 type Opt = { id: string; name: string };
+type BatchOpt = { id: string; name: string; price?: number; currency?: string; diploma_id?: string };
 const STAGES = [
   ["new", "dashStageNew"], ["contacted", "dashStageContacted"], ["interested", "dashStageInterested"],
   ["quote", "dashStageQuote"], ["negotiation", "dashStageNegotiation"], ["enrolled", "dashStageEnrolled"], ["lost", "dashStageLost"],
@@ -16,7 +18,7 @@ type Aff = { name: string; code: string; discount: number };
 
 export default function NewCustomerForm({
   specialties, diplomas, batches, meId, affiliates = [],
-}: { specialties: Opt[]; diplomas: Opt[]; batches: Opt[]; meId: string; affiliates?: Aff[] }) {
+}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; meId: string; affiliates?: Aff[] }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
@@ -26,6 +28,9 @@ export default function NewCustomerForm({
     follow: "", diploma_id: "", batch_id: "", free: false, note: "",
     amount: "", currency: "EGP",
   });
+  // بند 4: كود الدولة لكل رقم (افتراضي مصر)
+  const [dial1, setDial1] = useState(DEFAULT_DIAL);
+  const [dial2, setDial2] = useState(DEFAULT_DIAL);
   const [saving, setSaving] = useState(false);
   const [payFile, setPayFile] = useState<File | null>(null);
   const [payMode, setPayMode] = useState<"cash" | "installment">("cash");
@@ -33,11 +38,46 @@ export default function NewCustomerForm({
   const [instGap, setInstGap] = useState("1");
   const [payFirstNow, setPayFirstNow] = useState(false);
   const [dup, setDup] = useState<{ id: string; name: string } | null>(null);
+  // بند 3: كشف تكرار فوري أثناء الكتابة
+  const [liveDup, setLiveDup] = useState<{ id: string; name: string; field: string } | null>(null);
   // بند 2: إظهار قسم الاشتراك (يدوي أو حسب المرحلة)
   const [showSubManual, setShowSubManual] = useState(false);
   // فكرة عبدالقادر: المبيعات يعلّم إن الاشتراك ده يتفعّل عند الدعم
   const [needsActivation, setNeedsActivation] = useState(false);
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
+
+  // بند 3: كشف تكرار فوري أثناء كتابة الموبايل/الإيميل (debounced)
+  useEffect(() => {
+    const p1 = f.phone1.trim(), p2 = f.phone2.trim(), em = f.email.trim();
+    if (!p1 && !p2 && !em) { setLiveDup(null); return; }
+    const t = setTimeout(async () => {
+      const ors: string[] = [];
+      const n1 = p1 ? normalizePhone(p1, dial1) : "";
+      const n2 = p2 ? normalizePhone(p2, dial2) : "";
+      if (p1) ors.push(`phone1.eq.${p1}`, `phone2.eq.${p1}`);
+      if (n1 && n1 !== p1) ors.push(`phone1.eq.${n1}`, `phone2.eq.${n1}`);
+      if (p2) ors.push(`phone1.eq.${p2}`, `phone2.eq.${p2}`);
+      if (n2 && n2 !== p2) ors.push(`phone1.eq.${n2}`, `phone2.eq.${n2}`);
+      if (em) ors.push(`email.eq.${em}`);
+      if (!ors.length) { setLiveDup(null); return; }
+      const { data } = await supabase.from("customers")
+        .select("id,name,phone1,phone2,email").eq("deleted", false).or(ors.join(",")).limit(1).maybeSingle();
+      if (data) {
+        const field = (em && (data as any).email === em) ? tr("email") : tr("phone1");
+        setLiveDup({ id: (data as any).id, name: (data as any).name || tr("customer"), field });
+      } else setLiveDup(null);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [f.phone1, f.phone2, f.email, dial1, dial2]);
+
+  // بند 5: ملء المبلغ تلقائياً من سعر الباتش (قابل للتعديل يدوي)
+  useEffect(() => {
+    if (!f.batch_id) return;
+    const b = batches.find((x) => x.id === f.batch_id);
+    if (b && Number(b.price) > 0) {
+      setF((s) => ({ ...s, amount: String(b.price), currency: b.currency || "EGP" }));
+    }
+  }, [f.batch_id]);
   // بند 2: قسم الاشتراك يظهر لما المرحلة (عرض سعر/تفاوض/مسجّل) أو بزر يدوي
   const stageOpensSub = ["quote", "negotiation", "enrolled"].includes(f.stage);
   const showSub = stageOpensSub || showSubManual;
@@ -74,10 +114,14 @@ export default function NewCustomerForm({
     setSaving(true);
     setDup(null);
 
-    // منع التكرار: نفس الاسم أو الموبايل أو الإيميل
+    // بند 4: تطبيع الأرقام لصيغة دولية نظيفة قبل الحفظ
+    const phone1 = f.phone1.trim() ? combineDialAndNumber(dial1, f.phone1) : "";
+    const phone2 = f.phone2.trim() ? combineDialAndNumber(dial2, f.phone2) : "";
+
+    // منع التكرار: نفس الاسم أو الموبايل (الخام أو المطبّع) أو الإيميل
     const ors: string[] = [`name.eq.${f.name.trim()}`];
-    if (f.phone1.trim()) ors.push(`phone1.eq.${f.phone1.trim()}`, `phone2.eq.${f.phone1.trim()}`);
-    if (f.phone2.trim()) ors.push(`phone1.eq.${f.phone2.trim()}`, `phone2.eq.${f.phone2.trim()}`);
+    for (const p of [f.phone1.trim(), phone1]) if (p) ors.push(`phone1.eq.${p}`, `phone2.eq.${p}`);
+    for (const p of [f.phone2.trim(), phone2]) if (p) ors.push(`phone1.eq.${p}`, `phone2.eq.${p}`);
     if (f.email.trim()) ors.push(`email.eq.${f.email.trim()}`);
     const { data: exist } = await supabase.from("customers")
       .select("id,name").eq("deleted", false).or(ors.join(",")).limit(1).maybeSingle();
@@ -89,7 +133,7 @@ export default function NewCustomerForm({
     }
 
     const { data: cust, error } = await supabase.from("customers").insert({
-      name: f.name.trim(), phone1: f.phone1.trim() || null, phone2: f.phone2.trim() || null,
+      name: f.name.trim(), phone1: phone1 || null, phone2: phone2 || null,
       email: f.email.trim() || null, company: f.company.trim(), affiliate_code: f.affiliate_code.trim(),
       specialty_id: f.specialty_id || null, stage: f.stage, residency: f.residency.trim(),
       grad_year: f.grad_year.trim() || null, source: f.source.trim(),
@@ -183,13 +227,35 @@ export default function NewCustomerForm({
       <input className={"inp" + (ltr ? " num" : "")} dir={ltr ? "ltr" : "rtl"} value={(f as any)[k]} onChange={(e) => set(k, e.target.value)} /></div>
   );
 
+  // بند 4: خانة رقم بكود دولة منفصل
+  const PhoneField = (label: string, k: string, dial: string, setDial: (v: string) => void) => (
+    <div className="fld"><label>{label}</label>
+      <div style={{ display: "flex", gap: 6 }}>
+        <select className="inp" style={{ width: 96, flexShrink: 0 }} value={dial} onChange={(e) => setDial(e.target.value)}>
+          {COUNTRIES.map((c) => <option key={c.code} value={c.dial}>{c.flag} +{c.dial}</option>)}
+        </select>
+        <input className="inp num" dir="ltr" inputMode="tel" style={{ flex: 1 }}
+          value={(f as any)[k]} onChange={(e) => set(k, e.target.value)} />
+      </div>
+    </div>
+  );
+
   return (
     <div className="card" style={{ padding: 20 }}>
       <div className="sec-t" style={{ marginTop: 0 }}>{tr("basicData")}</div>
       <div className="fld"><label>{tr("name")} *</label>
         <input className="inp" value={f.name} onChange={(e) => setName(e.target.value)} placeholder={tr("nameArEnPh")} /></div>
-      <div className="frow">{I(tr("phone1"), "phone1", true)}{I(tr("phone2"), "phone2", true)}</div>
+      <div className="frow">{PhoneField(tr("phone1"), "phone1", dial1, setDial1)}{PhoneField(tr("phone2"), "phone2", dial2, setDial2)}</div>
       <div className="frow">{I(tr("email"), "email", true)}{I(tr("company"), "company")}</div>
+
+      {/* بند 3: تحذير تكرار فوري أثناء الكتابة */}
+      {liveDup && (
+        <div style={{ border: "1px solid var(--amber)", background: "rgba(230,167,0,.08)", borderRadius: 10, padding: 10, marginBottom: 8, fontSize: 13 }}>
+          ⚠️ <b>{tr("possibleDuplicate")}:</b> {liveDup.name}
+          <a href={`/customers/${liveDup.id}`} style={{ color: "var(--brand)", fontWeight: 700, marginInlineStart: 8 }}>{tr("openExistingAccount")} ←</a>
+        </div>
+      )}
+
       {I(tr("affiliateCode"), "affiliate_code", true)}
       {affMatch && <div style={{ fontSize: 12.5, color: "var(--green)", marginTop: -6, marginBottom: 8 }}>✓ {affMatch.name} — {tr("discountWord")} {discPct}%</div>}
       {affUnknown && <div style={{ fontSize: 12.5, color: "#E0483B", marginTop: -6, marginBottom: 8 }}>{tr("codeNotInList")}</div>}
