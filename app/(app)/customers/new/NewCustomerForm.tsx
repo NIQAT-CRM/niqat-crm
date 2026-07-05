@@ -44,6 +44,8 @@ export default function NewCustomerForm({
   const [showSubManual, setShowSubManual] = useState(false);
   // فكرة عبدالقادر: المبيعات يعلّم إن الاشتراك ده يتفعّل عند الدعم
   const [needsActivation, setNeedsActivation] = useState(false);
+  // بند 6: المبلغ النهائي بعد الخصم — يُحسب تلقائي، وقابل للتعديل يدوي
+  const [netOverride, setNetOverride] = useState<string | null>(null);
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
 
   // بند 3: كشف تكرار فوري أثناء كتابة الموبايل/الإيميل (debounced)
@@ -87,7 +89,9 @@ export default function NewCustomerForm({
   const affUnknown = f.affiliate_code.trim() !== "" && !affMatch;
   const gross = Number(f.amount) || 0;
   const discPct = affMatch ? Number(affMatch.discount) || 0 : 0;
-  const net = Math.max(0, Math.round(gross - (gross * discPct) / 100));
+  const netAuto = Math.max(0, Math.round(gross - (gross * discPct) / 100));
+  // بند 6: لو المستخدم عدّل المبلغ النهائي يدوياً نستخدمه، وإلا المحسوب تلقائياً
+  const net = netOverride !== null && netOverride !== "" ? Math.max(0, Number(netOverride) || 0) : netAuto;
 
   // حساب جدول الأقساط: يقسّم المبلغ ويحسب ميعاد كل قسط
   function buildSchedule(total: number, count: number, gapMonths: number) {
@@ -209,6 +213,15 @@ export default function NewCustomerForm({
       await supabase.from("follow_ups").insert({
         customer_id: cid, owner_id: meId, due_at: new Date(f.follow).toISOString(), note: "", done: false,
       });
+    } else {
+      // بند 7: ليد جديد من غير موعد تواصل → مهمة "مكالمة أولى" تلقائية بعد 7 أيام
+      const due = new Date(Date.now() + 7 * 864e5);
+      try {
+        await supabase.from("tasks").insert({
+          customer_id: cid, assignee_id: meId || null,
+          title: tr("firstCallTask"), due_at: due.toISOString(), done: false,
+        });
+      } catch {}
     }
     // ملاحظة أولية
     if (f.note.trim()) {
@@ -327,8 +340,17 @@ export default function NewCustomerForm({
               </select>
             </div>
           </div>
-          <div className="fld"><label>{tr("dueAfterDiscount")}</label>
-            <input className="inp num" dir="ltr" readOnly value={discPct > 0 ? `${net} (${tr("discountWord")} ${discPct}%)` : (gross || "")} style={{ background: "var(--muted-soft)", fontWeight: 700 }} /></div>
+          <div className="fld"><label>{tr("dueAfterDiscount")}{discPct > 0 && <span style={{ color: "var(--green)", fontSize: 11.5, fontWeight: 700 }}> — {tr("discountWord")} {discPct}%</span>}</label>
+            <input className="inp num" dir="ltr" inputMode="numeric"
+              value={netOverride !== null ? netOverride : String(netAuto)}
+              onChange={(e) => setNetOverride(e.target.value)}
+              style={{ fontWeight: 700, background: discPct > 0 ? "rgba(24,169,87,.06)" : undefined }} />
+            {netOverride !== null && (
+              <button type="button" onClick={() => setNetOverride(null)} style={{ fontSize: 11, color: "var(--brand)", background: "none", border: "none", cursor: "pointer", marginTop: 2, padding: 0 }}>
+                ↺ {tr("resetToAuto")}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
