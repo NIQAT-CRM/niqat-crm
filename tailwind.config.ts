@@ -5,9 +5,9 @@ export default {
     extend: {
       colors: {
         brand: { DEFAULT: "#F08A24", dark: "#d6741a", soft: "#fff4e9" },
-        ink: "#0F1B30",
-        muted: "#6B7790",
-        line: "#E2E7F0",
+        ink: "var(--text)",
+        muted: "var(--muted)",
+        line: "var(--line)",
         green: "#18A957",
         amber: "#E6A700",
         red: "#E0483B",

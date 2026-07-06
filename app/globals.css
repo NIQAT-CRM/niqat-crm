@@ -20,6 +20,9 @@
 [data-theme="dark"] th{background:#0d1522;color:var(--muted)}
 [data-theme="dark"] .col{background:#0d1522}
 [data-theme="dark"] .col-h .nm{color:var(--text)}
+.pageload{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:50}
+.pageload .sp{width:42px;height:42px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:niqspin .7s linear infinite}
+@keyframes niqspin{to{transform:rotate(360deg)}}
 [data-theme="dark"] .col-h .ct{background:var(--surface)}
 [data-theme="dark"] .pc,[data-theme="dark"] .tk,[data-theme="dark"] .task,[data-theme="dark"] .onb-card,[data-theme="dark"] .ucard,[data-theme="dark"] .tplrow,[data-theme="dark"] .doc,[data-theme="dark"] .opt-chip,[data-theme="dark"] .login-card,[data-theme="dark"] .col-h .ct{background:var(--surface)}
 [data-theme="dark"] .enr{background:#0d1522}
