@@ -138,14 +138,26 @@ export default async function Dashboard() {
     { label: tr("openTk"), value: tkRes.count ?? 0, color: "#E0483B", emoji: "🎫" },
   ];
 
-  // مبيعات النهاردة (محصّل فعلي اليوم) — بصلاحية منفصلة
-  let todaySales = 0;
+  // تحويلات النهاردة الفعلية (أقساط + إضافات مدفوعة) — جنيه ودولار منفصلين
+  let todayEgp = 0, todayUsd = 0, todayCount = 0;
   if (canDailySales) {
     const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
-    const { data: paidToday } = await supabase.from("installments")
-      .select("amount,currency,paid_at,status").gte("paid_at", startToday.toISOString());
-    for (const i of (paidToday || []) as any[]) {
-      if ((i.status === "paid" || i.paid_at) && i.currency === "EGP") todaySales += Number(i.amount) || 0;
+    const iso = startToday.toISOString();
+    const [instToday, addonToday] = await Promise.all([
+      supabase.from("installments").select("amount,currency,paid_at,status").gte("paid_at", iso),
+      supabase.from("customer_addons").select("amount,currency,paid,created_at").eq("paid", true).gte("created_at", iso),
+    ]);
+    for (const i of (instToday.data || []) as any[]) {
+      if (i.status === "paid" || i.paid_at) {
+        const amt = Number(i.amount) || 0;
+        if (i.currency === "USD") todayUsd += amt; else todayEgp += amt;
+        todayCount++;
+      }
+    }
+    for (const a of (addonToday.data || []) as any[]) {
+      const amt = Number(a.amount) || 0;
+      if (a.currency === "USD") todayUsd += amt; else todayEgp += amt;
+      todayCount++;
     }
   }
 
@@ -167,9 +179,21 @@ export default async function Dashboard() {
           </div>
         ))}
         {canDailySales && (
-          <div className="card" style={{ padding: 18, background: "linear-gradient(135deg,#0FA3A310,#18A95710)" }}>
-            <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}><span style={{ marginInlineEnd: 6 }}>🟢</span>{tr("salesToday")}</div>
-            <div className="num" style={{ fontSize: 28, fontWeight: 800, color: "#0FA3A3" }}>{fmtMoney(todaySales)} <span style={{ fontSize: 15 }}>{tr("egpShort")}</span></div>
+          <div className="card" style={{ padding: 18, background: "linear-gradient(135deg,#0FA3A312,#18A95712)", border: "1px solid #18A95733" }}>
+            <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span><span style={{ marginInlineEnd: 6 }}>🟢</span>{tr("todayCollections")}</span>
+              {todayCount > 0 && <span className="chip" style={{ background: "#18A95722", color: "#18A957" }}>{todayCount}</span>}
+            </div>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+              <div>
+                <div className="num" style={{ fontSize: 26, fontWeight: 800, color: "#18A957" }}>{fmtMoney(todayEgp)} <span style={{ fontSize: 14 }}>{tr("egpShort")}</span></div>
+              </div>
+              {todayUsd > 0 && (
+                <div style={{ borderInlineStart: "1px solid var(--line)", paddingInlineStart: 16 }}>
+                  <div className="num" style={{ fontSize: 26, fontWeight: 800, color: "#0FA3A3" }}>${fmtMoney(todayUsd)}</div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
