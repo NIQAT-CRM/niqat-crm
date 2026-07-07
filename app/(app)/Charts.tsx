@@ -91,8 +91,8 @@ export function AreaChart({ points, color = "#F08A24", height = 160 }: {
   useEffect(() => { const t = setTimeout(() => setMounted(true), 50); return () => clearTimeout(t); }, []);
   if (!points.length) return null;
 
-  const W = 600, H = height;
-  const padL = 44, padR = 14, padT = 14, padB = 26;
+  const W = 850, H = height;
+  const padL = 48, padR = 16, padT = 16, padB = 28;
   const plotW = W - padL - padR, plotH = H - padT - padB;
   const max = Math.max(...points.map((p) => p.value), 1);
   // خطوات المحور الرأسي (4 خطوط)
@@ -139,7 +139,7 @@ export function AreaChart({ points, color = "#F08A24", height = 160 }: {
         return (
           <g key={i}>
             <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--line)" strokeWidth={1} opacity={0.5} />
-            <text x={padL - 8} y={y + 3} textAnchor="end" style={{ fontSize: 10, fill: "var(--muted)" }}>
+            <text x={padL - 8} y={y + 3} textAnchor="end" style={{ fontSize: 11, fill: "var(--muted)" }}>
               {v >= 1000 ? Math.round(v / 1000) + "k" : Math.round(v)}
             </text>
           </g>
@@ -156,7 +156,7 @@ export function AreaChart({ points, color = "#F08A24", height = 160 }: {
         <g key={i} style={{ opacity: mounted ? 1 : 0, transition: `opacity .4s ${0.4 + i * 0.09}s` }}>
           <circle cx={c[0]} cy={c[1]} r={3.5} fill="var(--surface)" stroke={color} strokeWidth={2} />
           {points[i].value > 0 && (
-            <text x={c[0]} y={c[1] - 9} textAnchor="middle" style={{ fontSize: 10, fontWeight: 700, fill: color }}>
+            <text x={c[0]} y={c[1] - 10} textAnchor="middle" style={{ fontSize: 11, fontWeight: 700, fill: color }}>
               {points[i].value >= 1000 ? (points[i].value / 1000).toFixed(1) + "k" : points[i].value}
             </text>
           )}
@@ -164,7 +164,7 @@ export function AreaChart({ points, color = "#F08A24", height = 160 }: {
       ))}
       {/* أسماء الشهور */}
       {points.map((p, i) => (
-        <text key={i} x={X(i)} y={H - 8} textAnchor="middle" style={{ fontSize: 10.5, fill: "var(--muted)" }}>{p.label}</text>
+        <text key={i} x={X(i)} y={H - 9} textAnchor="middle" style={{ fontSize: 11, fill: "var(--muted)" }}>{p.label}</text>
       ))}
     </svg>
   );
