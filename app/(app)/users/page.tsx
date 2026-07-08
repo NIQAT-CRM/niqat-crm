@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdmin } from "@supabase/supabase-js";
 import { t as tr } from "@/lib/i18n";
 import UsersManager from "./UsersManager";
 
@@ -22,6 +23,19 @@ export default async function Users() {
     usersRes = await supabase.from("profiles").select(COLS.replace(",phone", "").replace(",can_see_daily_sales", "")).order("team");
   }
   const users = (usersRes.data as any[]) || [];
+
+  // الإيميل بيعيش في auth.users مش في profiles — بنجيبه بالـ admin ونضمّه للقائمة
+  // عشان يظهر في فورمة التعديل. لو مفتاح الـ service role مش متضاف، بيتخطّى بأمان.
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (url && serviceKey && users.length) {
+    try {
+      const admin = createAdmin(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
+      const { data: authList } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      const emailById = new Map((authList?.users || []).map((u: any) => [u.id, u.email]));
+      for (const u of users) u.email = emailById.get(u.id) || "";
+    } catch { /* تجاهل بأمان — الإيميل هيفضل فاضي بس الباقي شغّال */ }
+  }
 
   return (
     <div>

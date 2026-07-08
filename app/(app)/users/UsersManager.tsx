@@ -52,7 +52,40 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [ef, setEf] = useState({ full_name: "", phone: "", email: "" });
   function startEdit(u: Profile) {
+    setPwId(null);
     setEditId(u.id); setEf({ full_name: u.full_name || "", phone: u.phone || "", email: u.email || "" });
+  }
+
+  // إعادة تعيين كلمة السر (باسورد جديد — مش عرض القديم)
+  const [pwId, setPwId] = useState<string | null>(null);
+  const [pwVal, setPwVal] = useState("");
+  function genPw() {
+    const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let s = ""; const a = new Uint32Array(12);
+    (globalThis.crypto || (window as any).crypto).getRandomValues(a);
+    for (let i = 0; i < 12; i++) s += chars[a[i] % chars.length];
+    return s;
+  }
+  function startPw(u: Profile) {
+    setEditId(null);
+    if (pwId === u.id) { setPwId(null); return; }
+    setPwId(u.id); setPwVal(genPw());
+  }
+  async function resetPw(u: Profile) {
+    if (pwVal.trim().length < 6) return toast(tr("passwordMin6"));
+    setBusy(u.id + "pw");
+    const res = await fetch("/api/team", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: u.id, password: pwVal.trim() }),
+    });
+    const j = await res.json().catch(() => ({}));
+    setBusy(null);
+    if (!res.ok) return toast(j.error || tr("passwordChangeFailed"));
+    toast(tr("passwordChanged"));
+  }
+  function copyPw() {
+    if (navigator.clipboard) navigator.clipboard.writeText(pwVal);
+    toast(tr("copied"));
   }
   async function saveEdit(u: Profile) {
     setBusy(u.id + "edit");
@@ -128,6 +161,7 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
         </div>
         <div style={{ marginInlineStart: "auto", display: "flex", gap: 8 }}>
           <button onClick={() => (editId === u.id ? setEditId(null) : startEdit(u))} style={{ background: "none", border: "none", color: "var(--brand)", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>{tr("edit")}</button>
+          <button onClick={() => startPw(u)} style={{ background: "none", border: "none", color: "var(--blue)", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>{tr("resetPassword")}</button>
           <button onClick={() => removeUser(u)} disabled={busy === u.id + "del"} style={{ background: "none", border: "none", color: "#E0483B", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>{tr("delete")}</button>
         </div>
       </div>
@@ -139,6 +173,21 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn" onClick={() => saveEdit(u)} disabled={busy === u.id + "edit"} style={{ height: 36 }}>{busy === u.id + "edit" ? "..." : tr("save")}</button>
             <button className="btn ghost" onClick={() => setEditId(null)} style={{ height: 36 }}>{tr("cancel")}</button>
+          </div>
+        </div>
+      )}
+      {pwId === u.id && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "8px 0", padding: 10, border: "1px dashed var(--blue)", borderRadius: 8 }}>
+          <label style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("newPassword")}</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input className="inp num" dir="ltr" value={pwVal} onChange={(e) => setPwVal(e.target.value)} style={{ flex: 1 }} />
+            <button className="btn ghost" onClick={() => setPwVal(genPw())} style={{ height: 36, padding: "0 12px" }} title={tr("generatePw")}>🎲 {tr("generatePw")}</button>
+            <button className="btn ghost" onClick={copyPw} style={{ height: 36, padding: "0 12px" }}>{tr("copyPassword")}</button>
+          </div>
+          <p style={{ fontSize: 11.5, color: "var(--muted)", margin: 0 }}>{tr("copyPwHint")}</p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn" onClick={() => resetPw(u)} disabled={busy === u.id + "pw"} style={{ height: 36 }}>{busy === u.id + "pw" ? "..." : tr("applyPw")}</button>
+            <button className="btn ghost" onClick={() => setPwId(null)} style={{ height: 36 }}>{tr("cancel")}</button>
           </div>
         </div>
       )}

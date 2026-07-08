@@ -16,7 +16,7 @@ const STAGES: Record<string, { labelKey: string; color: string }> = {
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-type SP = { q?: string; stage?: string; owner?: string; dip?: string; batch?: string; company?: string; pay?: string };
+type SP = { q?: string; stage?: string; owner?: string; dip?: string; spec?: string; batch?: string; company?: string; pay?: string };
 
 export default async function Customers({ searchParams }: { searchParams: SP }) {
   const STAGE_OPTS = Object.entries(STAGES).map(([v, x]) => ({ v, label: tr(x.labelKey) }));
@@ -30,18 +30,20 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const canMessage = !!meProf?.can_message;
 
   // جلب متوازي
-  const [custRes, profRes, enrRes, dipRes, btRes] = await Promise.all([
-    (() => { let cq = supabase.from("customers").select("id,name,phone1,phone2,email,company,stage,owner_id").eq("deleted", false);
+  const [custRes, profRes, enrRes, dipRes, spRes, btRes] = await Promise.all([
+    (() => { let cq = supabase.from("customers").select("id,name,phone1,phone2,email,company,stage,owner_id,specialty_id").eq("deleted", false);
       if (q) cq = cq.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
       return cq.order("created_at", { ascending: false }).limit(300); })(),
     supabase.from("profiles").select("id,full_name"),
     supabase.from("enrollments").select("id,customer_id,diploma_id,batch_id, diplomas(name_ar), batches(code)"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
+    supabase.from("specialties").select("id,name_ar").order("name_ar"),
     supabase.from("batches").select("id,code").order("start_date", { ascending: false }),
   ]);
 
   let customers = (custRes.data as any[]) || [];
   const pName = new Map(((profRes.data as any[]) || []).map((p) => [p.id, p.full_name]));
+  const spName = new Map(((spRes.data as any[]) || []).map((s) => [s.id, s.name_ar]));
   const enrollments = (enrRes.data as any[]) || [];
 
   // خرايط الدبلومات/الباتشات للعميل
@@ -78,6 +80,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   if (f.owner) customers = customers.filter((c) => c.owner_id === f.owner);
   if (f.company) customers = customers.filter((c) => c.company === f.company);
   if (f.dip) customers = customers.filter((c) => (custDipIds.get(c.id) || []).includes(f.dip!));
+  if (f.spec) customers = customers.filter((c) => c.specialty_id === f.spec);
   if (f.batch) customers = customers.filter((c) => (custBatchIds.get(c.id) || []).includes(f.batch!));
   if (f.pay && canFinance) customers = customers.filter((c) =>
     f.pay === "bal" ? (remMap.get(c.id) || 0) > 0 : f.pay === "due" ? dueSet.has(c.id) : overdueSet.has(c.id));
@@ -86,6 +89,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const owners = Array.from(new Set(((profRes.data as any[]) || []).map((p) => p.id))).map((id) => ({ v: id as string, label: pName.get(id) || "—" }));
   const companies = Array.from(new Set(((custRes.data as any[]) || []).map((c) => c.company).filter(Boolean))).map((c) => ({ v: c as string, label: c as string }));
   const dipOpts = ((dipRes.data as any[]) || []).map((d) => ({ v: d.id, label: d.name_ar }));
+  const spOpts = ((spRes.data as any[]) || []).map((s) => ({ v: s.id, label: s.name_ar }));
   const btOpts = ((btRes.data as any[]) || []).map((b) => ({ v: b.id, label: b.code }));
 
   // قوالب الإرسال الجماعي + أرقام النتيجة
@@ -95,12 +99,13 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   // تصدير (بالأعمدة المالية لو متاح)
   const exportRows = customers.map((c) => ({
     name: c.name || "", diploma: (custDips.get(c.id) || []).join(" / "),
+    specialty: spName.get(c.specialty_id) || "",
     phone1: c.phone1 || "", phone2: c.phone2 || "", email: c.email || "", company: c.company || "",
     stage: tr((STAGES[c.stage] || STAGES.new).labelKey), owner: pName.get(c.owner_id) || tr("unassigned"),
     ...(canFinance ? { remaining: money(remMap.get(c.id) || 0) } : {}),
   }));
   const exportHeaders: [string, string][] = [
-    ["name", tr("name")], ["diploma", tr("diplomas")], ["phone1", tr("phone1")], ["phone2", tr("phone2")],
+    ["name", tr("name")], ["diploma", tr("diplomas")], ["specialty", tr("specialty")], ["phone1", tr("phone1")], ["phone2", tr("phone2")],
     ["email", tr("email")], ["company", tr("company")], ["stage", tr("stage")], ["owner", tr("owner")],
     ...(canFinance ? [["remaining", tr("remaining")]] as [string, string][] : []),
   ];
@@ -118,7 +123,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         </div>
       </div>
 
-      <CustomersTools stages={STAGE_OPTS} owners={owners} diplomas={dipOpts} batches={btOpts}
+      <CustomersTools stages={STAGE_OPTS} owners={owners} diplomas={dipOpts} specialties={spOpts} batches={btOpts}
         companies={companies} canFinance={canFinance} canMessage={canMessage}
         phones={phones} templates={(tplRows as any) || []} />
 
@@ -126,7 +131,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         <table>
           <thead>
             <tr>
-              <th>{tr("name")}</th><th>{tr("diplomas")}</th><th>{tr("phone")}</th><th>{tr("stage")}</th>
+              <th>{tr("name")}</th><th>{tr("diplomas")}</th><th>{tr("specialty")}</th><th>{tr("phone")}</th><th>{tr("stage")}</th>
               {canFinance && <th>{tr("remaining")}</th>}<th>{tr("owner")}</th>
             </tr>
           </thead>
@@ -153,6 +158,9 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
                       </>
                     ) : "—"}
                   </td>
+                  <td dir="ltr" style={{ textAlign: "start" }}>
+                    {spName.get(r.specialty_id) ? <span className="chip">{spName.get(r.specialty_id)}</span> : "—"}
+                  </td>
                   <td className="num" dir="ltr">{r.phone1 || "—"}</td>
                   <td><span className="stg" style={{ background: st.color + "1a", color: st.color }}>{tr(st.labelKey)}</span></td>
                   {canFinance && (
@@ -166,7 +174,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
               );
             })}
             {customers.length === 0 && (
-              <tr><td colSpan={canFinance ? 6 : 5} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>{tr("noResultsTable")}</td></tr>
+              <tr><td colSpan={canFinance ? 7 : 6} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>{tr("noResultsTable")}</td></tr>
             )}
           </tbody>
         </table>

@@ -84,6 +84,11 @@ export async function PATCH(req: Request) {
     const { error } = await g.admin!.auth.admin.updateUserById(id, { email: body.email.trim().toLowerCase() });
     if (error) return NextResponse.json({ error: "تعذّر تغيير الإيميل: " + error.message }, { status: 400 });
   }
+  if (typeof body.password === "string" && body.password) {
+    if (body.password.length < 6) return NextResponse.json({ error: "كلمة السر لازم 6 حروف على الأقل" }, { status: 400 });
+    const { error } = await g.admin!.auth.admin.updateUserById(id, { password: body.password });
+    if (error) return NextResponse.json({ error: "تعذّر تغيير كلمة السر: " + error.message }, { status: 400 });
+  }
   return NextResponse.json({ ok: true });
 }
 
