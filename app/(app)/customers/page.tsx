@@ -16,11 +16,14 @@ const STAGES: Record<string, { labelKey: string; color: string }> = {
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-type SP = { q?: string; stage?: string; owner?: string; dip?: string; spec?: string; batch?: string; company?: string; pay?: string };
+type SP = { q?: string; stage?: string; owner?: string; dip?: string; batch?: string; company?: string; pay?: string };
+
+const LIST_LIMIT = 100;
 
 export default async function Customers({ searchParams }: { searchParams: SP }) {
   const STAGE_OPTS = Object.entries(STAGES).map(([v, x]) => ({ v, label: tr(x.labelKey) }));
   const q = (searchParams?.q || "").trim();
+  const f = searchParams || {};
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: meProf } = await supabase.from("profiles")
@@ -29,21 +32,31 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const canFinance = !!meProf?.can_see_finance;
   const canMessage = !!meProf?.can_message;
 
+  // العملاء: آخر 100 مسجّلين (الأحدث فوق) + العدد الفعلي الكامل من القاعدة (count exact)
+  let cq = supabase.from("customers")
+    .select("id,name,phone1,phone2,email,company,stage,owner_id", { count: "exact" })
+    .eq("deleted", false);
+  if (q) cq = cq.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
+  if (f.stage) cq = cq.eq("stage", f.stage);
+  if (f.owner) cq = cq.eq("owner_id", f.owner);
+  if (f.company) cq = cq.eq("company", f.company);
+
   // جلب متوازي
-  const [custRes, profRes, enrRes, dipRes, spRes, btRes] = await Promise.all([
-    (() => { let cq = supabase.from("customers").select("id,name,phone1,phone2,email,company,stage,owner_id,specialty_id").eq("deleted", false);
-      if (q) cq = cq.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
-      return cq.order("created_at", { ascending: false }).limit(300); })(),
+  const [custRes, profRes, dipRes, btRes] = await Promise.all([
+    cq.order("created_at", { ascending: false }).limit(LIST_LIMIT),
     supabase.from("profiles").select("id,full_name"),
-    supabase.from("enrollments").select("id,customer_id,diploma_id,batch_id, diplomas(name_ar), batches(code)"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
-    supabase.from("specialties").select("id,name_ar").order("name_ar"),
     supabase.from("batches").select("id,code").order("start_date", { ascending: false }),
   ]);
 
   let customers = (custRes.data as any[]) || [];
+  const totalCount = (custRes as any).count ?? customers.length;
+  const custIds = customers.map((c) => c.id);
+  const enrRes = custIds.length
+    ? await supabase.from("enrollments").select("id,customer_id,diploma_id,batch_id, diplomas(name_ar), batches(code)").in("customer_id", custIds)
+    : ({ data: [] } as any);
+
   const pName = new Map(((profRes.data as any[]) || []).map((p) => [p.id, p.full_name]));
-  const spName = new Map(((spRes.data as any[]) || []).map((s) => [s.id, s.name_ar]));
   const enrollments = (enrRes.data as any[]) || [];
 
   // خرايط الدبلومات/الباتشات للعميل
@@ -57,13 +70,16 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     if (e.diploma_id) { const a = custDipIds.get(cid) || []; a.push(e.diploma_id); custDipIds.set(cid, a); }
   }
 
-  // الرصيد المتبقّي + المتأخر (للمالية)
+  // الرصيد المتبقّي + المتأخر (للمالية) — للعملاء المعروضين فقط
   const remMap = new Map<string, number>();
   const overdueSet = new Set<string>();
   const dueSet = new Set<string>();
   if (canFinance) {
     const enrToCust = new Map(enrollments.map((e) => [e.id, e.customer_id]));
-    const { data: insts } = await supabase.from("installments").select("enrollment_id,amount,paid_at,due_date,status");
+    const enrIds = enrollments.map((e) => e.id);
+    const { data: insts } = enrIds.length
+      ? await supabase.from("installments").select("enrollment_id,amount,paid_at,due_date,status").in("enrollment_id", enrIds)
+      : ({ data: [] } as any);
     for (const i of (insts as any[]) || []) {
       const cid = enrToCust.get(i.enrollment_id); if (!cid) continue;
       const paid = !!i.paid_at || i.status === "paid";
@@ -74,38 +90,34 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     }
   }
 
-  // فلاتر
-  const f = searchParams || {};
-  if (f.stage) customers = customers.filter((c) => c.stage === f.stage);
-  if (f.owner) customers = customers.filter((c) => c.owner_id === f.owner);
-  if (f.company) customers = customers.filter((c) => c.company === f.company);
+  // فلاتر متقدّمة (على العملاء المعروضين): دبلومة / باتش / حالة الدفع
   if (f.dip) customers = customers.filter((c) => (custDipIds.get(c.id) || []).includes(f.dip!));
-  if (f.spec) customers = customers.filter((c) => c.specialty_id === f.spec);
   if (f.batch) customers = customers.filter((c) => (custBatchIds.get(c.id) || []).includes(f.batch!));
   if (f.pay && canFinance) customers = customers.filter((c) =>
     f.pay === "bal" ? (remMap.get(c.id) || 0) > 0 : f.pay === "due" ? dueSet.has(c.id) : overdueSet.has(c.id));
+
+  // العدد المعروض: الإجمالي الفعلي من القاعدة، أو عدد النتائج لما يكون فيه فلتر متقدّم
+  const advanced = !!(f.dip || f.batch || f.pay);
+  const shownCount = advanced ? customers.length : totalCount;
 
   // قوائم الفلاتر
   const owners = Array.from(new Set(((profRes.data as any[]) || []).map((p) => p.id))).map((id) => ({ v: id as string, label: pName.get(id) || "—" }));
   const companies = Array.from(new Set(((custRes.data as any[]) || []).map((c) => c.company).filter(Boolean))).map((c) => ({ v: c as string, label: c as string }));
   const dipOpts = ((dipRes.data as any[]) || []).map((d) => ({ v: d.id, label: d.name_ar }));
-  const spOpts = ((spRes.data as any[]) || []).map((s) => ({ v: s.id, label: s.name_ar }));
   const btOpts = ((btRes.data as any[]) || []).map((b) => ({ v: b.id, label: b.code }));
 
-  // قوالب الإرسال الجماعي + أرقام النتيجة
+  // قوالب الإرسال الجماعي
   const { data: tplRows } = await supabase.from("wa_templates").select("id,name,body").order("created_at");
-  const phones = customers.map((c) => c.phone1).filter(Boolean);
 
   // تصدير (بالأعمدة المالية لو متاح)
   const exportRows = customers.map((c) => ({
     name: c.name || "", diploma: (custDips.get(c.id) || []).join(" / "),
-    specialty: spName.get(c.specialty_id) || "",
     phone1: c.phone1 || "", phone2: c.phone2 || "", email: c.email || "", company: c.company || "",
     stage: tr((STAGES[c.stage] || STAGES.new).labelKey), owner: pName.get(c.owner_id) || tr("unassigned"),
     ...(canFinance ? { remaining: money(remMap.get(c.id) || 0) } : {}),
   }));
   const exportHeaders: [string, string][] = [
-    ["name", tr("name")], ["diploma", tr("diplomas")], ["specialty", tr("specialty")], ["phone1", tr("phone1")], ["phone2", tr("phone2")],
+    ["name", tr("name")], ["diploma", tr("diplomas")], ["phone1", tr("phone1")], ["phone2", tr("phone2")],
     ["email", tr("email")], ["company", tr("company")], ["stage", tr("stage")], ["owner", tr("owner")],
     ...(canFinance ? [["remaining", tr("remaining")]] as [string, string][] : []),
   ];
@@ -113,7 +125,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   return (
     <div>
       <div className="page-h">
-        <div><h1>{tr("customers")}</h1><p>{customers.length} {tr("customer")}{q ? <> · {tr("searchColon")} «{q}»</> : null}</p></div>
+        <div><h1>{tr("customers")}</h1><p>{shownCount} {tr("customer")}{q ? <> · {tr("searchColon")} «{q}»</> : null}</p></div>
         <div style={{ display: "flex", gap: 8 }}>
           {canExport && <ExportButton rows={exportRows} headers={exportHeaders} />}
           <Link className="btn" href="/customers/new">
@@ -123,15 +135,16 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         </div>
       </div>
 
-      <CustomersTools stages={STAGE_OPTS} owners={owners} diplomas={dipOpts} specialties={spOpts} batches={btOpts}
+      <CustomersTools stages={STAGE_OPTS} owners={owners} diplomas={dipOpts} batches={btOpts}
         companies={companies} canFinance={canFinance} canMessage={canMessage}
-        phones={phones} templates={(tplRows as any) || []} />
+        filters={{ q, stage: f.stage, owner: f.owner, company: f.company, dip: f.dip, batch: f.batch, pay: f.pay }}
+        templates={(tplRows as any) || []} />
 
       <div className="tbl-wrap">
         <table>
           <thead>
             <tr>
-              <th>{tr("name")}</th><th>{tr("diplomas")}</th><th>{tr("specialty")}</th><th>{tr("phone")}</th><th>{tr("stage")}</th>
+              <th>{tr("name")}</th><th>{tr("diplomas")}</th><th>{tr("phone")}</th><th>{tr("stage")}</th>
               {canFinance && <th>{tr("remaining")}</th>}<th>{tr("owner")}</th>
             </tr>
           </thead>
@@ -158,9 +171,6 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
                       </>
                     ) : "—"}
                   </td>
-                  <td dir="ltr" style={{ textAlign: "start" }}>
-                    {spName.get(r.specialty_id) ? <span className="chip">{spName.get(r.specialty_id)}</span> : "—"}
-                  </td>
                   <td className="num" dir="ltr">{r.phone1 || "—"}</td>
                   <td><span className="stg" style={{ background: st.color + "1a", color: st.color }}>{tr(st.labelKey)}</span></td>
                   {canFinance && (
@@ -174,7 +184,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
               );
             })}
             {customers.length === 0 && (
-              <tr><td colSpan={canFinance ? 7 : 6} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>{tr("noResultsTable")}</td></tr>
+              <tr><td colSpan={canFinance ? 6 : 5} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>{tr("noResultsTable")}</td></tr>
             )}
           </tbody>
         </table>

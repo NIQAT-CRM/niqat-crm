@@ -3,22 +3,26 @@ import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/lib/toast";
+import { getSegmentPhones } from "./segmentPhones";
 
 type Opt = { v: string; label: string };
 type Tpl = { id: string; name: string; body: string };
+type Filters = { q?: string; stage?: string; owner?: string; company?: string; dip?: string; batch?: string; pay?: string };
 
 export default function CustomersTools({
-  stages, owners, diplomas, specialties, batches, companies, canFinance, canMessage,
-  phones, templates, sortBy, sortDir, sortOpts,
+  stages, owners, diplomas, batches, companies, canFinance, canMessage,
+  filters, templates, sortBy, sortDir, sortOpts,
 }: {
-  stages: Opt[]; owners: Opt[]; diplomas: Opt[]; specialties: Opt[]; batches: Opt[]; companies: Opt[];
-  canFinance: boolean; canMessage: boolean; phones: string[]; templates: Tpl[];
+  stages: Opt[]; owners: Opt[]; diplomas: Opt[]; batches: Opt[]; companies: Opt[];
+  canFinance: boolean; canMessage: boolean; filters: Filters; templates: Tpl[];
   sortBy?: string; sortDir?: boolean; sortOpts?: Opt[];
 }) {
   const tr = useT();
   const router = useRouter();
   const sp = useSearchParams();
   const [openBulk, setOpenBulk] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [nums, setNums] = useState<string[]>([]);
 
   function setParam(key: string, val: string) {
     const p = new URLSearchParams(sp.toString());
@@ -43,7 +47,20 @@ export default function CustomersTools({
   }
   const sortVal = (sortBy || "") + ":" + (sortDir ? "asc" : "desc");
 
-  const nums = phones.filter(Boolean);
+  async function openBulkSend() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const list = await getSegmentPhones(filters);
+      if (!list.length) { toast(tr("noResultsTable")); return; }
+      setNums(list);
+      setOpenBulk(true);
+    } catch {
+      toast(tr("errorOccurred"));
+    } finally {
+      setLoading(false);
+    }
+  }
   function copyNums() {
     if (navigator.clipboard) navigator.clipboard.writeText(nums.join("\n"));
     toast(tr("copied"));
@@ -54,7 +71,6 @@ export default function CustomersTools({
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14, alignItems: "center" }}>
         {Sel("stage", tr("filterStage"), stages)}
         {Sel("dip", tr("filterDip"), diplomas)}
-        {specialties.length > 0 && Sel("spec", tr("filterSpec"), specialties)}
         {Sel("batch", tr("filterBatch"), batches)}
         {owners.length > 0 && Sel("owner", tr("filterOwner"), owners)}
         {companies.length > 0 && Sel("company", tr("filterCompany"), companies)}
@@ -75,10 +91,10 @@ export default function CustomersTools({
         {(sp.toString()) && (
           <button className="btn ghost" style={{ height: 36, padding: "0 12px", fontSize: 12.5 }} onClick={() => router.push("/customers")}>{tr("clearFilters")}</button>
         )}
-        {canMessage && nums.length > 0 && (
-          <button className="btn wa" style={{ height: 36, padding: "0 12px", fontSize: 12.5, marginInlineStart: "auto" }} onClick={() => setOpenBulk(true)}>
+        {canMessage && (
+          <button className="btn wa" disabled={loading} style={{ height: 36, padding: "0 12px", fontSize: 12.5, marginInlineStart: "auto", opacity: loading ? 0.7 : 1 }} onClick={openBulkSend}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ width: 15, height: 15 }}><path d="M21 11.5a8.5 8.5 0 0 1-12.5 7.5L3 21l2-5.5A8.5 8.5 0 1 1 21 11.5z" /></svg>
-            {tr("bulkSend")} ({nums.length})
+            {tr("bulkSend")}{loading ? " …" : ""}
           </button>
         )}
       </div>
