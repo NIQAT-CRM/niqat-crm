@@ -7,13 +7,13 @@ import { getSegmentPhones } from "./segmentPhones";
 
 type Opt = { v: string; label: string };
 type Tpl = { id: string; name: string; body: string };
-type Filters = { q?: string; stage?: string; owner?: string; company?: string; dip?: string; batch?: string; pay?: string };
+type Filters = { q?: string; stage?: string; owner?: string; company?: string; dip?: string; spec?: string; batch?: string; pay?: string };
 
 export default function CustomersTools({
-  stages, owners, diplomas, batches, companies, canFinance, canMessage,
+  stages, owners, diplomas, specialties, batches, companies, canFinance, canMessage,
   filters, templates, sortBy, sortDir, sortOpts,
 }: {
-  stages: Opt[]; owners: Opt[]; diplomas: Opt[]; batches: Opt[]; companies: Opt[];
+  stages: Opt[]; owners: Opt[]; diplomas: Opt[]; specialties: Opt[]; batches: Opt[]; companies: Opt[];
   canFinance: boolean; canMessage: boolean; filters: Filters; templates: Tpl[];
   sortBy?: string; sortDir?: boolean; sortOpts?: Opt[];
 }) {
@@ -71,6 +71,7 @@ export default function CustomersTools({
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14, alignItems: "center" }}>
         {Sel("stage", tr("filterStage"), stages)}
         {Sel("dip", tr("filterDip"), diplomas)}
+        {specialties.length > 0 && Sel("spec", tr("filterSpec"), specialties)}
         {Sel("batch", tr("filterBatch"), batches)}
         {owners.length > 0 && Sel("owner", tr("filterOwner"), owners)}
         {companies.length > 0 && Sel("company", tr("filterCompany"), companies)}

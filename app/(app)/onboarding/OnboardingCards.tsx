@@ -8,7 +8,8 @@ import EmptyState from "../EmptyState";
 type Item = { id: string; label: string; done: boolean; by: string | null; at: string };
 type Card = {
   handoffId: string; custId: string; name: string; phone: string;
-  status: string; note: string; assignee: string; diplomas: string[]; items: Item[];
+  status: string; note: string; onholdReason: string; createdAt: string;
+  assignee: string; diplomas: string[]; batches: string[]; items: Item[];
 };
 
 function initials(name: string) {
@@ -18,37 +19,63 @@ function initials(name: string) {
 const AV = ["#F08A24", "#0FA3A3", "#2F6BFF", "#7B61FF", "#18A957", "#E0483B", "#E6A700"];
 function avColor(id: string) { let h = 0; for (const c of id || "") h += c.charCodeAt(0); return AV[h % AV.length]; }
 function waLink(phone: string) { const d = (phone || "").replace(/\D/g, ""); return d ? "https://wa.me/" + d : "#"; }
+function ageHours(iso: string) { if (!iso) return 0; return (Date.now() - Date.parse(iso)) / 3600000; }
 
 const CardView = memo(function CardView({
-  c, onToggle, onComplete,
+  c, confirming, holding, holdReason, setHoldReason,
+  onToggle, onAskComplete, onCancelComplete, onComplete,
+  onAskHold, onCancelHold, onHold, onResume,
 }: {
-  c: Card;
+  c: Card; confirming: boolean; holding: boolean; holdReason: string; setHoldReason: (v: string) => void;
   onToggle: (hid: string, iid: string) => void;
-  onComplete: (hid: string) => void;
+  onAskComplete: (hid: string) => void; onCancelComplete: () => void; onComplete: (hid: string) => void;
+  onAskHold: (hid: string) => void; onCancelHold: () => void; onHold: (hid: string) => void; onResume: (hid: string) => void;
 }) {
   const tr = useT();
   const total = c.items.length;
   const dn = c.items.filter((i) => i.done).length;
   const allDone = total > 0 && dn === total;
+  const onHoldNow = c.status === "onhold";
+  const hrs = ageHours(c.createdAt);
+  const stale = !onHoldNow && !allDone && hrs > 48;
+  const accent = onHoldNow ? "#E6A700" : allDone ? "#18A957" : "";
+
   return (
-    <div className="onb-card" style={{ background: "var(--surface)" }}>
+    <div className="onb-card" style={{ background: "var(--surface)", opacity: onHoldNow ? 0.9 : 1, borderTop: accent ? `3px solid ${accent}` : undefined }}>
       <div className="oh">
         <span className="av" style={{ background: avColor(c.custId), width: 40, height: 40 }}>{initials(c.name)}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <b style={{ color: "var(--ink)" }}>{c.name}</b>
           <div style={{ fontSize: 11.5, color: "var(--muted)", fontFamily: "var(--fe)", direction: "ltr" }}>{c.phone || "—"}</div>
         </div>
-        <span className="chip" style={{ background: allDone ? "rgba(24,169,87,.12)" : "var(--brand-soft)", color: allDone ? "var(--green)" : "var(--brand)" }}>
-          {allDone ? tr("readyToComplete") : tr("needsActivation")}
+        <span className="chip" style={{
+          background: onHoldNow ? "rgba(230,167,0,.14)" : allDone ? "rgba(24,169,87,.12)" : "var(--brand-soft)",
+          color: onHoldNow ? "#B7860B" : allDone ? "var(--green)" : "var(--brand)",
+        }}>
+          {onHoldNow ? tr("onHoldLabel") : allDone ? tr("readyToComplete") : tr("needsActivation")}
         </span>
       </div>
       <div className="ob">
-        {c.diplomas.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 11.5, color: "var(--muted)", marginBottom: 10 }}>
+          {c.assignee && <span>👤 {tr("activationOwner")}: <b style={{ color: "var(--ink)" }}>{c.assignee}</b></span>}
+          {c.createdAt && <span className="num" dir="ltr">🗓 {String(c.createdAt).slice(0, 10)}</span>}
+          {stale && <span className="chip" style={{ background: "rgba(224,72,59,.12)", color: "#E0483B" }}>{tr("overdueWord")}</span>}
+        </div>
+
+        {(c.diplomas.length > 0 || c.batches.length > 0) && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
-            {c.diplomas.map((d, i) => <span className="chip" key={i}>{d}</span>)}
+            {c.diplomas.map((d, i) => <span className="chip" key={"d" + i}>{d}</span>)}
+            {c.batches.map((b, i) => <span className="chip" key={"b" + i} style={{ background: "var(--brand-soft)", color: "var(--brand)" }} dir="ltr">{b}</span>)}
+          </div>
+        )}
+
+        {onHoldNow && (
+          <div className="onb-note" style={{ marginBottom: 12, background: "rgba(230,167,0,.1)", borderColor: "#E6A700" }}>
+            ⏸ {tr("onHoldLabel")}{c.onholdReason ? ": " + c.onholdReason : ""}
           </div>
         )}
         {c.note && <div className="onb-note" style={{ marginBottom: 12 }}>📝 {c.note}</div>}
+
         <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 4 }}>{dn}/{total} {tr("doneWord")}</div>
         <div className="prog"><i style={{ width: (total ? (dn / total) * 100 : 0) + "%" }} /></div>
         <div style={{ marginTop: 12 }}>
@@ -65,18 +92,42 @@ const CardView = memo(function CardView({
             </div>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 4, alignItems: "center" }}>
-          <a className="btn wa sm" style={{ textDecoration: "none" }} href={waLink(c.phone)} target="_blank" rel="noreferrer">
-            <svg viewBox="0 0 24 24" width={15} height={15} fill="currentColor"><path d="M12 2a10 10 0 00-8.5 15.3L2 22l4.8-1.5A10 10 0 1012 2z" /></svg>
-          </a>
-          <Link className="btn ghost sm" href={`/customers/${c.custId}`}>{tr("theFile")}</Link>
-          {allDone && (
-            <button className="btn sm" style={{ marginInlineStart: "auto" }} onClick={() => onComplete(c.handoffId)}>
-              <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 12l5 5L20 7" /></svg>
-              {tr("completeActivation")}
-            </button>
-          )}
-        </div>
+
+        {holding && (
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <input className="inp" autoFocus placeholder={tr("onHoldReasonPh")} value={holdReason}
+              onChange={(e) => setHoldReason(e.target.value)} style={{ flex: 1, height: 36 }} />
+            <button className="btn sm" onClick={() => onHold(c.handoffId)} style={{ background: "#E6A700" }}>{tr("save")}</button>
+            <button className="btn ghost sm" onClick={onCancelHold}>{tr("cancel")}</button>
+          </div>
+        )}
+
+        {!holding && (
+          <div style={{ display: "flex", gap: 8, marginTop: 4, alignItems: "center", flexWrap: "wrap" }}>
+            <a className="btn wa sm" style={{ textDecoration: "none" }} href={waLink(c.phone)} target="_blank" rel="noreferrer">
+              <svg viewBox="0 0 24 24" width={15} height={15} fill="currentColor"><path d="M12 2a10 10 0 00-8.5 15.3L2 22l4.8-1.5A10 10 0 1012 2z" /></svg>
+            </a>
+            <Link className="btn ghost sm" href={`/customers/${c.custId}`}>{tr("theFile")}</Link>
+            {onHoldNow ? (
+              <button className="btn ghost sm" onClick={() => onResume(c.handoffId)}>▶ {tr("resume")}</button>
+            ) : (
+              <button className="btn ghost sm" onClick={() => onAskHold(c.handoffId)}>⏸ {tr("putOnHold")}</button>
+            )}
+            {allDone && !onHoldNow && !confirming && (
+              <button className="btn sm" style={{ marginInlineStart: "auto" }} onClick={() => onAskComplete(c.handoffId)}>
+                <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 12l5 5L20 7" /></svg>
+                {tr("completeActivation")}
+              </button>
+            )}
+            {confirming && (
+              <div style={{ display: "flex", gap: 6, alignItems: "center", marginInlineStart: "auto" }}>
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>{tr("confirmComplete")}</span>
+                <button className="btn sm" onClick={() => onComplete(c.handoffId)}>{tr("completeActivation")}</button>
+                <button className="btn ghost sm" onClick={onCancelComplete}>{tr("cancel")}</button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -86,6 +137,11 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
   const tr = useT();
   const supabase = createClient();
   const [cards, setCards] = useState<Card[]>(initial);
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<"all" | "ready" | "notready" | "onhold">("all");
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [holdId, setHoldId] = useState<string | null>(null);
+  const [holdReason, setHoldReason] = useState("");
 
   const toggle = useCallback(async (hid: string, iid: string) => {
     let next = false;
@@ -97,18 +153,67 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
   }, [supabase]);
 
   const complete = useCallback(async (hid: string) => {
-    // اختفاء فوري من البورد
+    setConfirmId(null);
     setCards((cs) => cs.filter((c) => c.handoffId !== hid));
     await supabase.from("handoffs").update({ status: "done" }).eq("id", hid);
   }, [supabase]);
 
-  const pend = useMemo(() => cards.filter((c) => c.status !== "done"), [cards]);
+  const doHold = useCallback(async (hid: string) => {
+    const reason = holdReason.trim();
+    setCards((cs) => cs.map((c) => (c.handoffId === hid ? { ...c, status: "onhold", onholdReason: reason } : c)));
+    setHoldId(null); setHoldReason("");
+    await supabase.from("handoffs").update({ status: "onhold", onhold_reason: reason }).eq("id", hid);
+  }, [supabase, holdReason]);
+
+  const resume = useCallback(async (hid: string) => {
+    setCards((cs) => cs.map((c) => (c.handoffId === hid ? { ...c, status: "pending", onholdReason: "" } : c)));
+    await supabase.from("handoffs").update({ status: "pending", onhold_reason: null }).eq("id", hid);
+  }, [supabase]);
+
+  const shown = useMemo(() => {
+    const qq = q.trim().toLowerCase();
+    const isReady = (c: Card) => c.status !== "onhold" && c.items.length > 0 && c.items.every((i) => i.done);
+    let list = cards.filter((c) => c.status !== "done");
+    if (qq) list = list.filter((c) => (c.name || "").toLowerCase().includes(qq));
+    if (filter === "ready") list = list.filter(isReady);
+    else if (filter === "notready") list = list.filter((c) => c.status !== "onhold" && !isReady(c));
+    else if (filter === "onhold") list = list.filter((c) => c.status === "onhold");
+    const rank = (c: Card) => (c.status === "onhold" ? 2 : isReady(c) ? 0 : 1);
+    return [...list].sort((a, b) => rank(a) - rank(b) || String(a.createdAt).localeCompare(String(b.createdAt)));
+  }, [cards, q, filter]);
+
+  const chipBtn = (key: typeof filter, label: string) => (
+    <button onClick={() => setFilter(key)} className="opt-chip"
+      style={filter === key ? { background: "var(--brand)", color: "#fff", borderColor: "var(--brand)" } : undefined}>
+      {label}
+    </button>
+  );
 
   return (
     <>
-      {pend.length ? (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 16 }}>
+        <input className="inp" placeholder={tr("searchByNamePh")} value={q} onChange={(e) => setQ(e.target.value)}
+          style={{ height: 38, maxWidth: 240 }} />
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {chipBtn("all", tr("chipAll"))}
+          {chipBtn("ready", tr("filterReady"))}
+          {chipBtn("notready", tr("filterNotReady"))}
+          {chipBtn("onhold", tr("onHoldLabel"))}
+        </div>
+      </div>
+
+      {shown.length ? (
         <div className="onb-grid">
-          {pend.map((c) => <CardView key={c.handoffId} c={c} onToggle={toggle} onComplete={complete} />)}
+          {shown.map((c) => (
+            <CardView key={c.handoffId} c={c}
+              confirming={confirmId === c.handoffId}
+              holding={holdId === c.handoffId}
+              holdReason={holdReason} setHoldReason={setHoldReason}
+              onToggle={toggle}
+              onAskComplete={setConfirmId} onCancelComplete={() => setConfirmId(null)} onComplete={complete}
+              onAskHold={(hid) => { setHoldId(hid); setHoldReason(""); }} onCancelHold={() => setHoldId(null)}
+              onHold={doHold} onResume={resume} />
+          ))}
         </div>
       ) : (
         <EmptyState text={tr("funNoOnboarding") + " 🎉"} />

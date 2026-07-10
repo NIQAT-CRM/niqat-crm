@@ -7,7 +7,7 @@ export default async function Onboarding() {
   const supabase = createClient();
   // موجة 1: handoffs + profiles (مستقلين)
   const [{ data: hRows }, { data: profs }] = await Promise.all([
-    supabase.from("handoffs").select("id,customer_id,assignee_id,note,status,created_at").eq("status", "pending").order("created_at", { ascending: false }),
+    supabase.from("handoffs").select("id,customer_id,assignee_id,note,status,onhold_reason,created_at").in("status", ["pending", "onhold"]).order("created_at", { ascending: false }),
     supabase.from("profiles").select("id,full_name"),
   ]);
   const pMap = new Map((profs || []).map((p: any) => [p.id, p.full_name]));
@@ -19,7 +19,7 @@ export default async function Onboarding() {
   // موجة 2: العملاء + التسجيلات + بنود التسليم (كلهم يعتمدوا على IDs من موجة 1، لكن مستقلين عن بعض)
   const [custsRes, enrRes, itemsRes] = await Promise.all([
     custIds.length ? supabase.from("customers").select("id,name,phone1").in("id", custIds) : Promise.resolve({ data: [] as any[] }),
-    custIds.length ? supabase.from("enrollments").select("customer_id, diplomas(name_ar)").in("customer_id", custIds) : Promise.resolve({ data: [] as any[] }),
+    custIds.length ? supabase.from("enrollments").select("customer_id, diplomas(name_ar), batches(code)").in("customer_id", custIds) : Promise.resolve({ data: [] as any[] }),
     hIds.length ? supabase.from("handoff_items").select("id,handoff_id,label,done,done_by,done_at").in("handoff_id", hIds).order("id") : Promise.resolve({ data: [] as any[] }),
   ]);
 
@@ -27,10 +27,13 @@ export default async function Onboarding() {
   const cMap = new Map((custs || []).map((c: any) => [c.id, c]));
 
   const dipMap = new Map<string, string[]>();
+  const batchMap = new Map<string, string[]>();
   for (const e of enrRes.data || []) {
     const cid = (e as any).customer_id as string;
     const nm = (e as any).diplomas?.name_ar as string | undefined;
     if (cid && nm) dipMap.set(cid, [...(dipMap.get(cid) || []), nm]);
+    const bc = (e as any).batches?.code as string | undefined;
+    if (cid && bc) batchMap.set(cid, [...(batchMap.get(cid) || []), bc]);
   }
 
   const itemsMap = new Map<string, any[]>();
@@ -50,8 +53,11 @@ export default async function Onboarding() {
     phone: cMap.get(h.customer_id)?.phone1 || "",
     status: h.status || "pending",
     note: h.note || "",
+    onholdReason: h.onhold_reason || "",
+    createdAt: (h.created_at as string) || "",
     assignee: pMap.get(h.assignee_id || "") || "",
     diplomas: dipMap.get(h.customer_id) || [],
+    batches: Array.from(new Set(batchMap.get(h.customer_id) || [])),
     items: itemsMap.get(h.id) || [],
   }));
 
