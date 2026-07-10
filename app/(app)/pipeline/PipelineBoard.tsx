@@ -13,7 +13,10 @@ type Cust = {
   ownerId: string;
   ownerName: string;
   createdAt?: string;
+  value?: number;
 };
+
+const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 
 // مراحل قاعدة البيانات (stage_t) + ألوان وتسميات البروتوتايب
 const STAGES = [
@@ -38,7 +41,7 @@ function initials(name: string) {
   return p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2);
 }
 
-export default function PipelineBoard({ initial }: { initial: Cust[] }) {
+export default function PipelineBoard({ initial, canFinance = false }: { initial: Cust[]; canFinance?: boolean }) {
   const tr = useT();
   const router = useRouter();
   const downRef = useRef<{ x: number; y: number } | null>(null);
@@ -95,6 +98,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
           let items = custs.filter((c) => (c.stage || "new") === s.key);
           if (sortKey === "name") items = [...items].sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
           else if (sortKey === "new") items = [...items].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+          const colValue = canFinance ? items.reduce((s2, c) => s2 + (c.value || 0), 0) : 0;
           return (
             <div
               key={s.key}
@@ -125,7 +129,10 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                     <option value="name">{tr("byName")}</option>
                     <option value="new">{tr("newestLabel")}</option>
                   </select>
-                  <span className="ct">{items.length}</span>
+                  <span className="ct" style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.2 }}>
+                    {items.length}
+                    {canFinance && colValue > 0 && <span style={{ fontSize: 9.5, fontWeight: 700, opacity: 0.8 }} dir="ltr">{money(colValue)}</span>}
+                  </span>
                 </div>
               </div>
               <div className="col-b enter">

@@ -16,7 +16,7 @@ const STAGES: Record<string, { labelKey: string; color: string }> = {
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-type SP = { q?: string; stage?: string; owner?: string; dip?: string; batch?: string; company?: string; pay?: string };
+type SP = { q?: string; stage?: string; owner?: string; dip?: string; batch?: string; company?: string; pay?: string; page?: string };
 
 const LIST_LIMIT = 100;
 
@@ -38,12 +38,16 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     .eq("deleted", false);
   if (q) cq = cq.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
   if (f.stage) cq = cq.eq("stage", f.stage);
-  if (f.owner) cq = cq.eq("owner_id", f.owner);
+  if (f.owner === "none") cq = cq.is("owner_id", null);
+  else if (f.owner) cq = cq.eq("owner_id", f.owner);
   if (f.company) cq = cq.eq("company", f.company);
+
+  const page = Math.max(1, parseInt(f.page || "1", 10) || 1);
+  const offset = (page - 1) * LIST_LIMIT;
 
   // جلب متوازي
   const [custRes, profRes, dipRes, btRes] = await Promise.all([
-    cq.order("created_at", { ascending: false }).limit(LIST_LIMIT),
+    cq.order("created_at", { ascending: false }).range(offset, offset + LIST_LIMIT - 1),
     supabase.from("profiles").select("id,full_name"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
     supabase.from("batches").select("id,code").order("start_date", { ascending: false }),
@@ -99,6 +103,23 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   // العدد المعروض: الإجمالي الفعلي من القاعدة، أو عدد النتائج لما يكون فيه فلتر متقدّم
   const advanced = !!(f.dip || f.batch || f.pay);
   const shownCount = advanced ? customers.length : totalCount;
+  const totalPages = Math.max(1, Math.ceil(totalCount / LIST_LIMIT));
+
+  // بناء رابط مع الحفاظ على الفلاتر الحالية (مع تعديل مفاتيح محددة)
+  const qs = (over: Partial<SP>) => {
+    const base: Record<string, string | undefined> = { q, stage: f.stage, owner: f.owner, company: f.company, dip: f.dip, batch: f.batch, pay: f.pay, page: f.page, ...over };
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(base)) if (v) p.set(k, String(v));
+    const s = p.toString();
+    return s ? `/customers?${s}` : "/customers";
+  };
+  // شيب سريع: نشط لو المفتاح مطابق
+  const chip = (label: string, key: keyof SP, val: string, active: boolean) => (
+    <Link href={active ? qs({ [key]: undefined, page: undefined } as Partial<SP>) : qs({ [key]: val, page: undefined } as Partial<SP>)}
+      className="opt-chip" style={active ? { background: "var(--brand)", color: "#fff", borderColor: "var(--brand)" } : undefined}>
+      {label}
+    </Link>
+  );
 
   // قوائم الفلاتر
   const owners = Array.from(new Set(((profRes.data as any[]) || []).map((p) => p.id))).map((id) => ({ v: id as string, label: pName.get(id) || "—" }));
@@ -139,6 +160,13 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         companies={companies} canFinance={canFinance} canMessage={canMessage}
         filters={{ q, stage: f.stage, owner: f.owner, company: f.company, dip: f.dip, batch: f.batch, pay: f.pay }}
         templates={(tplRows as any) || []} />
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "4px 0 14px" }}>
+        {chip(tr("dashStageInterested"), "stage", "interested", f.stage === "interested")}
+        {chip(tr("dashStageOnhold"), "stage", "onhold", f.stage === "onhold")}
+        {chip(tr("unassigned"), "owner", "none", f.owner === "none")}
+        {canFinance && chip(tr("overdueWord"), "pay", "over", f.pay === "over")}
+      </div>
 
       <div className="tbl-wrap">
         <table>
@@ -189,6 +217,18 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
           </tbody>
         </table>
       </div>
+
+      {!advanced && totalPages > 1 && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 16 }}>
+          {page > 1
+            ? <Link className="btn ghost" href={qs({ page: String(page - 1) })} style={{ height: 36 }}>‹</Link>
+            : <span className="btn ghost" style={{ height: 36, opacity: 0.4, pointerEvents: "none" }}>‹</span>}
+          <span className="num" style={{ fontSize: 13, color: "var(--muted)", fontWeight: 700 }}>{page} / {totalPages}</span>
+          {page < totalPages
+            ? <Link className="btn ghost" href={qs({ page: String(page + 1) })} style={{ height: 36 }}>›</Link>
+            : <span className="btn ghost" style={{ height: 36, opacity: 0.4, pointerEvents: "none" }}>›</span>}
+        </div>
+      )}
     </div>
   );
 }

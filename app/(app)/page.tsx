@@ -32,7 +32,7 @@ export default async function Dashboard() {
     supabase.from("profiles").select("can_see_finance,can_grant_access,can_manage_batches").eq("id", user?.id || "").maybeSingle(),
     supabase.from("profiles").select("can_see_daily_sales").eq("id", user?.id || "").maybeSingle(),
     supabase.from("specialties").select("id,name_ar"),
-    supabase.from("customers").select("id,name,stage,specialty_id").eq("deleted", false).eq("archived", false),
+    supabase.from("customers").select("id,name,stage,specialty_id,created_at").eq("deleted", false).eq("archived", false),
     supabase.from("enrollments").select("id,customer_id,diploma_id,batch_id"),
     supabase.from("diplomas").select("id,name_ar"),
     supabase.from("batches").select("id,code,status,start_date,capacity").order("start_date"),
@@ -150,8 +150,26 @@ export default async function Dashboard() {
     }))
     .sort((a, b) => b.total - a.total);
 
+  // اتجاه شهري: عملاء جدد هذا الشهر مقابل الشهر الماضي
+  const nowD = new Date();
+  const mStart = new Date(nowD.getFullYear(), nowD.getMonth(), 1).getTime();
+  const pStart = new Date(nowD.getFullYear(), nowD.getMonth() - 1, 1).getTime();
+  let newThis = 0, newPrev = 0;
+  for (const c of customers) {
+    const ts = c.created_at ? Date.parse(c.created_at) : 0;
+    if (!ts) continue;
+    if (ts >= mStart) newThis++;
+    else if (ts >= pStart) newPrev++;
+  }
+  const custTrend = (() => {
+    if (newPrev === 0 && newThis === 0) return null;
+    const diff = newThis - newPrev;
+    const pct = newPrev > 0 ? Math.round((diff / newPrev) * 100) : 100;
+    return { newThis, dir: diff > 0 ? "up" : diff < 0 ? "down" : "flat", pct: Math.abs(pct) };
+  })();
+
   const generalKpis = [
-    { label: tr("totalCust"), value: total, color: "#2F6BFF", emoji: "👥" },
+    { label: tr("totalCust"), value: total, color: "#2F6BFF", emoji: "👥", trend: custTrend },
     { label: tr("newLeads"), value: leads, color: "#F08A24", emoji: "🎯" },
     { label: tr("convRate"), value: conv, suffix: "%", color: "#18A957", emoji: "📈" },
     { label: tr("tasksToday"), value: tasksToday ?? 0, color: "#7B61FF", emoji: "✅" },
@@ -255,6 +273,14 @@ export default async function Dashboard() {
             <div style={{ fontSize: 26, fontWeight: 800, color: k.color }}>
               {typeof k.value === "number" ? <CountUp value={k.value} suffix={(k as any).suffix || ""} /> : k.value}
             </div>
+            {(k as any).trend && (
+              <div style={{ marginTop: 4, fontSize: 11.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 4,
+                color: (k as any).trend.dir === "up" ? "#18A957" : (k as any).trend.dir === "down" ? "#E0483B" : "var(--muted)" }}>
+                <span>{(k as any).trend.dir === "up" ? "▲" : (k as any).trend.dir === "down" ? "▼" : "■"}</span>
+                <span dir="ltr">{(k as any).trend.pct}%</span>
+                <span style={{ color: "var(--muted)", fontWeight: 500 }}>· +{(k as any).trend.newThis} {tr("thisMonth")}</span>
+              </div>
+            )}
           </div>
         ))}
       </div>

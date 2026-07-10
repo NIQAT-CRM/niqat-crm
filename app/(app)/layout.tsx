@@ -8,6 +8,7 @@ import LangToggle from "./LangToggle";
 import ThemeToggle from "./ThemeToggle";
 import Toaster from "./Toaster";
 import DailyGreeting from "./DailyGreeting";
+import SidebarRail from "./SidebarRail";
 // import AnimatedMain from "./AnimatedMain";
 import { LangProvider } from "@/lib/i18n/client";
 import { getLang, tFor } from "@/lib/i18n";
@@ -87,7 +88,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <LangProvider lang={lang}>
-    <div className="app">
+    <div className="app rail">
       <aside className="sb" id="sb">
         <div className="sb-logo">
           <img src="/icon.png" alt="N" />
@@ -96,6 +97,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <span>{t("appsub")}</span>
           </div>
         </div>
+        <SidebarRail />
 
         <NavLinks
           canReports={!!profile?.can_view_reports}
