@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
@@ -38,6 +38,7 @@ export default function NewCustomerForm({
   const [instGap, setInstGap] = useState("1");
   const [payFirstNow, setPayFirstNow] = useState(false);
   const [dup, setDup] = useState<{ id: string; name: string } | null>(null);
+  const dupRef = useRef<HTMLDivElement>(null);
   // بند 3: كشف تكرار فوري أثناء الكتابة
   const [liveDup, setLiveDup] = useState<{ id: string; name: string; field: string } | null>(null);
   // بند 2: إظهار قسم الاشتراك (يدوي أو حسب المرحلة)
@@ -132,6 +133,7 @@ export default function NewCustomerForm({
       setSaving(false);
       setDup({ id: exist.id as string, name: (exist.name as string) || tr("customer") });
       toast(tr("customerAlreadyExists"));
+      setTimeout(() => dupRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
       return;
     }
 
@@ -273,7 +275,7 @@ export default function NewCustomerForm({
       {affUnknown && <div style={{ fontSize: 12.5, color: "#E0483B", marginTop: -6, marginBottom: 8 }}>{tr("codeNotInList")}</div>}
 
       {dup && (
-        <div style={{ border: "1px solid var(--red)", background: "var(--red-soft)", borderRadius: 10, padding: 12, marginBottom: 10, fontSize: 13.5 }}>
+        <div ref={dupRef} style={{ border: "1px solid var(--red)", background: "var(--red-soft)", borderRadius: 10, padding: 12, marginBottom: 10, fontSize: 13.5 }}>
           <b style={{ color: "var(--red)" }}>{tr("customerExistsColon")} {dup.name}</b>
           <div style={{ marginTop: 6 }}>
             <a href={`/customers/${dup.id}`} style={{ color: "var(--brand)", fontWeight: 700 }}>{tr("openCustomerCardEdit")} ←</a>

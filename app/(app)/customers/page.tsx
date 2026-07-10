@@ -151,7 +151,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   return (
     <div>
       <div className="page-h">
-        <div><h1>{tr("customers")}</h1><p>{shownCount} {tr("customer")}{q ? <> · {tr("searchColon")} «{q}»</> : null}</p></div>
+        <div><h1>{tr("customers")}</h1><p>{shownCount} {tr("customersPl")}{q ? <> · {tr("searchColon")} «{q}»</> : null}</p></div>
         <div style={{ display: "flex", gap: 8 }}>
           {canExport && <ExportButton rows={exportRows} headers={exportHeaders} />}
           <Link className="btn" href="/customers/new">

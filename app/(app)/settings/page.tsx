@@ -47,7 +47,7 @@ export default async function Settings() {
 
       {tablesMissing && (
         <div className="banner" style={{ marginBottom: 16 }}>
-          ⚠️ {tr("settingsSqlHint1")} <b>batch2-tables.sql</b> {tr("settingsSqlHint2")}
+          ⚠️ {tr("featuresUnderPrep")}
         </div>
       )}
 

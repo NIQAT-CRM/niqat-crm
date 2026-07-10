@@ -49,7 +49,7 @@ export default function BatchesView({ batches, canManage, diplomaOpts }: {
     const keys = Array.from(map.keys()).sort();
     return keys.map((k) => {
       const items = map.get(k)!.sort((a, b) => String(a.start_date).localeCompare(String(b.start_date)));
-      let label = tr("noBatches").replace(".", "");
+      let label = tr("noDate");
       if (k !== "zzzz-none") {
         const [y, m] = k.split("-").map(Number);
         label = new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en", { month: "long", year: "numeric", timeZone: "Africa/Cairo" }).format(new Date(y, m - 1, 1));
