@@ -3,6 +3,7 @@ import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import ExportButton from "./ExportButton";
 import CustomersTools from "./CustomersTools";
+import CustomerBrief from "./CustomerBrief";
 
 export const dynamic = "force-dynamic";
 
@@ -178,7 +179,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
           <thead>
             <tr>
               <th>{tr("name")}</th><th>{tr("diplomas")}</th><th>{tr("specialty")}</th><th>{tr("phone")}</th><th>{tr("stage")}</th>
-              {canFinance && <th>{tr("remaining")}</th>}<th>{tr("owner")}</th>
+              {canFinance && <th>{tr("remaining")}</th>}<th>{tr("owner")}</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -216,11 +217,12 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
                     </td>
                   )}
                   <td>{pName.get(r.owner_id) || tr("unassigned")}</td>
+                  <td style={{ textAlign: "end" }}><CustomerBrief customerId={r.id} canFinance={canFinance} /></td>
                 </tr>
               );
             })}
             {customers.length === 0 && (
-              <tr><td colSpan={canFinance ? 7 : 6} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>{tr("noResultsTable")}</td></tr>
+              <tr><td colSpan={canFinance ? 8 : 7} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>{tr("noResultsTable")}</td></tr>
             )}
           </tbody>
         </table>

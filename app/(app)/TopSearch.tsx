@@ -59,10 +59,10 @@ export default function TopSearch() {
     router.push(`/customers/${h.id}`);
   }
   function onKey(e: React.KeyboardEvent) {
-    if (!open || !hits.length) { if (e.key === "Enter") goAll(); return; }
+    if (e.key === "Enter") { e.preventDefault(); goAll(); return; }
+    if (!open || !hits.length) return;
     if (e.key === "ArrowDown") { e.preventDefault(); setHl((i) => Math.min(i + 1, hits.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setHl((i) => Math.max(i - 1, 0)); }
-    else if (e.key === "Enter") { e.preventDefault(); openHit(hits[hl]); }
     else if (e.key === "Escape") setOpen(false);
   }
 
