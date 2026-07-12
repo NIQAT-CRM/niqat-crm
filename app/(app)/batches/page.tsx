@@ -17,7 +17,7 @@ export default async function Batches() {
     { data: allDips },
   ] = await Promise.all([
     supabase.from("profiles").select("can_manage_batches").eq("id", user?.id || "").maybeSingle(),
-    supabase.from("batches").select("id,code,status,start_date,end_date,capacity,notes,price,currency").order("created_at", { ascending: false }),
+    supabase.from("batches").select("id,code,status,start_date,end_date,capacity,notes,price,currency,price_egp,price_usd").order("created_at", { ascending: false }),
     supabase.from("batches").select("id,diploma_id"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
   ]);
@@ -57,6 +57,8 @@ export default async function Batches() {
     enrolled: cnt.get(b.id as string) || 0,
     price: ((b as any).price as number) ?? null,
     currency: ((b as any).currency as string) || "EGP",
+    price_egp: ((b as any).price_egp as number) ?? null,
+    price_usd: ((b as any).price_usd as number) ?? null,
     notes: (b.notes as string) || null,
   }));
   // ربط diploma_id لكل باتش (للفلترة)

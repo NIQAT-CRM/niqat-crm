@@ -10,6 +10,7 @@ export type B = {
   status: string; start_date: string | null; end_date: string | null;
   capacity: number | null; enrolled: number; price: number | null;
   currency: string; notes: string | null;
+  price_egp: number | null; price_usd: number | null;
 };
 
 const DAY = 86400000;
@@ -127,13 +128,13 @@ export default function BatchesView({ batches, canManage, diplomaOpts }: {
                 <div style={{ marginTop: 14 }}>
                   <div className="brow"><span>{tr("startDate")}</span><b className="num">{b.start_date ? String(b.start_date).slice(0, 10) : "—"}</b></div>
                   <div className="brow"><span>{tr("endDate")}</span><b className="num">{b.end_date ? String(b.end_date).slice(0, 10) : "—"}</b></div>
-                  {Number(b.price) > 0 && (
-                    <div className="brow"><span>{tr("batchPrice")}</span><b className="num" dir="ltr">{new Intl.NumberFormat("en").format(Number(b.price))} {b.currency === "USD" ? "$" : tr("egpShort")}</b></div>
+                  {(Number(b.price_egp) > 0 || Number(b.price_usd) > 0) && (
+                    <div className="brow"><span>{tr("batchPrice")}</span><b className="num" dir="ltr">{new Intl.NumberFormat("en").format(Number(b.price_egp) || 0)} {tr("egpShort")} · {new Intl.NumberFormat("en").format(Number(b.price_usd) || 0)} $</b></div>
                   )}
                 </div>
                 {canManage && (
                   <BatchActions
-                    batch={{ id: b.id, code: b.code, status: b.status || "open", start_date: b.start_date, end_date: b.end_date, capacity: b.capacity, notes: b.notes, price: b.price, currency: b.currency || "EGP" }}
+                    batch={{ id: b.id, code: b.code, status: b.status || "open", start_date: b.start_date, end_date: b.end_date, capacity: b.capacity, notes: b.notes, price: b.price, currency: b.currency || "EGP", price_egp: b.price_egp, price_usd: b.price_usd }}
                     enrolledCount={b.enrolled}
                   />
                 )}

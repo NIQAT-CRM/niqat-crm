@@ -60,7 +60,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     supabase.from("specialties").select("id,name_ar").order("name_ar"),
     supabase.from("enrollments").select("id,status,diploma_id,batch_id, diplomas(name_ar), batches(code)").eq("customer_id", params.id),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
-    supabase.from("batches").select("id,code,status,price,currency").order("code"),
+    supabase.from("batches").select("id,code,status,price,currency,price_egp,price_usd").order("code"),
     supabase.from("profiles").select("id,full_name"),
     supabase.from("tasks").select("id,title,due_at,done").eq("customer_id", params.id).order("created_at", { ascending: false }),
     supabase.from("communications").select("id,body,by_id,at").eq("customer_id", params.id).order("at", { ascending: false }).limit(50),
@@ -87,7 +87,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     diplomaId: e.diploma_id || "", batchId: e.batch_id || "",
   }));
   const dipOpts = (allDips || []).map((d: any) => ({ v: d.id, label: d.name_ar }));
-  const batchOpts = (allBatches || []).map((b: any) => ({ v: b.id, label: b.code, price: Number(b.price) || 0, currency: b.currency || "EGP" }));
+  const batchOpts = (allBatches || []).map((b: any) => ({ v: b.id, label: b.code, price: Number(b.price) || 0, currency: b.currency || "EGP", price_egp: Number(b.price_egp) || 0, price_usd: Number(b.price_usd) || 0 }));
 
   const pMap = new Map((profs || []).map((p: any) => [p.id, p.full_name]));
   const tasks = (taskRows || []).map((k: any) => ({ id: k.id, title: k.title || "", due: k.due_at ? String(k.due_at).slice(0, 10) : "", done: !!k.done }));

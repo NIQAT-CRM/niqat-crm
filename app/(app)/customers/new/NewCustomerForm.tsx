@@ -8,7 +8,7 @@ import { autoHandoffIfNeeded } from "@/lib/handoff";
 import { COUNTRIES, DEFAULT_DIAL, combineDialAndNumber, phoneKey } from "@/lib/phone";
 
 type Opt = { id: string; name: string };
-type BatchOpt = { id: string; name: string; price?: number; currency?: string; diploma_id?: string };
+type BatchOpt = { id: string; name: string; price?: number; currency?: string; price_egp?: number; price_usd?: number; diploma_id?: string };
 const STAGES = [
   ["new", "dashStageNew"], ["contacted", "dashStageContacted"], ["interested", "dashStageInterested"],
   ["quote", "dashStageQuote"], ["negotiation", "dashStageNegotiation"], ["enrolled", "dashStageEnrolled"], ["lost", "dashStageLost"],
@@ -71,14 +71,14 @@ export default function NewCustomerForm({
     return () => clearTimeout(t);
   }, [f.phone1, f.phone2, f.email, dial1, dial2]);
 
-  // بند 5: ملء المبلغ تلقائياً من سعر الباتش (قابل للتعديل يدوي)
+  // بند 5: ملء المبلغ تلقائياً من سعر الباتش بالعملة المختارة (قابل للتعديل يدوي)
   useEffect(() => {
     if (!f.batch_id) return;
     const b = batches.find((x) => x.id === f.batch_id);
-    if (b && Number(b.price) > 0) {
-      setF((s) => ({ ...s, amount: String(b.price), currency: b.currency || "EGP" }));
-    }
-  }, [f.batch_id]);
+    if (!b) return;
+    const p = f.currency === "USD" ? Number(b.price_usd) : Number(b.price_egp);
+    if (p > 0) setF((s) => ({ ...s, amount: String(p) }));
+  }, [f.batch_id, f.currency]);
   // بند 2: قسم الاشتراك يظهر لما المرحلة (عرض سعر/تفاوض/مسجّل) أو بزر يدوي
   const stageOpensSub = ["quote", "negotiation", "enrolled"].includes(f.stage);
   const showSub = stageOpensSub || showSubManual;
