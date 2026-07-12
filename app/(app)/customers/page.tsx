@@ -105,7 +105,8 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   // فلتر حالة الدفع اتطبّق على مستوى القاعدة فوق (cq.in) — يشمل كل العملاء مش المعروضين بس
 
   // العدد المعروض: الإجمالي الفعلي من القاعدة، أو عدد النتائج لما يكون فيه فلتر متقدّم
-  const advanced = !!(f.dip || f.batch || f.pay);
+  // فلاتر الدفع بتتحسب على مستوى القاعدة (العدد + الصفحات صح)؛ دبلومة/باتش بس اللي على الصفحة المعروضة
+  const advanced = !!(f.dip || f.batch);
   const shownCount = advanced ? customers.length : totalCount;
   const totalPages = Math.max(1, Math.ceil(totalCount / LIST_LIMIT));
 
