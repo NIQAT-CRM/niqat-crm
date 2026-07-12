@@ -18,7 +18,6 @@ const STAGES = [
   { key: "lost", labelKey: "dashStageLost", color: "#94A2BB" },
 ];
 const DC = ["#F08A24", "#2F6BFF", "#0FA3A3", "#7B61FF", "#18A957", "#E6A700", "#E0483B"];
-const fmtMoney = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 const fmtDate = (d: string) => { try { return new Date(d).toLocaleDateString("ar-EG", { month: "short", day: "numeric" }); } catch { return d; } };
 
 export default async function Dashboard() {
@@ -28,19 +27,22 @@ export default async function Dashboard() {
   const todayStr = new Date().toISOString().slice(0, 10);
   const in7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
 
-  const [meRes, dsRes, specsRes, custRes, enrRes, dipRes, btRes, tkRes, fuRes, hoRes, logRes, profRes] = await Promise.all([
+  const [meRes, dsRes, specsRes, dipRes, btRes, tkRes, fuRes, hoRes, logRes, profRes,
+         scRes, seRes, edRes, ebRes] = await Promise.all([
     supabase.from("profiles").select("can_see_finance,can_grant_access,can_manage_batches").eq("id", user?.id || "").maybeSingle(),
     supabase.from("profiles").select("can_see_daily_sales").eq("id", user?.id || "").maybeSingle(),
     supabase.from("specialties").select("id,name_ar"),
-    supabase.from("customers").select("id,name,stage,specialty_id,created_at").eq("deleted", false).eq("archived", false),
-    supabase.from("enrollments").select("id,customer_id,diploma_id,batch_id"),
     supabase.from("diplomas").select("id,name_ar"),
-    supabase.from("batches").select("id,code,status,start_date,capacity").order("start_date"),
+    supabase.from("batches").select("id,code,status,start_date,capacity,diploma_id").order("start_date"),
     supabase.from("tickets").select("*", { count: "exact", head: true }).in("status", ["open", "progress"]),
     supabase.from("follow_ups").select("customer_id,due_at,note").eq("done", false).lte("due_at", new Date().toISOString()),
     supabase.from("handoffs").select("customer_id").eq("status", "pending"),
     supabase.from("audit_log").select("customer_id,actor_id,action,detail,at").order("at", { ascending: false }).limit(8),
     supabase.from("profiles").select("id,full_name"),
+    supabase.rpc("dash_stage_counts"),
+    supabase.rpc("dash_specialty_enrolled"),
+    supabase.rpc("dash_enrollment_diploma"),
+    supabase.rpc("dash_enrollment_batch"),
   ]);
 
   const me = meRes.data;
@@ -48,54 +50,74 @@ export default async function Dashboard() {
   const canManageBatches = !!me?.can_manage_batches;
   const canDailySales = !!dsRes.data?.can_see_daily_sales;
   const spName = new Map(((specsRes.data as any[]) || []).map((s: any) => [s.id, s.name_ar]));
-
-  const customers = (custRes.data as any[]) || [];
-  const enrollments = (enrRes.data as any[]) || [];
   const diplomas = (dipRes.data as any[]) || [];
   const batches = (btRes.data as any[]) || [];
-  // تواريخ النهاية (دفاعي: العمود ممكن يكون لسه مش موجود)
+  const pName = new Map(((profRes.data as any[]) || []).map((p: any) => [p.id, p.full_name]));
+  const dName = new Map(diplomas.map((d: any) => [d.id, d.name_ar]));
+
+  // ===== الأعداد من دوال القاعدة (بدون سقف 1000) =====
+  const byStage: Record<string, number> = {};
+  for (const r of (scRes.data as any[]) || []) byStage[r.stage] = Number(r.n) || 0;
+  const total = Object.values(byStage).reduce((a, b) => a + b, 0);
+  const enrolled = byStage["enrolled"] || 0;
+  const lost = byStage["lost"] || 0;
+  const leads = total - enrolled - lost;
+  const conv = total ? Math.round((enrolled / total) * 100) : 0;
+
+  // تواريخ النهاية (دفاعي)
   const endMap = new Map<string, string>();
   if (batches.length) {
     const eRes = await supabase.from("batches").select("id,end_date");
     if (!eRes.error) for (const r of (eRes.data as any[]) || []) if (r.end_date) endMap.set(r.id, r.end_date);
   }
-  const cName = new Map(customers.map((c) => [c.id, c.name]));
-  const pName = new Map(((profRes.data as any[]) || []).map((p) => [p.id, p.full_name]));
-  const dName = new Map(diplomas.map((d) => [d.id, d.name_ar]));
-  const enrCust = new Map(enrollments.map((e) => [e.id, e.customer_id]));
 
-  const total = customers.length;
-  const byStage: Record<string, number> = {};
-  for (const c of customers) byStage[c.stage] = (byStage[c.stage] || 0) + 1;
-  const enrolled = byStage["enrolled"] || 0;
-  const leads = customers.filter((c) => c.stage !== "enrolled" && c.stage !== "lost").length;
-  const conv = total ? Math.round((enrolled / total) * 100) : 0;
-  // مهام اليوم: مهامي غير المكتملة المستحقة لغاية النهارده
+  // مهام اليوم
   const endToday = new Date(); endToday.setHours(23, 59, 59, 999);
   const { count: tasksToday } = await supabase.from("tasks")
     .select("*", { count: "exact", head: true })
-    .eq("assignee_id", user?.id || "")
-    .eq("done", false)
-    .lte("due_at", endToday.toISOString());
+    .eq("assignee_id", user?.id || "").eq("done", false).lte("due_at", endToday.toISOString());
 
-  // المالية
-  let revenue = 0, outstanding = 0, overdueInst: any[] = [], soonInst: any[] = [];
+  // ===== المالية: إجماليات مفصولة بالعملة (من دالة fin_totals) + تنبيهات =====
+  let egpCollected = 0, egpDue = 0, usdCollected = 0, usdDue = 0;
+  let overdueInst: any[] = [], soonInst: any[] = [];
   if (canFinance) {
-    const { data: inst } = await supabase.from("installments").select("enrollment_id,amount,paid_at,due_date,status");
-    for (const i of (inst as any[]) || []) {
-      const paid = !!i.paid_at || i.status === "paid";
-      if (paid) revenue += Number(i.amount) || 0;
-      else {
-        outstanding += Number(i.amount) || 0;
-        if (i.due_date && i.due_date < todayStr) overdueInst.push(i);
-        else if (i.due_date && i.due_date <= in7) soonInst.push(i);
-      }
+    const { data: ft } = await supabase.rpc("fin_totals");
+    for (const r of (ft as any[]) || []) {
+      if (r.currency === "USD") { usdCollected = Number(r.collected) || 0; usdDue = Number(r.due) || 0; }
+      else { egpCollected += Number(r.collected) || 0; egpDue += Number(r.due) || 0; }
     }
+    // تنبيهات: أقساط غير مدفوعة ليها تاريخ استحقاق لغاية +7 أيام (عددها طبيعي صغير)
+    const { data: al } = await supabase.from("installments")
+      .select("enrollment_id,amount,due_date,status,paid_at")
+      .neq("status", "paid").is("paid_at", null)
+      .not("due_date", "is", null).lte("due_date", in7)
+      .order("due_date").limit(200);
+    for (const i of (al as any[]) || []) { if (i.due_date < todayStr) overdueInst.push(i); else soonInst.push(i); }
+  }
+
+  // ===== أسماء العملاء المطلوبة للعرض فقط (تنبيهات + نشاطات) =====
+  const followItems = (fuRes.data as any[]) || [];
+  const handoffItems = (hoRes.data as any[]) || [];
+  const logItems = (logRes.data as any[]) || [];
+  const enrCust = new Map<string, string>();
+  const needEnrIds = Array.from(new Set([...overdueInst, ...soonInst].map((i) => i.enrollment_id).filter(Boolean)));
+  if (needEnrIds.length) {
+    const { data: er } = await supabase.from("enrollments").select("id,customer_id").in("id", needEnrIds);
+    for (const e of (er as any[]) || []) enrCust.set(e.id, e.customer_id);
+  }
+  const needCustIds = Array.from(new Set([
+    ...followItems.map((f) => f.customer_id),
+    ...handoffItems.map((h) => h.customer_id),
+    ...logItems.map((l) => l.customer_id),
+    ...Array.from(enrCust.values()),
+  ].filter(Boolean)));
+  const cName = new Map<string, string>();
+  if (needCustIds.length) {
+    const { data: cr } = await supabase.from("customers").select("id,name").in("id", needCustIds);
+    for (const c of (cr as any[]) || []) cName.set(c.id, c.name);
   }
 
   // مطلوب إجراء
-  const followItems = (fuRes.data as any[]) || [];
-  const handoffItems = (hoRes.data as any[]) || [];
   const actionRow = (cid: string, text: string, sub: string, color: string) => (
     <Link key={cid + sub} href={`/customers/${cid}`} className="rmd">
       <span className="rdot" style={{ background: color }} />
@@ -119,48 +141,36 @@ export default async function Dashboard() {
   const handoffRows = handoffItems.map((h) => actionRow(h.customer_id, cName.get(h.customer_id) || tr("customerFallback"), tr("awaitAccessSub"), "#F08A24"));
   const actionCount = overdueRows.length + soonRows.length + followRows.length + handoffRows.length;
 
-  // by diploma donut
-  const byDip = diplomas.map((d) => ({ name: d.name_ar, n: enrollments.filter((e) => e.diploma_id === d.id).length })).filter((x) => x.n).sort((a, b) => b.n - a.n);
-  const dipTot = byDip.reduce((s, x) => s + x.n, 0) || 1;
-  let acc = 0;
-  const segs = byDip.map((x, i) => { const st = (acc / dipTot) * 360; acc += x.n; return `${DC[i % DC.length]} ${st}deg ${(acc / dipTot) * 360}deg`; }).join(",");
+  // ===== دونات الدبلومات (من دالة القاعدة) =====
+  const dipCountMap = new Map<string, number>();
+  for (const r of (edRes.data as any[]) || []) dipCountMap.set(r.diploma_id, Number(r.n) || 0);
+  const byDip = diplomas.map((d: any) => ({ name: d.name_ar, n: dipCountMap.get(d.id) || 0 })).filter((x) => x.n).sort((a, b) => b.n - a.n);
   const dipDonut = byDip.map((x, i) => ({ label: x.name, value: x.n, color: DC[i % DC.length] }));
 
-  // by batch
-  const byBatch = batches.map((b) => ({ code: b.code, n: enrollments.filter((e) => e.batch_id === b.id).length })).filter((x) => x.n).sort((a, b) => b.n - a.n);
-  const bMax = Math.max(...byBatch.map((x) => x.n), 1);
-
-  // الباتشات مجمّعة تحت كل دبلومة (احترافي + قابل للنمو)
-  const batchMeta = new Map(batches.map((b) => [b.id, { code: b.code, status: b.status }]));
-  // لكل دبلومة: عدد عملائها الكلي + باتشاتها (كل باتش وعدد عملائه في الدبلومة دي)
+  // ===== الباتشات مجمّعة تحت كل دبلومة (من دالة عدّ الباتشات) =====
+  const batchCountMap = new Map<string, number>();
+  for (const r of (ebRes.data as any[]) || []) batchCountMap.set(r.batch_id, Number(r.n) || 0);
   const diploMap: Record<string, { name: string; total: number; batches: Record<string, number> }> = {};
-  for (const e of enrollments) {
-    if (!e.diploma_id) continue;
-    const dn = dName.get(e.diploma_id) || "—";
-    if (!diploMap[e.diploma_id]) diploMap[e.diploma_id] = { name: dn, total: 0, batches: {} };
-    diploMap[e.diploma_id].total++;
-    const bcode = e.batch_id ? (batchMeta.get(e.batch_id)?.code || "—") : "—";
-    diploMap[e.diploma_id].batches[bcode] = (diploMap[e.diploma_id].batches[bcode] || 0) + 1;
+  for (const b of batches) {
+    if (!b.diploma_id) continue;
+    const n = batchCountMap.get(b.id) || 0;
+    if (!diploMap[b.diploma_id]) diploMap[b.diploma_id] = { name: dName.get(b.diploma_id) || "—", total: 0, batches: {} };
+    diploMap[b.diploma_id].total += n;
+    diploMap[b.diploma_id].batches[b.code] = (diploMap[b.diploma_id].batches[b.code] || 0) + n;
   }
   const batchesByDiploma = Object.values(diploMap)
-    .map((d) => ({
-      name: d.name,
-      total: d.total,
-      batches: Object.entries(d.batches).map(([code, n]) => ({ code, n })).sort((a, b) => b.n - a.n),
-    }))
+    .map((d) => ({ name: d.name, total: d.total, batches: Object.entries(d.batches).map(([code, n]) => ({ code, n })).sort((a, b) => b.n - a.n) }))
     .sort((a, b) => b.total - a.total);
 
-  // اتجاه شهري: عملاء جدد هذا الشهر مقابل الشهر الماضي
+  // اتجاه شهري: عملاء جدد هذا الشهر مقابل الشهر الماضي (count بدون سقف)
   const nowD = new Date();
-  const mStart = new Date(nowD.getFullYear(), nowD.getMonth(), 1).getTime();
-  const pStart = new Date(nowD.getFullYear(), nowD.getMonth() - 1, 1).getTime();
-  let newThis = 0, newPrev = 0;
-  for (const c of customers) {
-    const ts = c.created_at ? Date.parse(c.created_at) : 0;
-    if (!ts) continue;
-    if (ts >= mStart) newThis++;
-    else if (ts >= pStart) newPrev++;
-  }
+  const mStart = new Date(nowD.getFullYear(), nowD.getMonth(), 1).toISOString();
+  const pStart = new Date(nowD.getFullYear(), nowD.getMonth() - 1, 1).toISOString();
+  const [{ count: newThisC }, { count: newPrevC }] = await Promise.all([
+    supabase.from("customers").select("*", { count: "exact", head: true }).eq("deleted", false).eq("archived", false).gte("created_at", mStart),
+    supabase.from("customers").select("*", { count: "exact", head: true }).eq("deleted", false).eq("archived", false).gte("created_at", pStart).lt("created_at", mStart),
+  ]);
+  const newThis = newThisC || 0, newPrev = newPrevC || 0;
   const custTrend = (() => {
     if (newPrev === 0 && newThis === 0) return null;
     const diff = newThis - newPrev;
@@ -179,12 +189,8 @@ export default async function Dashboard() {
   // تحويلات النهاردة الفعلية (أقساط + إضافات مدفوعة) — جنيه ودولار منفصلين
   let todayEgp = 0, todayUsd = 0, todayCount = 0;
   if (canDailySales) {
-    // بداية ونهاية اليوم بتوقيت القاهرة (UTC+2) — عشان اليوم يبدأ 12:00 ص وينتهي 11:59 م بتوقيت مصر
-    // بداية/نهاية اليوم بتوقيت مصر (Africa/Cairo) — يتعامل مع الصيفي/الشتوي تلقائياً
-    // نحسب أوفست مصر الحالي ديناميكياً من الـ IANA timezone
     const cairoOffsetMs = (() => {
       const now = new Date();
-      // نجيب الوقت كما يظهر في القاهرة، ونقارنه بالـ UTC عشان نطلّع الفرق
       const cairoParts = new Intl.DateTimeFormat("en-US", {
         timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit",
         hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
@@ -195,7 +201,6 @@ export default async function Dashboard() {
     })();
     const nowCairo = new Date(Date.now() + cairoOffsetMs);
     const y = nowCairo.getUTCFullYear(), m = nowCairo.getUTCMonth(), d = nowCairo.getUTCDate();
-    // منتصف ليل القاهرة → نطرح الأوفست نرجّعها UTC للاستعلام
     const startUtc = new Date(Date.UTC(y, m, d, 0, 0, 0) - cairoOffsetMs);
     const endUtc = new Date(Date.UTC(y, m, d, 23, 59, 59, 999) - cairoOffsetMs);
     const iso = startUtc.toISOString();
@@ -218,9 +223,9 @@ export default async function Dashboard() {
     }
   }
 
-  // التخصصات الهندسية: العملاء المسجّلين/الدافعين لكل تخصص
+  // التخصصات الهندسية: المسجّلين لكل تخصص (من دالة القاعدة)
   const spCount: Record<string, number> = {};
-  for (const c of customers) if (c.stage === "enrolled" && c.specialty_id) spCount[c.specialty_id] = (spCount[c.specialty_id] || 0) + 1;
+  for (const r of (seRes.data as any[]) || []) spCount[r.specialty_id] = Number(r.n) || 0;
   const spRows = Object.entries(spCount).map(([id, n]) => ({ name: spName.get(id) || "—", n })).sort((a, b) => b.n - a.n);
   const spMax = Math.max(...spRows.map((r) => r.n), 1);
 
@@ -249,15 +254,23 @@ export default async function Dashboard() {
           )}
           {canFinance && (
             <div className="card" style={{ padding: 20 }}>
-              <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 10, fontWeight: 700 }}>💰 {tr("financeOverview")}</div>
-              <div style={{ display: "flex", gap: 22, flexWrap: "wrap" }}>
+              <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 12, fontWeight: 700 }}>💰 {tr("financeOverview")}</div>
+              <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+                {/* جنيه */}
                 <div>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 2 }}>{tr("revenue")}</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: "#0FA3A3" }}><CountUp value={revenue} /></div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>{tr("egpShort")}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{tr("revenue")}</div>
+                  <div style={{ fontSize: 21, fontWeight: 800, color: "#0FA3A3", marginBottom: 6 }}><CountUp value={egpCollected} /></div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{tr("outstanding")}</div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: "#E6A700" }}><CountUp value={egpDue} /></div>
                 </div>
-                <div style={{ borderInlineStart: "1px solid var(--line)", paddingInlineStart: 22 }}>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 2 }}>{tr("outstanding")}</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: "#E6A700" }}><CountUp value={outstanding} /></div>
+                {/* دولار */}
+                <div style={{ borderInlineStart: "1px solid var(--line)", paddingInlineStart: 24 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>USD $</div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{tr("revenue")}</div>
+                  <div style={{ fontSize: 21, fontWeight: 800, color: "#0FA3A3", marginBottom: 6 }}>$<CountUp value={usdCollected} /></div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{tr("outstanding")}</div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: "#E6A700" }}>$<CountUp value={usdDue} /></div>
                 </div>
               </div>
             </div>
@@ -395,8 +408,8 @@ export default async function Dashboard() {
       <div className="card" style={{ padding: 18, marginTop: 16 }}>
         <div className="card-h"><h3>{tr("recentAct")}</h3></div>
         <div style={{ marginTop: 8 }}>
-          {((logRes.data as any[]) || []).length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noActivity")}</div>}
-          {((logRes.data as any[]) || []).map((l, idx) => (
+          {logItems.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noActivity")}</div>}
+          {logItems.map((l, idx) => (
             <div key={idx} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
               <span style={{ marginTop: 5, width: 7, height: 7, borderRadius: "50%", background: "#18A957", flexShrink: 0 }} />
               <div style={{ minWidth: 0 }}>
