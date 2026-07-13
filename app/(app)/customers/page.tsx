@@ -33,19 +33,74 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const canFinance = !!meProf?.can_see_finance;
   const canMessage = !!meProf?.can_message;
 
-  // ===== أرصدة مستحقة لكل العملاء (دالة القاعدة — تتجاوز حد الصفحة) =====
-  const remMap = new Map<string, number>();
-  const curMap = new Map<string, string>();
-  const overdueSet = new Set<string>();
-  let balanceIds: string[] = [];
+  // ===== أرصدة مستحقة لكل العملاء — حساب مباشر من الأقساط/الماليات =====
+  // (installments و enrollment_finance محميّة بالـ RLS؛ الحساب داخل canFinance فقط)
+  // المتبقّي = مجموع الأقساط غير المدفوعة (status <> 'paid')، أو المتفق − المدفوع.
+  const remMap = new Map<string, number>();      // customer_id → المتبقّي
+  const curMap = new Map<string, string>();      // customer_id → العملة
+  const balanceSet = new Set<string>();          // عليه مبلغ متبقّي (قسط غير مدفوع)
+  const dueSet = new Set<string>();              // عليه قسط بتاريخ استحقاق
+  const overdueSet = new Set<string>();          // متأخر (تاريخ الاستحقاق فات)
   if (canFinance) {
-    const { data: outs } = await supabase.rpc("cust_outstanding");
-    for (const o of (outs as any[]) || []) {
-      remMap.set(o.customer_id, Number(o.remaining) || 0);
-      curMap.set(o.customer_id, o.currency || "EGP");
-      if (o.has_overdue) overdueSet.add(o.customer_id);
+    const PAGE = 1000, CAP = 60000;
+    const today = todayStr();
+
+    // (1) الاشتراك → العميل
+    const enrToCust = new Map<string, string>();
+    for (let from = 0; from < CAP; from += PAGE) {
+      const { data } = await supabase.from("enrollments").select("id,customer_id").range(from, from + PAGE - 1);
+      const rows = (data as any[]) || [];
+      for (const r of rows) if (r.customer_id) enrToCust.set(r.id, r.customer_id);
+      if (rows.length < PAGE) break;
     }
-    balanceIds = Array.from(remMap.keys());
+
+    // (2) الأقساط: مدفوع/غير مدفوع + استحقاق + متأخر
+    const paidByCust = new Map<string, number>();
+    const unpaidByCust = new Map<string, number>();
+    for (let from = 0; from < CAP; from += PAGE) {
+      const { data } = await supabase.from("installments")
+        .select("enrollment_id,amount,currency,paid_at,due_date,status").range(from, from + PAGE - 1);
+      const rows = (data as any[]) || [];
+      for (const i of rows) {
+        const cid = enrToCust.get(i.enrollment_id); if (!cid) continue;
+        if (i.currency && !curMap.has(cid)) curMap.set(cid, i.currency);
+        const amt = Number(i.amount) || 0;
+        const isPaid = !!i.paid_at || i.status === "paid";  // due / overdue = غير مدفوع
+        if (isPaid) { paidByCust.set(cid, (paidByCust.get(cid) || 0) + amt); continue; }
+        unpaidByCust.set(cid, (unpaidByCust.get(cid) || 0) + amt);
+        balanceSet.add(cid);
+        if (i.due_date) {
+          dueSet.add(cid);
+          if (String(i.due_date).slice(0, 10) < today) overdueSet.add(cid);
+        }
+      }
+      if (rows.length < PAGE) break;
+    }
+
+    // (3) المبلغ المتفق (enrollment_finance) — لحساب المتبقّي = المتفق − المدفوع
+    const agreedByCust = new Map<string, number>();
+    for (let from = 0; from < CAP; from += PAGE) {
+      const { data } = await supabase.from("enrollment_finance")
+        .select("enrollment_id,agreed_amount,currency").range(from, from + PAGE - 1);
+      const rows = (data as any[]) || [];
+      for (const ef of rows) {
+        const cid = enrToCust.get(ef.enrollment_id); if (!cid) continue;
+        if (ef.currency && !curMap.has(cid)) curMap.set(cid, ef.currency);
+        agreedByCust.set(cid, (agreedByCust.get(cid) || 0) + (Number(ef.agreed_amount) || 0));
+      }
+      if (rows.length < PAGE) break;
+    }
+
+    // المتبقّي لكل عميل
+    const allCids = new Set<string>([...agreedByCust.keys(), ...unpaidByCust.keys(), ...paidByCust.keys()]);
+    for (const cid of allCids) {
+      const agreed = agreedByCust.get(cid) || 0;
+      const paid = paidByCust.get(cid) || 0;
+      let rem = agreed > 0 ? agreed - paid : (unpaidByCust.get(cid) || 0);
+      if (rem <= 0 && unpaidByCust.has(cid)) rem = unpaidByCust.get(cid) || 0; // fallback ثابت
+      remMap.set(cid, Math.max(0, rem));
+      if (!curMap.has(cid)) curMap.set(cid, "EGP");
+    }
   }
 
   // العملاء: آخر 100 مسجّلين (الأحدث فوق) + العدد الفعلي الكامل من القاعدة (count exact)
@@ -59,7 +114,11 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   else if (f.owner) cq = cq.eq("owner_id", f.owner);
   if (f.company) cq = cq.eq("company", f.company);
   if (f.pay && canFinance) {
-    const ids = f.pay === "over" ? Array.from(overdueSet) : balanceIds;
+    // bal = عليه متبقّي · due = عليه قسط بتاريخ · overdue/over = متأخر
+    const set = (f.pay === "overdue" || f.pay === "over") ? overdueSet
+      : f.pay === "due" ? dueSet
+      : balanceSet;
+    const ids = Array.from(set);
     cq = cq.in("id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]);
   }
 
@@ -97,7 +156,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     if (e.diploma_id) { const a = custDipIds.get(cid) || []; a.push(e.diploma_id); custDipIds.set(cid, a); }
   }
 
-  // الرصيد المتبقّي + المتأخر: محسوب فوق من دالة cust_outstanding (كل العملاء)
+  // الرصيد المتبقّي + المتأخر: محسوب فوق مباشرة من الأقساط/الماليات (كل العملاء)
 
   // فلاتر متقدّمة (على العملاء المعروضين): دبلومة / باتش / حالة الدفع
   if (f.dip) customers = customers.filter((c) => (custDipIds.get(c.id) || []).includes(f.dip!));
