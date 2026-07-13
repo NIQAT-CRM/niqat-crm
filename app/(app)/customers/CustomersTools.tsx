@@ -27,6 +27,7 @@ export default function CustomersTools({
   function setParam(key: string, val: string) {
     const p = new URLSearchParams(sp.toString());
     if (val) p.set(key, val); else p.delete(key);
+    p.delete("page");
     router.push("/customers" + (p.toString() ? "?" + p.toString() : ""));
   }
   const cur = (k: string) => sp.get(k) || "";
@@ -43,6 +44,7 @@ export default function CustomersTools({
     const [col, dir] = v.split(":");
     if (col) p.set("sort", col); else p.delete("sort");
     if (dir) p.set("dir", dir); else p.delete("dir");
+    p.delete("page");
     router.push("/customers" + (p.toString() ? "?" + p.toString() : ""));
   }
   const sortVal = (sortBy || "") + ":" + (sortDir ? "asc" : "desc");

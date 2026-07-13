@@ -74,12 +74,32 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     }
   }
 
-  // فلتر الدفع: بنحسبه بمجموعة IDs — منجيبش كلهم في .in() واحد (URL بيطول ويفشل)
+  // فلاتر مبنية على الاشتراكات (دبلومة/باتش/دفع) — تُطبّق على كل الداتا عبر مجموعة IDs
+  async function enrollCustomerIds(col: "diploma_id" | "batch_id", val: string) {
+    const set = new Set<string>();
+    const P = 1000, C = 60000;
+    for (let from = 0; from < C; from += P) {
+      const { data } = await supabase.from("enrollments").select("customer_id").eq(col, val).range(from, from + P - 1);
+      const rows = (data as any[]) || [];
+      for (const r of rows) if (r.customer_id) set.add(r.customer_id);
+      if (rows.length < P) break;
+    }
+    return set;
+  }
+
   const payActive = !!(f.pay && canFinance);
-  const payIds = payActive
-    ? Array.from((f.pay === "overdue" || f.pay === "over") ? payOverdueSet
-        : f.pay === "due" ? payDueSet : payBalanceSet)
-    : [];
+  const restrictSets: Set<string>[] = [];
+  if (payActive) restrictSets.push((f.pay === "overdue" || f.pay === "over") ? payOverdueSet : f.pay === "due" ? payDueSet : payBalanceSet);
+  if (f.dip) restrictSets.push(await enrollCustomerIds("diploma_id", f.dip));
+  if (f.batch) restrictSets.push(await enrollCustomerIds("batch_id", f.batch));
+  const restrictActive = restrictSets.length > 0;
+  // تقاطع كل القيود المفعّلة (العميل لازم يحقّقها كلها)
+  let restrictIds: string[] = [];
+  if (restrictActive) {
+    let inter = restrictSets[0];
+    for (let k = 1; k < restrictSets.length; k++) inter = new Set([...inter].filter((id) => restrictSets[k].has(id)));
+    restrictIds = Array.from(inter);
+  }
 
   const page = Math.max(1, parseInt(f.page || "1", 10) || 1);
   const offset = (page - 1) * LIST_LIMIT;
@@ -94,15 +114,15 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
 
   let customers: any[] = [];
   let totalCount = 0;
-  if (payActive) {
+  if (restrictActive) {
     // جلب العملاء المطابقين على دفعات (≤ 100 id للـ URL) + باقي الفلاتر، ثم ترتيب وتقسيم صفحات في الـ JS
-    if (payIds.length) {
+    if (restrictIds.length) {
       const CH = 100;
       let all: any[] = [];
-      for (let i = 0; i < payIds.length; i += CH) {
+      for (let i = 0; i < restrictIds.length; i += CH) {
         let sub = supabase.from("customers")
           .select("id,name,phone1,phone2,email,company,stage,owner_id,specialty_id,created_at")
-          .eq("deleted", false).in("id", payIds.slice(i, i + CH));
+          .eq("deleted", false).in("id", restrictIds.slice(i, i + CH));
         if (q) sub = sub.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
         if (f.stage) sub = sub.eq("stage", f.stage);
         if (f.spec) sub = sub.eq("specialty_id", f.spec);
@@ -140,15 +160,11 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const spName = new Map(((spRes.data as any[]) || []).map((s) => [s.id, s.name_ar]));
   const enrollments = (enrRes.data as any[]) || [];
 
-  // خرايط الدبلومات/الباتشات للعميل
+  // خرايط أسماء الدبلومات للعميل (للعرض)
   const custDips = new Map<string, string[]>();
-  const custBatchIds = new Map<string, string[]>();
-  const custDipIds = new Map<string, string[]>();
   for (const e of enrollments) {
     const cid = e.customer_id;
     if (e.diplomas?.name_ar) { const a = custDips.get(cid) || []; if (!a.includes(e.diplomas.name_ar)) a.push(e.diplomas.name_ar); custDips.set(cid, a); }
-    if (e.batch_id) { const a = custBatchIds.get(cid) || []; a.push(e.batch_id); custBatchIds.set(cid, a); }
-    if (e.diploma_id) { const a = custDipIds.get(cid) || []; a.push(e.diploma_id); custDipIds.set(cid, a); }
   }
 
   // الرصيد المتبقّي + العملة + وسم "متأخر" — للصفوف المعروضة فقط (سريع، ≤ صفحة واحدة)
@@ -189,15 +205,10 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     }
   }
 
-  // فلاتر متقدّمة (على العملاء المعروضين): دبلومة / باتش / حالة الدفع
-  if (f.dip) customers = customers.filter((c) => (custDipIds.get(c.id) || []).includes(f.dip!));
-  if (f.batch) customers = customers.filter((c) => (custBatchIds.get(c.id) || []).includes(f.batch!));
-  // فلتر حالة الدفع اتطبّق على مستوى القاعدة فوق (cq.in) — يشمل كل العملاء مش المعروضين بس
+  // دبلومة/باتش/دفع اتطبّقوا على مستوى الداتا كلها فوق (مجموعة IDs + تقاطع) — مش على الصفحة المعروضة بس
 
-  // العدد المعروض: الإجمالي الفعلي من القاعدة، أو عدد النتائج لما يكون فيه فلتر متقدّم
-  // فلاتر الدفع بتتحسب على مستوى القاعدة (العدد + الصفحات صح)؛ دبلومة/باتش بس اللي على الصفحة المعروضة
-  const advanced = !!(f.dip || f.batch);
-  const shownCount = advanced ? customers.length : totalCount;
+  // العدد المعروض = الإجمالي الفعلي بعد كل الفلاتر؛ والصفحات شغّالة مع أي فلتر
+  const shownCount = totalCount;
   const totalPages = Math.max(1, Math.ceil(totalCount / LIST_LIMIT));
 
   // بناء رابط مع الحفاظ على الفلاتر الحالية (مع تعديل مفاتيح محددة)
@@ -319,7 +330,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         </table>
       </div>
 
-      {!advanced && totalPages > 1 && (
+      {totalPages > 1 && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 16 }}>
           {page > 1
             ? <Link className="btn ghost" href={qs({ page: String(page - 1) })} style={{ height: 36 }}>‹</Link>
