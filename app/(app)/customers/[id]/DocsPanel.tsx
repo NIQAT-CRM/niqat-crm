@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
+import { receiptSignedUrl } from "@/lib/supabase/receipts";
 
 type Doc = { id: string; url: string; name: string; at: string };
 
@@ -27,13 +28,13 @@ export default function DocsPanel({
     const path = `docs/${customerId}/${Date.now()}-${file.name}`;
     const up = await supabase.storage.from("receipts").upload(path, file, { upsert: false });
     if (up.error) { setBusy(false); toast(tr("uploadFailed")); return; }
-    const { data: pub } = supabase.storage.from("receipts").getPublicUrl(path);
-    const url = pub.publicUrl;
     const { data, error } = await supabase.from("customer_docs")
-      .insert({ customer_id: customerId, url, name: file.name }).select("id,created_at").single();
+      .insert({ customer_id: customerId, url: path, name: file.name }).select("id,created_at").single();
     setBusy(false);
     if (error) { toast(tr("uploadedButSaveFailed")); return; }
-    setDocs((d) => [{ id: data!.id, url, name: file.name, at: String(data!.created_at || "").slice(0, 10) }, ...d]);
+    // نخزّن الـ path، ونوقّعه للعرض الفوري في القائمة/المعاينة
+    const signed = await receiptSignedUrl(supabase, path);
+    setDocs((d) => [{ id: data!.id, url: signed, name: file.name, at: String(data!.created_at || "").slice(0, 10) }, ...d]);
     setFile(null);
     toast(tr("docUploaded"));
   }, [file, customerId, supabase]);

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import CustomerDrawer from "./CustomerDrawer";
 import CopyNumbers from "./CopyNumbers";
 import { getLang, tFor } from "@/lib/i18n";
+import { receiptSignedUrl } from "@/lib/supabase/receipts";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +73,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     supabase.from("customer_docs").select("id,url,name,created_at").eq("customer_id", params.id).order("created_at", { ascending: false }),
     supabase.from("follow_ups").select("id,due_at,note,done").eq("customer_id", params.id).order("due_at", { ascending: false }),
     supabase.from("wa_templates").select("id,name,body").order("created_at"),
-    supabase.from("customer_addons").select("id,type,name,amount,free,note,paid").eq("customer_id", params.id).order("created_at"),
+    supabase.from("customer_addons").select("id,type,name,amount,free,note,paid,shot_url").eq("customer_id", params.id).order("created_at"),
     supabase.from("accreditations").select("name").order("name"),
     supabase.from("projects").select("name").order("name"),
   ]);
@@ -105,19 +106,19 @@ export default async function CustomerDetail({ params }: { params: { id: string 
       ]);
       const dName = new Map((allDips || []).map((d: any) => [d.id, d.name_ar]));
       const finMap = new Map((fin || []).map((f: any) => [f.enrollment_id, f]));
-      finEnrollments = enrs.map((e: any) => {
+      finEnrollments = await Promise.all(enrs.map(async (e: any) => {
         const f: any = finMap.get(e.id);
         return {
           id: e.id, diploma: dName.get(e.diploma_id || "") || "—", status: e.status || "",
           free: !!(e as any).free, freeReason: (e as any).free_reason || "",
           agreed: Number(f?.agreed_amount) || 0, currency: f?.currency || "EGP",
-          installments: (insts || []).filter((i: any) => i.enrollment_id === e.id).map((i: any) => ({
+          installments: await Promise.all((insts || []).filter((i: any) => i.enrollment_id === e.id).map(async (i: any) => ({
             id: i.id, amount: Number(i.amount) || 0, currency: i.currency || "EGP",
             due: i.due_date ? String(i.due_date).slice(0, 10) : "", status: i.status || "pending", paidAt: i.paid_at || null,
-            shot: (i as any).screenshot_url || null,
-          })),
+            shot: (i as any).screenshot_url ? await receiptSignedUrl(supabase, (i as any).screenshot_url) : null,
+          }))),
         };
-      });
+      }));
     }
   }
 
@@ -132,7 +133,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const handoff = ho ? { id: ho.id, status: ho.status || "pending", note: ho.note || "", assignee: pMap.get(ho.assignee_id || "") || "", by: pMap.get(ho.created_by || "") || "", at: String(ho.created_at || "").replace("T", " ").slice(0, 16) } : null;
 
   const docsMissing = !!docsRes.error;
-  const docs = (docsRes.data || []).map((d: any) => ({ id: d.id, url: d.url, name: d.name || tr("docFallback"), at: String(d.created_at || "").slice(0, 10) }));
+  const docs = await Promise.all((docsRes.data || []).map(async (d: any) => ({ id: d.id, url: await receiptSignedUrl(supabase, d.url), name: d.name || tr("docFallback"), at: String(d.created_at || "").slice(0, 10) })));
 
   const fuAll = (fuRows || []).map((x: any) => ({ id: x.id, due_at: x.due_at, note: x.note || "", done: !!x.done }));
   const fuOpen = fuAll.find((x: any) => !x.done) || null;
@@ -143,13 +144,14 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   if (canFinance) {
     const { data: rf, error: rfErr } = await supabase.from("refunds").select("id,amount,currency,reason,shot_url,status,created_at").eq("customer_id", params.id).order("created_at", { ascending: false }).limit(1);
     if (rfErr) refundTableMissing = true; else refund = (rf || [])[0] || null;
+    if (refund?.shot_url) refund = { ...refund, shot_url: await receiptSignedUrl(supabase, refund.shot_url) };
   }
 
   const templates = tplRows || [];
   const waCtx = { name: (c.name as string) || "", phone1: (c.phone1 as string) || "", diploma: enrolls[0]?.diploma || "", batch: enrolls[0]?.batch || "", remaining: "" };
 
   let addons: any[] = []; let addonsMissing = false;
-  if (adRes.error) addonsMissing = true; else addons = (adRes.data || []).map((a: any) => ({ id: a.id, type: a.type, name: a.name, amount: Number(a.amount) || 0, free: !!a.free, note: a.note || "", paid: !!a.paid }));
+  if (adRes.error) addonsMissing = true; else addons = await Promise.all((adRes.data || []).map(async (a: any) => ({ id: a.id, type: a.type, name: a.name, amount: Number(a.amount) || 0, free: !!a.free, note: a.note || "", paid: !!a.paid, shot_url: a.shot_url ? await receiptSignedUrl(supabase, a.shot_url) : "" })));
   const accredList = (accredRows || []).map((x: any) => x.name);
   const projList = (projRows || []).map((x: any) => x.name);
 

@@ -64,7 +64,7 @@ export default function ServicesPanel({
     const path = `services/${customerId}/${Date.now()}-${file.name}`;
     const up = await supabase.storage.from("receipts").upload(path, file, { upsert: false });
     if (up.error) { toast(tr("screenshotUploadFailed")); return ""; }
-    const url = supabase.storage.from("receipts").getPublicUrl(path).data.publicUrl;
+    const url = path; // نخزّن الـ path
     await supabase.from("customer_docs").insert({ customer_id: customerId, url, name: `${tr("svPaymentProof")} — (${file.name})` });
     return url;
   }

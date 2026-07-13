@@ -39,7 +39,7 @@ export default function AddonsPanel({
     const path = `addons/${customerId}/${Date.now()}-${file.name}`;
     const up = await supabase.storage.from("receipts").upload(path, file, { upsert: false });
     if (up.error) { toast(tr("shotUploadFailed")); return ""; }
-    return supabase.storage.from("receipts").getPublicUrl(path).data.publicUrl;
+    return path; // نخزّن الـ path
   }
 
   async function add() {

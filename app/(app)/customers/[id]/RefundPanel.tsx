@@ -37,7 +37,7 @@ export default function RefundPanel({
     const path = `${customerId}/refund-${Date.now()}.${ext}`;
     const up = await supabase.storage.from("receipts").upload(path, file, { upsert: false });
     if (up.error) { toast(tr("imgUploadFailed")); return ""; }
-    return supabase.storage.from("receipts").getPublicUrl(path).data?.publicUrl || "";
+    return path; // نخزّن الـ path
   }
 
   async function request() {

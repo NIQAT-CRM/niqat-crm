@@ -159,7 +159,7 @@ export default function NewCustomerForm({
       const path = `docs/${cid}/${Date.now()}-${payFile.name}`;
       const up = await supabase.storage.from("receipts").upload(path, payFile, { upsert: false });
       if (!up.error) {
-        const url = supabase.storage.from("receipts").getPublicUrl(path).data.publicUrl;
+        const url = path; // نخزّن الـ path ونوقّعه وقت العرض
         await supabase.from("customer_docs").insert({ customer_id: cid, url, name: `${tr("transferShot")} — ${tr("agreedWord")} (${payFile.name})` });
       }
     }
@@ -190,7 +190,7 @@ export default function NewCustomerForm({
               const p = `installments/${cid}/${Date.now()}-${payFile.name}`;
               const u = await supabase.storage.from("receipts").upload(p, payFile, { upsert: false });
               if (!u.error) {
-                firstShot = supabase.storage.from("receipts").getPublicUrl(p).data.publicUrl;
+                firstShot = p; // نخزّن الـ path ونوقّعه وقت العرض
                 await supabase.from("customer_docs").insert({ customer_id: cid, url: firstShot, name: `${tr("instReceipt")} #1 (${payFile.name})` });
               }
             }

@@ -47,7 +47,7 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
     const path = `${customerId}/${Date.now()}.${ext}`;
     const up = await supabase.storage.from("receipts").upload(path, theFile, { upsert: false });
     if (up.error) { toast(tr("imgUploadFailed")); return null; }
-    const url = supabase.storage.from("receipts").getPublicUrl(path).data?.publicUrl || null;
+    const url = path; // نخزّن الـ path
     // تسجيل نسخة في المستندات عشان تظهر في سكشن المستندات
     if (url) await supabase.from("customer_docs").insert({ customer_id: customerId, url, name: label || `${tr("instReceipt")} (${theFile.name})` });
     return url;
