@@ -26,10 +26,8 @@ export default async function Refunds() {
     );
   }
 
-  const [{ data: rf, error }, { data: custs }] = await Promise.all([
-    supabase.from("refunds").select("id,customer_id,amount,currency,reason,status,created_at").neq("status", "closed").order("created_at", { ascending: false }),
-    supabase.from("customers").select("id,name,archived"),
-  ]);
+  const { data: rf, error } = await supabase
+    .from("refunds").select("id,customer_id,amount,currency,reason,status,created_at").neq("status", "closed").order("created_at", { ascending: false });
 
   if (error) {
     const missingTable = (error as any)?.code === "42P01" || /does not exist|relation .* does not/i.test((error as any)?.message || "");
@@ -44,6 +42,12 @@ export default async function Refunds() {
       </div>
     );
   }
+
+  // نجيب بس العملاء اللي ليهم ريفند (بالـ id) — مش الجدول كله (اللي بيتحدّ بـ 1000 صف)
+  const cids = Array.from(new Set((rf || []).map((r) => r.customer_id)));
+  const { data: custs } = cids.length
+    ? await supabase.from("customers").select("id,name,archived").in("id", cids)
+    : { data: [] as any[] };
 
   const cName = new Map((custs || []).map((c) => [c.id, c.name]));
   const archivedSet = new Set((custs || []).filter((c) => (c as any).archived).map((c) => c.id));

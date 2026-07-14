@@ -88,9 +88,6 @@ export default function AccessPanel({
 
   const done = items.filter((i) => i.done).length;
 
-  // بند قفل الأكسس الخاص بالريفند — لو اتعلّم done يظهر زر أرشفة العميل (الدعم هو اللي يأرشف)
-  const refundCloseItem = items.find((i) => i.label === REFUND_CLOSE_LABEL) || null;
-
   async function archiveAfterRefund() {
     setBusy("archive");
     const { error } = await supabase.from("customers").update({ archived: true }).eq("id", customerId);
@@ -196,22 +193,21 @@ export default function AccessPanel({
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {items.map((it) => (
-              <label key={it.id} style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", cursor: "pointer", opacity: busy === it.id ? 0.5 : 1 }}>
-                <input type="checkbox" checked={it.done} onChange={() => toggleDone(it)} disabled={busy === it.id} />
-                <span style={{ flex: 1, fontWeight: 600, textDecoration: it.done ? "line-through" : "none", color: it.done ? "var(--muted)" : "var(--ink)" }}>{it.label}</span>
-                {it.done && it.done_by && <span style={{ fontSize: 11, color: "var(--green)" }}>{tr("accActivatedBy")} {it.done_by}</span>}
-              </label>
+              <div key={it.id}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", cursor: "pointer", opacity: busy === it.id ? 0.5 : 1 }}>
+                  <input type="checkbox" checked={it.done} onChange={() => toggleDone(it)} disabled={busy === it.id} />
+                  <span style={{ flex: 1, fontWeight: 600, textDecoration: it.done ? "line-through" : "none", color: it.done ? "var(--muted)" : "var(--ink)" }}>{it.label}</span>
+                  {it.done && it.done_by && <span style={{ fontSize: 11, color: "var(--green)" }}>{tr("accActivatedBy")} {it.done_by}</span>}
+                </label>
+                {/* بند قفل الأكسس (ريفند) بعد ما يتعلّم → زر أرشفة العميل جنبه مباشرةً */}
+                {it.label === REFUND_CLOSE_LABEL && it.done && (
+                  <button onClick={archiveAfterRefund} disabled={busy === "archive"} className="btn danger" style={{ width: "100%", marginTop: 6 }}>
+                    {busy === "archive" ? "..." : "🗄️ " + tr("closedArchiveBtn")}
+                  </button>
+                )}
+              </div>
             ))}
           </div>
-
-          {/* بعد قفل الأكسس الخاص بالريفند → زر أرشفة العميل */}
-          {refundCloseItem && refundCloseItem.done && (
-            <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
-              <button onClick={archiveAfterRefund} disabled={busy === "archive"} className="btn danger" style={{ width: "100%" }}>
-                {busy === "archive" ? "..." : "🗄️ " + tr("closedArchiveBtn")}
-              </button>
-            </div>
-          )}
 
           {/* زر تحويل عناصر جديدة — يفضل ظاهر دايمًا */}
           {!openAdd ? (
