@@ -45,6 +45,13 @@ export default function NewCustomerForm({
   const [showSubManual, setShowSubManual] = useState(false);
   // بند 6: المبلغ النهائي بعد الخصم — يُحسب تلقائي، وقابل للتعديل يدوي
   const [netOverride, setNetOverride] = useState<string | null>(null);
+  // ===== مودال التفعيل عند الإنشاء (يظهر فقط لو الدفع تمّ بالكامل دلوقتي) =====
+  // العميل بيتحفظ الأول، والمودال بيظهر بعد الحفظ. لو اتقفل من غير تأكيد → يفضل محفوظ بدون handoff.
+  const [actOpen, setActOpen] = useState(false);
+  const [actBusy, setActBusy] = useState(false);
+  const [actLibrary, setActLibrary] = useState(true);          // تفعيل المكتبة — مفعّل افتراضياً لكل الدبلومات
+  const [actBatchId, setActBatchId] = useState("");            // لو العميل مااختارش باتش في الفورم
+  const [actCtx, setActCtx] = useState<{ cid: string; diploma: string; batchId: string; batch: string } | null>(null);
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
 
   // بند 3: كشف تكرار فوري أثناء كتابة الموبايل/الإيميل (debounced)
@@ -229,8 +236,72 @@ export default function NewCustomerForm({
       });
     }
     setSaving(false);
+
+    // هل الاشتراك اتدفع بالكامل دلوقتي؟ (كاش مدفوع الآن، أو قسط واحد يغطّي الكل، أو هدية)
+    const instRows = payMode === "installment" ? buildSchedule(net, Number(instCount), Number(instGap)) : [];
+    const firstCoversAll = payFirstNow && instRows.length > 0 && instRows[0].amount >= net;
+    const paidInFull = !!f.diploma_id && (
+      f.free ||
+      (net > 0 && ((payMode === "cash" && cashPaidNow) || (payMode === "installment" && firstCoversAll)))
+    );
+
+    if (paidInFull) {
+      // العميل اتسجّل بالفعل فوق. نفتح مودال التفعيل. لو اتقفل من غير تأكيد → يفضل بدون handoff.
+      const dipName = diplomas.find((d) => d.id === f.diploma_id)?.name || tr("theDiploma");
+      const batchName = batches.find((b) => b.id === f.batch_id)?.name || "";
+      setActCtx({ cid, diploma: dipName, batchId: f.batch_id, batch: batchName });
+      setActBatchId(f.batch_id || "");
+      setActLibrary(true);
+      setActOpen(true);
+      return;
+    }
+
     toast(tr("customerRegistered"));
     router.push(`/customers/${cid}`); router.refresh();
+  }
+
+  // تأكيد التفعيل: يبني handoff + بنوده (الدبلومة + المكتبة لو مفعّلة) — نفس منطق كارت العميل بالظبط
+  async function confirmActivation() {
+    const ctx = actCtx;
+    if (!ctx) return;
+    setActBusy(true);
+    const batchCode = ctx.batch || (batches.find((b) => b.id === actBatchId)?.name || "");
+    const labels: string[] = [`${tr("activatePrefix")} ${ctx.diploma}${batchCode ? " — " + batchCode : ""}`];
+    if (actLibrary) labels.push(`${tr("activatePrefix")} ${tr("libraryName")}`);
+
+    // handoff موجود؟ نعيد استخدامه، وإلا ننشئ واحد جديد (pending)
+    const { data: existingHo } = await supabase.from("handoffs").select("id").eq("customer_id", ctx.cid).limit(1).maybeSingle();
+    let hoId = (existingHo as any)?.id as string | undefined;
+    if (!hoId) {
+      const { data: h, error } = await supabase.from("handoffs").insert({ customer_id: ctx.cid, created_by: meId || null, note: "", status: "pending" }).select("id").single();
+      if (error || !h) { setActBusy(false); toast(tr("createHandoffFailed") + (error?.message || "")); return; }
+      hoId = (h as any).id;
+    } else {
+      await supabase.from("handoffs").update({ status: "pending" }).eq("id", hoId);
+    }
+    // منع تكرار البنود
+    const { data: cur } = await supabase.from("handoff_items").select("label").eq("handoff_id", hoId);
+    const already = new Set(((cur as any[]) || []).map((x) => x.label));
+    const rows = labels.filter((l, i) => labels.indexOf(l) === i).filter((l) => !already.has(l)).map((label) => ({ handoff_id: hoId, label, done: false }));
+    if (rows.length) {
+      const { error: e2 } = await supabase.from("handoff_items").insert(rows);
+      if (e2) { setActBusy(false); toast(tr("addItemsFailed") + e2.message); return; }
+    }
+    // المرحلة → enrolled + علّم handed_off
+    await supabase.from("customers").update({ stage: "enrolled", handed_off: true }).eq("id", ctx.cid);
+    await supabase.from("audit_log").insert({ customer_id: ctx.cid, actor_id: meId || null, action: "auto_handoff", detail: labels.join(" · ") });
+    setActBusy(false);
+    setActOpen(false);
+    toast(tr("sentToActivation"));
+    router.push(`/customers/${ctx.cid}`); router.refresh();
+  }
+
+  // إغلاق المودال من غير تأكيد → العميل محفوظ بدون تحويل (يتحوّل لاحقاً من كارت العميل)
+  function dismissActivation() {
+    setActOpen(false);
+    const cid = actCtx?.cid;
+    toast(tr("customerRegistered"));
+    if (cid) { router.push(`/customers/${cid}`); router.refresh(); }
   }
 
   const I = (label: string, k: string, ltr = false) => (
@@ -430,6 +501,50 @@ export default function NewCustomerForm({
         <button onClick={save} disabled={saving} className="btn">{saving ? "..." : tr("saveCustomer")}</button>
         <button onClick={() => router.back()} className="btn ghost">{tr("back")}</button>
       </div>
+
+      {/* ===== مودال التفعيل عند الإنشاء (دبلومة ثابتة + باتش + تفعيل المكتبة) ===== */}
+      {actOpen && actCtx && (
+        <div onClick={() => !actBusy && dismissActivation()}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} className="card"
+            style={{ padding: 20, width: "100%", maxWidth: 440, maxHeight: "90vh", overflow: "auto" }}>
+            <div className="sec-t" style={{ marginTop: 0, marginBottom: 4 }}>{tr("activationChecklistTitle")}</div>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 14 }}>{tr("activationChecklistHint")}</div>
+
+            {/* الدبلومة (ثابتة) */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "10px 12px", marginBottom: 8, background: "var(--brand-soft)" }}>
+              <input type="checkbox" checked disabled />
+              <span style={{ fontWeight: 700, color: "var(--ink)" }}>{tr("activatePrefix")} {actCtx.diploma}</span>
+            </div>
+
+            {/* الباتش: تلقائي لو متحدّد في الفورم، وإلا اختيار */}
+            <div className="fld" style={{ marginBottom: 8 }}>
+              <label>{tr("batch")}</label>
+              {actCtx.batchId ? (
+                <div className="inp" style={{ display: "flex", alignItems: "center", background: "var(--muted-soft)" }} dir="ltr">{actCtx.batch || "—"}</div>
+              ) : (
+                <select className="inp" value={actBatchId} onChange={(e) => setActBatchId(e.target.value)}>
+                  <option value="">{tr("selectBatchOpt")}</option>
+                  {batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              )}
+            </div>
+
+            {/* تفعيل المكتبة — ضروري لكل الدبلومات، مفعّل افتراضياً */}
+            <label style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "10px 12px", marginBottom: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={actLibrary} onChange={(e) => setActLibrary(e.target.checked)} />
+              <span style={{ color: "var(--ink)", fontWeight: 700 }}>{tr("activatePrefix")} {tr("libraryName")}</span>
+            </label>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+              <button onClick={confirmActivation} disabled={actBusy} className="btn" style={{ flex: 1 }}>
+                {actBusy ? "..." : tr("confirmActivationBtn")}
+              </button>
+              <button onClick={dismissActivation} disabled={actBusy} className="btn ghost">{tr("cancel")}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
