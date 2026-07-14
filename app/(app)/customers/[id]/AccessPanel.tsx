@@ -3,6 +3,9 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/lib/i18n/client";
+import { toast } from "@/lib/toast";
+
+const REFUND_CLOSE_LABEL = "قفل الأكسس (ريفند)";
 
 type Item = { id: string; label: string; done: boolean; done_by: string | null; done_at: string | null };
 type Handoff = { id: string; status: string; note: string; assignee: string; by: string; at: string } | null;
@@ -84,6 +87,22 @@ export default function AccessPanel({
   }
 
   const done = items.filter((i) => i.done).length;
+
+  // بند قفل الأكسس الخاص بالريفند — لو اتعلّم done يظهر زر أرشفة العميل (الدعم هو اللي يأرشف)
+  const refundCloseItem = items.find((i) => i.label === REFUND_CLOSE_LABEL) || null;
+
+  async function archiveAfterRefund() {
+    setBusy("archive");
+    const { error } = await supabase.from("customers").update({ archived: true }).eq("id", customerId);
+    if (error) { setBusy(null); alert(tr("updateFailed") + error.message); return; }
+    // قفل الريفند (best-effort — ممكن يترفض بالـ RLS لو الدعم مالوش صلاحية مالية، والفلترة بالأرشفة بتخفيه برضه)
+    await supabase.from("refunds").update({ status: "closed" }).eq("customer_id", customerId).neq("status", "closed");
+    await supabase.from("audit_log").insert({
+      customer_id: customerId, actor_id: meId || null, action: "refunded", detail: tr("closedArchiveBtn"),
+    });
+    setBusy(null);
+    toast(tr("customerArchived")); router.refresh();
+  }
 
   // لوحة اختيار البنود (combobox فاضي) — تُستخدم في الحالتين
   const picker = (
@@ -184,6 +203,15 @@ export default function AccessPanel({
               </label>
             ))}
           </div>
+
+          {/* بعد قفل الأكسس الخاص بالريفند → زر أرشفة العميل */}
+          {refundCloseItem && refundCloseItem.done && (
+            <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+              <button onClick={archiveAfterRefund} disabled={busy === "archive"} className="btn danger" style={{ width: "100%" }}>
+                {busy === "archive" ? "..." : "🗄️ " + tr("closedArchiveBtn")}
+              </button>
+            </div>
+          )}
 
           {/* زر تحويل عناصر جديدة — يفضل ظاهر دايمًا */}
           {!openAdd ? (

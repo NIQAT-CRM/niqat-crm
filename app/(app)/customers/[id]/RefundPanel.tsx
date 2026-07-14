@@ -17,10 +17,13 @@ const STATUS: Record<string, { labelKey: string; color: string; bg: string }> = 
   closed: { labelKey: "refundClosed", color: "#94A2BB", bg: "#EEF1F6" },
 };
 
+const REFUND_CLOSE_LABEL = "قفل الأكسس (ريفند)";
+
 export default function RefundPanel({
-  customerId, refund, meId, tableMissing,
+  customerId, refund, meId, tableMissing, accessItems = [],
 }: {
   customerId: string; refund: Refund; meId: string; tableMissing: boolean;
+  accessItems?: { id: string; label: string; done: boolean }[];
 }) {
   const supabase = createClient();
   const tr = useT();
@@ -106,6 +109,19 @@ export default function RefundPanel({
     toast(tr("sentToSupportForClose")); router.refresh();
   }
 
+  // بعد ما الدعم يقفل الأكسس → أرشفة العميل + قفل الريفند (ينقله من طلبات الريفند للأرشيف)
+  async function archiveAfterRefund() {
+    setBusy(true);
+    const { error } = await supabase.from("customers").update({ archived: true }).eq("id", customerId);
+    if (error) { setBusy(false); alert(tr("updateFailed") + error.message); return; }
+    if (refund) await supabase.from("refunds").update({ status: "closed" }).eq("id", refund.id);
+    await supabase.from("audit_log").insert({
+      customer_id: customerId, actor_id: meId || null, action: "refunded", detail: tr("closedArchiveBtn"),
+    });
+    setBusy(false);
+    toast(tr("customerArchived")); router.refresh();
+  }
+
   if (tableMissing) {
     return (
       <div className="card" style={{ padding: 18, marginBottom: 14 }}>
@@ -162,12 +178,27 @@ export default function RefundPanel({
                 <button onClick={() => setStatus("refunded", false, true)} disabled={busy} className="btn">{busy ? "..." : tr("refundTransfer")}</button>
               </div>
             )}
-            {refund.status === "refunded" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
-                <div style={{ fontSize: 12, color: "var(--muted)" }}>{tr("supportWillCloseHint")}</div>
-                <button onClick={sendToSupportForClose} disabled={busy} className="btn">{busy ? "..." : tr("refundHandoffToSupport")}</button>
-              </div>
-            )}
+            {refund.status === "refunded" && (() => {
+              const closeItem = accessItems.find((i) => i.label === REFUND_CLOSE_LABEL) || null;
+              // 1) لسه ماتحولش للدعم → زر التحويل
+              if (!closeItem) return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{tr("supportWillCloseHint")}</div>
+                  <button onClick={sendToSupportForClose} disabled={busy} className="btn">{busy ? "..." : tr("refundHandoffToSupport")}</button>
+                </div>
+              );
+              // 2) اتحوّل للدعم بس لسه ما قفلش الأكسس → انتظار
+              if (!closeItem.done) return (
+                <div style={{ fontSize: 12.5, color: "var(--muted)", width: "100%" }}>⏳ {tr("awaitingSupportClose")}</div>
+              );
+              // 3) الدعم قفل الأكسس → زر أرشفة العميل
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+                  <div style={{ fontSize: 12, color: "var(--green)" }}>✓ {tr("accDone")}</div>
+                  <button onClick={archiveAfterRefund} disabled={busy} className="btn danger">{busy ? "..." : "🗄️ " + tr("closedArchiveBtn")}</button>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

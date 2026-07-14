@@ -55,7 +55,7 @@ export default function CustomerDrawer(props: {
 
         {props.canFinance && <FinancePanel enrollments={props.finEnrollments} customerId={props.c.id} meId={props.user?.id || ""} />}
 
-        {props.canFinance && <RefundPanel customerId={props.c.id} refund={props.refund} meId={props.user?.id || ""} tableMissing={props.refundTableMissing} />}
+        {props.canFinance && <RefundPanel customerId={props.c.id} refund={props.refund} meId={props.user?.id || ""} tableMissing={props.refundTableMissing} accessItems={props.accessItems} />}
       </>}
       docs={<>
         <DocsPanel customerId={props.c.id} initial={props.docs} tableMissing={props.docsMissing} />
