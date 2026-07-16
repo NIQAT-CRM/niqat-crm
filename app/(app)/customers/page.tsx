@@ -307,14 +307,14 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
                       </>
                     ) : "—"}
                   </td>
-                  <td dir="ltr" style={{ textAlign: "end" }}>
+                  <td>
                     {spName.get(r.specialty_id) ? <span className="chip">{spName.get(r.specialty_id)}</span> : "—"}
                   </td>
-                  <td className="num" dir="ltr" style={{ textAlign: "end" }}>{r.phone1 || "—"}</td>
+                  <td className="num">{r.phone1 ? <span dir="ltr">{r.phone1}</span> : "—"}</td>
                   <td><span className="stg" style={{ background: st.color + "1a", color: st.color }}>{tr(st.labelKey)}</span></td>
                   {canFinance && (
-                    <td className="num" dir="ltr" style={{ fontWeight: 700, textAlign: "end" }}>
-                      {rem > 0 ? (curMap.get(r.id) === "USD" ? "$" + money(rem) : money(rem) + " " + tr("egpShort")) : "—"}
+                    <td className="num" style={{ fontWeight: 700 }}>
+                      {rem > 0 ? <span dir="ltr">{curMap.get(r.id) === "USD" ? "$" + money(rem) : money(rem) + " " + tr("egpShort")}</span> : "—"}
                       {od && <span className="stg" style={{ background: "#FDECEA", color: "#E0483B", marginInlineStart: 6, fontSize: 10 }}>{tr("overdueTag")}</span>}
                     </td>
                   )}
