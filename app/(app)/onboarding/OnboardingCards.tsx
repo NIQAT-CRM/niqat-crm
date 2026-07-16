@@ -3,6 +3,7 @@ import { useState, useCallback, useMemo, memo } from "react";
 import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { revalidateCustomers } from "../customers/actions";
 import EmptyState from "../EmptyState";
 
 type Item = { id: string; label: string; done: boolean; by: string | null; at: string };
@@ -186,6 +187,7 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
     if (error) { alert(tr("archiveFailed") + error.message); return; }
     // قفل الريفند (best-effort — الفلترة بالأرشفة بتخفيه برضه)
     await supabase.from("refunds").update({ status: "closed" }).eq("customer_id", custId).neq("status", "closed");
+    await revalidateCustomers();
   }, [supabase, tr]);
 
   const shown = useMemo(() => {

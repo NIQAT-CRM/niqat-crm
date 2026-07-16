@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/lib/i18n/client";
 import { toast } from "@/lib/toast";
+import { revalidateCustomers } from "../actions";
 
 const REFUND_CLOSE_LABEL = "قفل الأكسس (ريفند)";
 
@@ -98,6 +99,7 @@ export default function AccessPanel({
       customer_id: customerId, actor_id: meId || null, action: "refunded", detail: tr("closedArchiveBtn"),
     });
     setBusy(null);
+    await revalidateCustomers();
     toast(tr("customerArchived")); router.refresh();
   }
 

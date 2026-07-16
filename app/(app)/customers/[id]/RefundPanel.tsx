@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
+import { revalidateCustomers } from "../actions";
 
 type Refund = { id: string; amount: number; currency: string; reason: string; shot_url: string; status: string; created_at: string } | null;
 
@@ -134,6 +135,7 @@ export default function RefundPanel({
       customer_id: customerId, actor_id: meId || null, action: "refunded", detail: tr("closedArchiveBtn"),
     });
     setBusy(false);
+    await revalidateCustomers();
     toast(tr("customerArchived")); router.refresh();
   }
 
