@@ -42,6 +42,10 @@ export default function ServicesPanel({
   const [file, setFile] = useState<File | null>(null);
   const [moveFor, setMoveFor] = useState<string | null>(null);
   const [moveTo, setMoveTo] = useState("");
+  const [moveFee, setMoveFee] = useState("");
+  const [moveCur, setMoveCur] = useState("EGP");
+  const [moveGift, setMoveGift] = useState(false);
+  const [moveFile, setMoveFile] = useState<File | null>(null);
 
   const svNames = svType === "diploma" ? dipOpts : svType === "accred" ? accreditations.map((n) => ({ v: n, label: n })) : svType === "project" ? projects.map((n) => ({ v: n, label: n })) : libraries.map((n) => ({ v: n, label: n }));
   const batchLabel = (id: string) => batchOpts.find((b) => b.v === id)?.label || "—";
@@ -99,14 +103,52 @@ export default function ServicesPanel({
     toast(tr("serviceAdded")); router.refresh();
   }
 
+  function resetMove() { setMoveFor(null); setMoveTo(""); setMoveFee(""); setMoveCur("EGP"); setMoveGift(false); setMoveFile(null); }
+
   async function doMove(e: Enr) {
-    if (!moveTo || moveTo === e.batchId) { setMoveFor(null); return; }
+    if (!moveTo || moveTo === e.batchId) { toast(tr("selectTargetBatch")); return; }
+    const fee = Number(moveFee) || 0;
+    if (!moveGift && fee <= 0) { toast(tr("enterTransferFee")); return; }
     setBusy(true);
-    const { error } = await supabase.from("enrollments").update({ batch_id: moveTo }).eq("id", e.id);
-    if (error) { setBusy(false); toast(tr("transferFailed")); return; }
-    await logAudit("batch_transfer", `${e.diploma}: ${tr("auditBatchTransfer")} ${e.batch} → ${batchLabel(moveTo)}`);
-    setBusy(false); setMoveFor(null); setMoveTo("");
-    toast(tr("transferred")); router.refresh();
+
+    // 1) رفع اسكرين التحويل (لو مرفوع)
+    let shotUrl = "";
+    if (!moveGift && moveFile) {
+      const path = `transfers/${customerId}/${Date.now()}-${moveFile.name}`;
+      const up = await supabase.storage.from("receipts").upload(path, moveFile, { upsert: false });
+      if (up.error) { setBusy(false); toast(tr("screenshotUploadFailed")); return; }
+      shotUrl = path;
+      await supabase.from("customer_docs").insert({ customer_id: customerId, url: path, name: `${tr("transferFeeProof")} — (${moveFile.name})` });
+    }
+
+    // 2) رسوم النقل كقسط مدفوع (يدخل التحصيل) — إلا لو هدية
+    if (!moveGift && fee > 0) {
+      const { error: finErr } = await supabase.from("installments").insert({
+        enrollment_id: e.id, amount: fee, currency: moveCur, status: "paid",
+        paid_at: new Date().toISOString(), screenshot_url: shotUrl || null,
+      });
+      if (finErr) { setBusy(false); toast(tr("transferFailed")); return; }
+    }
+
+    // 3) النقل الفعلي للباتش الجديد (موديل أ — فوري بعد الدفع)
+    const fromLabel = e.batch || batchLabel(e.batchId);
+    const toLabel = batchLabel(moveTo);
+    const { error: mvErr } = await supabase.from("enrollments").update({ batch_id: moveTo }).eq("id", e.id);
+    if (mvErr) { setBusy(false); toast(tr("transferFailed")); return; }
+
+    // 4) تذكرة للدعم لتفعيل الخدمات الخارجية (LMS / جروب واتساب)
+    await supabase.from("tickets").insert({
+      customer_id: customerId,
+      title: `${tr("transferTicketTitle")} — ${e.diploma}`,
+      body: `${tr("transferTicketBody")}\n${e.diploma}: ${fromLabel} → ${toLabel}\n${moveGift ? tr("transferGiftNote") : tr("transferFeeLabel") + ": " + fee + " " + (moveCur === "USD" ? "$" : tr("egpShort"))}`,
+      status: "open", priority: "normal",
+    });
+
+    // 5) تسجيل في التايم لاين
+    await logAudit("batch_transfer", `${e.diploma}: ${tr("auditBatchTransfer")} ${fromLabel} → ${toLabel}${moveGift ? " (" + tr("giftWord") + ")" : " — " + tr("transferFeeLabel") + " " + fee + " " + (moveCur === "USD" ? "$" : tr("egpShort"))}`);
+
+    setBusy(false); resetMove();
+    toast(tr("transferredToSupport")); router.refresh();
   }
 
   async function togglePaid(a: Addon) {
@@ -219,19 +261,49 @@ export default function ServicesPanel({
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ color: "var(--muted)", fontSize: 12 }}>{tr("batchColon")} <span className="num">{e.batch}</span></span>
-                    <button onClick={() => { setMoveFor(moveFor === e.id ? null : e.id); setMoveTo(e.batchId); }}
+                    <button onClick={() => { if (moveFor === e.id) { resetMove(); } else { resetMove(); setMoveFor(e.id); setMoveTo(e.batchId); } }}
                       style={{ color: "var(--brand)", fontWeight: 700, fontSize: 12, background: "none", border: "none", cursor: "pointer" }}>
                       {tr("moveTransfer")}
                     </button>
                   </div>
                 </div>
                 {moveFor === e.id && (
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <select className="inp" style={{ flex: 1, height: 36 }} value={moveTo} onChange={(ev) => setMoveTo(ev.target.value)}>
-                      {batchOpts.map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
-                    </select>
-                    <button className="btn" onClick={() => doMove(e)} disabled={busy} style={{ height: 36, padding: "0 14px" }}>{busy ? "..." : tr("moveTransfer")}</button>
-                    <button className="btn ghost" onClick={() => setMoveFor(null)} style={{ height: 36, padding: "0 12px" }}>{tr("cancel")}</button>
+                  <div style={{ marginTop: 10, padding: 12, border: "1px solid var(--line)", borderRadius: 10, background: "var(--muted-soft)", display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 4 }}>{tr("targetBatch")}</label>
+                      <select className="inp" style={{ width: "100%", height: 38 }} value={moveTo} onChange={(ev) => setMoveTo(ev.target.value)}>
+                        {batchOpts.map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
+                      </select>
+                    </div>
+
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                      <input type="checkbox" checked={moveGift} onChange={(ev) => setMoveGift(ev.target.checked)} />
+                      <span>{tr("transferGift")}</span>
+                    </label>
+
+                    {!moveGift && (
+                      <>
+                        <div>
+                          <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 4 }}>{tr("transferFeeLabel")}</label>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <input className="inp num" dir="ltr" placeholder="0" style={{ flex: 1, height: 38 }} value={moveFee} onChange={(ev) => setMoveFee(ev.target.value)} />
+                            <select className="inp" style={{ width: 84, height: 38 }} value={moveCur} onChange={(ev) => setMoveCur(ev.target.value)}>
+                              <option value="EGP">{tr("egpShort")}</option><option value="USD">$</option>
+                            </select>
+                          </div>
+                        </div>
+                        <label className="btn ghost" style={{ height: 38, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 12.5 }}>
+                          📎 {moveFile ? moveFile.name : tr("uploadTransferShot")}
+                          <input type="file" accept="image/*" hidden onChange={(ev) => setMoveFile(ev.target.files?.[0] || null)} />
+                        </label>
+                      </>
+                    )}
+
+                    <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.6 }}>{tr("transferHint")}</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button className="btn" onClick={() => doMove(e)} disabled={busy} style={{ height: 38, flex: 1 }}>{busy ? "..." : tr("confirmTransfer")}</button>
+                      <button className="btn ghost" onClick={resetMove} style={{ height: 38, padding: "0 14px" }}>{tr("cancel")}</button>
+                    </div>
                   </div>
                 )}
               </div>
