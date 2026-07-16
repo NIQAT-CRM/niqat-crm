@@ -8,7 +8,7 @@ const STAGES = [
   { key: "contacted", labelKey: "dashStageContacted" },
   { key: "interested", labelKey: "dashStageInterested" },
   { key: "enrolled", labelKey: "dashStageEnrolled" },
-  { key: "lost", labelKey: "dashStageLost" },
+  { key: "onhold", labelKey: "dashStageOnhold" },
 ];
 
 export default function StageMover({ id, current }: { id: string; current: string }) {

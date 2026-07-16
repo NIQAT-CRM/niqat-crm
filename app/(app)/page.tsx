@@ -11,7 +11,7 @@ const STAGES = [
   { key: "contacted", labelKey: "dashStageContacted", color: "#0FA3A3" },
   { key: "interested", labelKey: "dashStageInterested", color: "#7B61FF" },
   { key: "enrolled", labelKey: "dashStageEnrolled", color: "#18A957" },
-  { key: "lost", labelKey: "dashStageLost", color: "#94A2BB" },
+  { key: "onhold", labelKey: "dashStageOnhold", color: "#E6A700" },
 ];
 const DC = ["#F08A24", "#2F6BFF", "#0FA3A3", "#7B61FF", "#18A957", "#E6A700", "#E0483B"];
 const fmtDate = (d: string) => { try { return new Date(d).toLocaleDateString("ar-EG", { month: "short", day: "numeric" }); } catch { return d; } };
@@ -56,7 +56,7 @@ export default async function Dashboard() {
   for (const r of (scRes.data as any[]) || []) byStage[r.stage] = Number(r.n) || 0;
   const total = Object.values(byStage).reduce((a, b) => a + b, 0);
   const enrolled = byStage["enrolled"] || 0;
-  const lost = byStage["lost"] || 0;
+  const lost = byStage["onhold"] || 0;
   const leads = total - enrolled - lost;
   const conv = total ? Math.round((enrolled / total) * 100) : 0;
 

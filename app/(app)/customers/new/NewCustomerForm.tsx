@@ -10,7 +10,7 @@ type Opt = { id: string; name: string };
 type BatchOpt = { id: string; name: string; price?: number; currency?: string; price_egp?: number; price_usd?: number; diploma_id?: string };
 const STAGES = [
   ["contacted", "dashStageContacted"], ["interested", "dashStageInterested"],
-  ["enrolled", "dashStageEnrolled"], ["lost", "dashStageLost"],
+  ["enrolled", "dashStageEnrolled"], ["onhold", "dashStageOnhold"],
 ];
 
 type Aff = { name: string; code: string; discount: number };

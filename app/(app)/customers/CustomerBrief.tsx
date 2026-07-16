@@ -8,7 +8,7 @@ const STG: Record<string, { k: string; c: string }> = {
   contacted: { k: "dashStageContacted", c: "#0FA3A3" },
   interested: { k: "dashStageInterested", c: "#7B61FF" },
   enrolled: { k: "dashStageEnrolled", c: "#18A957" },
-  lost: { k: "dashStageLost", c: "#94A2BB" },
+  onhold: { k: "dashStageOnhold", c: "#E6A700" },
 };
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 function waLink(p: string) { const d = (p || "").replace(/\D/g, ""); return d ? "https://wa.me/" + d : "#"; }

@@ -23,7 +23,7 @@ const STAGES = [
   { key: "contacted", labelKey: "dashStageContacted", color: "#0FA3A3" },
   { key: "interested", labelKey: "dashStageInterested", color: "#7B61FF" },
   { key: "enrolled", labelKey: "dashStageEnrolled", color: "#18A957" },
-  { key: "lost", labelKey: "dashStageLost", color: "#94A2BB" },
+  { key: "onhold", labelKey: "dashStageOnhold", color: "#E6A700" },
 ];
 
 const AV = ["#F08A24", "#0FA3A3", "#2F6BFF", "#7B61FF", "#18A957", "#E0483B", "#E6A700"];

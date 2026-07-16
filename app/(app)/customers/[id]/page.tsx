@@ -12,7 +12,7 @@ const STAGE: Record<string, { labelKey: string; color: string }> = {
   contacted: { labelKey: "dashStageContacted", color: "#0FA3A3" },
   interested: { labelKey: "dashStageInterested", color: "#7B61FF" },
   enrolled: { labelKey: "dashStageEnrolled", color: "#18A957" },
-  lost: { labelKey: "dashStageLost", color: "#94A2BB" },
+  onhold: { labelKey: "dashStageOnhold", color: "#E6A700" },
 };
 
 const AUDIT_KEYS: Record<string, string> = {

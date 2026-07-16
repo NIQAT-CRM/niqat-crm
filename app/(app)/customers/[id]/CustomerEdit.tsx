@@ -17,7 +17,7 @@ const STAGES = [
   { key: "contacted", labelKey: "dashStageContacted" },
   { key: "interested", labelKey: "dashStageInterested" },
   { key: "enrolled", labelKey: "dashStageEnrolled" },
-  { key: "lost", labelKey: "dashStageLost" },
+  { key: "onhold", labelKey: "dashStageOnhold" },
 ];
 
 export type CustomerEditHandle = { save: () => Promise<void> };
