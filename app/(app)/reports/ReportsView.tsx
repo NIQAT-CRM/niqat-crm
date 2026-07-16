@@ -65,6 +65,16 @@ export default function ReportsView({
   const maxStage = Math.max(1, ...stageRows.map((s) => s.n));
   const salesMax = Math.max(1, ...salesRows.map((s) => s.customers));
   const supMax = Math.max(1, ...supportRows.map((s) => s.total));
+  const salesTot = {
+    customers: salesRows.reduce((a, s) => a + s.customers, 0),
+    enrolled: salesRows.reduce((a, s) => a + s.enrolled, 0),
+  };
+  const salesConv = salesTot.customers ? Math.round((salesTot.enrolled / salesTot.customers) * 100) : 0;
+  const supTot = {
+    total: supportRows.reduce((a, s) => a + s.total, 0),
+    open: supportRows.reduce((a, s) => a + s.open, 0),
+    closed: supportRows.reduce((a, s) => a + s.closed, 0),
+  };
 
   return (
     <div>
@@ -187,7 +197,21 @@ export default function ReportsView({
                 headers={[tr("teamMember"), tr("customerCount"), tr("enrolledCol"), tr("convRate"), ...(canFinance ? ["EGP", "USD"] : [])]}
                 rows={salesRows.map((s) => [s.name, s.customers, s.enrolled, s.conv + "%", ...(canFinance ? [s.collectedEgp, s.collectedUsd] : [])])} />
             </div>
-            <div className="tbl-wrap" style={{ marginTop: 12 }}>
+            {salesRows.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 22, marginBottom: 16 }}>
+                  <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("customerCount")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#2F6BFF" }}><CountUp value={salesTot.customers} /></div></div>
+                  <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("enrolledCol")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#18A957" }}><CountUp value={salesTot.enrolled} /></div></div>
+                  <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("convRate")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#E6A700" }}><CountUp value={salesConv} suffix="%" /></div></div>
+                </div>
+                {salesRows.map((s) => (
+                  <BarRow key={s.name}
+                    label={<span style={{ fontWeight: 700 }}>{s.name} <span style={{ color: "var(--muted)", fontWeight: 600, fontSize: 12 }}>· {s.enrolled} {tr("enrolledCol")} · {s.conv}%</span></span>}
+                    value={s.customers} max={salesMax} color="#2F6BFF" />
+                ))}
+              </div>
+            )}
+            <div className="tbl-wrap" style={{ marginTop: 16 }}>
               <table style={{ minWidth: 480 }}>
                 <thead><tr>
                   <th className="text-start px-4 py-3 font-bold">{tr("teamMember")}</th>
@@ -220,7 +244,21 @@ export default function ReportsView({
                 headers={[tr("teamMember"), tr("ticketsTotal"), tr("ticketsOpen"), tr("ticketsClosed")]}
                 rows={supportRows.map((s) => [s.name, s.total, s.open, s.closed])} />
             </div>
-            <div className="tbl-wrap" style={{ marginTop: 12 }}>
+            {supportRows.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 22, marginBottom: 16 }}>
+                  <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("ticketsTotal")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "var(--ink)" }}><CountUp value={supTot.total} /></div></div>
+                  <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("ticketsOpen")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#E6A700" }}><CountUp value={supTot.open} /></div></div>
+                  <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("ticketsClosed")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#18A957" }}><CountUp value={supTot.closed} /></div></div>
+                </div>
+                {supportRows.map((s) => (
+                  <BarRow key={s.name}
+                    label={<span style={{ fontWeight: 700 }}>{s.name} <span style={{ color: "var(--muted)", fontWeight: 600, fontSize: 12 }}>· {s.closed} {tr("ticketsClosed")} · {s.open} {tr("ticketsOpen")}</span></span>}
+                    value={s.total} max={supMax} color="#18A957" />
+                ))}
+              </div>
+            )}
+            <div className="tbl-wrap" style={{ marginTop: 16 }}>
               <table style={{ minWidth: 440 }}>
                 <thead><tr>
                   <th className="text-start px-4 py-3 font-bold">{tr("teamMember")}</th>

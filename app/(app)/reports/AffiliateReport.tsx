@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
+import { BarRow, CountUp } from "../Charts";
 import ExportButton from "../ExportButton";
 
 type Opt = { v: string; label: string };
@@ -148,6 +149,20 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
             <h3>{tr("overallOverview")}</h3>
           </div>
           <p style={{ fontSize: 13, color: "var(--muted)", margin: "6px 0 12px" }}>{tr("affReportPickBatch")}</p>
+          {affRows.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 22, marginBottom: 14 }}>
+                <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("customerCount")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#2F6BFF" }}><CountUp value={affRows.reduce((a, r) => a + r.customers, 0)} /></div></div>
+                <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("enrolledCol")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#18A957" }}><CountUp value={affRows.reduce((a, r) => a + r.enrolled, 0)} /></div></div>
+                <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("refundWord")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#E0483B" }}><CountUp value={affRows.reduce((a, r) => a + r.refunded, 0)} /></div></div>
+              </div>
+              {[...affRows].sort((a, b) => b.enrolled - a.enrolled).slice(0, 10).map((r) => (
+                <BarRow key={r.code}
+                  label={<span style={{ fontWeight: 700 }}>{r.name} <span style={{ color: "var(--muted)", fontWeight: 600, fontSize: 12 }}>({r.code}) · {r.customers} {tr("customerCount")}</span></span>}
+                  value={r.enrolled} max={Math.max(1, ...affRows.map((x) => x.enrolled))} color="var(--brand)" />
+              ))}
+            </div>
+          )}
           <div className="tbl-wrap">
             <table style={{ minWidth: 520 }}>
               <thead><tr>
