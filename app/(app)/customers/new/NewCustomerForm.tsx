@@ -88,7 +88,8 @@ export default function NewCustomerForm({
   const stageOpensSub = ["quote", "negotiation", "enrolled"].includes(f.stage);
   const showSub = stageOpensSub || showSubManual;
   // الاسم: لو إنجليزي خليه CAPITAL تلقائيًا (العربي زي ما هو)
-  const setName = (v: string) => set("name", /[A-Za-z]/.test(v) ? v.toUpperCase() : v);
+  // الاسم إنجليزي فقط: يشيل أي حروف مش لاتينية (بما فيها العربي) ويحوّل كابيتال أوتوماتيك
+  const setName = (v: string) => set("name", v.replace(/[^A-Za-z\s.'-]/g, "").toUpperCase());
 
   // الافييليت + الخصم
   const affMatch = affiliates.find((a) => a.code.toUpperCase() === f.affiliate_code.trim().toUpperCase());
@@ -118,6 +119,7 @@ export default function NewCustomerForm({
 
   async function save() {
     if (!f.name.trim()) { toast(tr("nameRequired")); return; }
+    if (!f.phone1.trim()) { toast(tr("phoneRequired")); return; }
     if (affUnknown) { toast(tr("affNotInList")); return; }
     setSaving(true);
     setDup(null);
@@ -326,7 +328,7 @@ export default function NewCustomerForm({
     <div className="card" style={{ padding: 20 }}>
       <div className="sec-t" style={{ marginTop: 0 }}>{tr("basicData")}</div>
       <div className="fld"><label>{tr("name")} *</label>
-        <input className="inp" value={f.name} onChange={(e) => setName(e.target.value)} placeholder={tr("nameArEnPh")} /></div>
+        <input className="inp" value={f.name} onChange={(e) => setName(e.target.value)} placeholder={tr("nameEnOnlyPh")} dir="ltr" /></div>
       <div className="frow">{PhoneField(tr("phone1"), "phone1", dial1, setDial1)}{PhoneField(tr("phone2"), "phone2", dial2, setDial2)}</div>
       <div className="frow">{I(tr("email"), "email", true)}{I(tr("company"), "company")}</div>
 
@@ -380,14 +382,19 @@ export default function NewCustomerForm({
       <div className="sec-t">{tr("subscriptionOpt")}</div>
       <div className="frow">
         <div className="fld"><label>{tr("theDiploma")}</label>
-          <select className="inp" value={f.diploma_id} onChange={(e) => set("diploma_id", e.target.value)}>
+          <select className="inp" value={f.diploma_id} onChange={(e) => {
+            const dip = e.target.value;
+            set("diploma_id", dip);
+            const b = batches.find((x) => x.id === f.batch_id);
+            if (b && b.diploma_id && b.diploma_id !== dip) set("batch_id", "");
+          }}>
             <option value="">{tr("noneDash")}</option>
             {diplomas.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select></div>
         <div className="fld"><label>{tr("theBatch")}</label>
-          <select className="inp" value={f.batch_id} onChange={(e) => set("batch_id", e.target.value)}>
-            <option value="">{tr("noneDash")}</option>
-            {batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          <select className="inp" value={f.batch_id} onChange={(e) => set("batch_id", e.target.value)} disabled={!f.diploma_id}>
+            <option value="">{f.diploma_id ? tr("noneDash") : tr("selectDiplomaFirst")}</option>
+            {batches.filter((b) => !b.diploma_id || b.diploma_id === f.diploma_id).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select></div>
       </div>
 
