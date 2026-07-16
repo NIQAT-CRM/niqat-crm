@@ -36,6 +36,7 @@ export default function CustomerDrawer(props: {
   const editRef = useRef<CustomerEditHandle>(null);
   const [tab, setTab] = useState<"basic" | "sales" | "docs">("basic");
   const [archiving, setArchiving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function archiveCustomer() {
     if (!confirm(tr("archiveCustomerQ"))) return;
@@ -44,6 +45,18 @@ export default function CustomerDrawer(props: {
     if (error) { setArchiving(false); alert(tr("archiveFailed") + error.message); return; }
     await revalidateCustomers();
     toast(tr("customerArchived"));
+    router.push("/customers");
+  }
+
+  async function deleteCustomer() {
+    // حذف نهائي — لا رجعة. تأكيد مزدوج.
+    if (!confirm(tr("deleteCustomerQ1"))) return;
+    if (!confirm(tr("deleteCustomerQ2"))) return;
+    setDeleting(true);
+    const { error } = await supabase.from("customers").delete().eq("id", props.c.id);
+    if (error) { setDeleting(false); alert(tr("deleteFailed") + error.message); return; }
+    await revalidateCustomers();
+    toast(tr("customerDeleted"));
     router.push("/customers");
   }
 
@@ -89,12 +102,19 @@ export default function CustomerDrawer(props: {
       tab={tab} onTab={setTab} quickBar={quickBar}
       basic={<div className="px-5 py-5">
         <CustomerEdit ref={editRef} customer={props.c as any} specialties={props.specs || []} />
-        {props.canManageBatches && !(props.c as any).archived && (
+        {props.canManageBatches && (
           <div style={{ marginTop: 22, paddingTop: 16, borderTop: "1px solid var(--line)" }}>
             <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 8 }}>{tr("dangerZone")}</div>
-            <button onClick={archiveCustomer} disabled={archiving} className="btn danger" style={{ width: "100%" }}>
-              {archiving ? "..." : "🗄️ " + tr("archiveCustomerBtn")}
+            {!(props.c as any).archived && (
+              <button onClick={archiveCustomer} disabled={archiving} className="btn danger" style={{ width: "100%", marginBottom: 10 }}>
+                {archiving ? "..." : "🗄️ " + tr("archiveCustomerBtn")}
+              </button>
+            )}
+            <button onClick={deleteCustomer} disabled={deleting} className="btn"
+              style={{ width: "100%", background: "#E0483B", color: "#fff", borderColor: "#E0483B" }}>
+              {deleting ? "..." : "🗑️ " + tr("deleteCustomerBtn")}
             </button>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8, lineHeight: 1.6 }}>{tr("deleteCustomerHint")}</div>
           </div>
         )}
       </div>}
