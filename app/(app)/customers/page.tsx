@@ -306,6 +306,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         <BulkBar
           owners={owners.map((o) => ({ id: o.v, name: o.label }))}
           stages={STAGE_OPTS.map((s) => ({ key: s.v, label: s.label }))}
+          templates={(tplRows as any) || []}
           totalFiltered={totalCount}
           canManageBatches={canManageBatches} canExport={canExport} canMessage={canMessage} />
       <div className="tbl-wrap">

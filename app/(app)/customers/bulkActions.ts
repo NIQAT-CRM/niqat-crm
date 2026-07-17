@@ -19,10 +19,9 @@ async function logBulk(action: string, ids: string[], detail: string) {
     await supabase.from("audit_log").insert(
       ids.slice(0, 500).map((cid) => ({ customer_id: cid, actor_id: user?.id || null, action, detail }))
     );
-  } catch { /* اللوج مش حرج — نتجاهل أي خطأ */ }
+  } catch { /* اللوج مش حرج */ }
 }
 
-// يرجّع كل IDs الفلتر الحالي (لزر «تحديد كل النتائج»)
 export async function selectAllFilteredIds(sp: CustFilterSP): Promise<string[]> {
   return filteredCustomerIds(sp);
 }
@@ -67,7 +66,6 @@ export async function bulkArchive(ids: string[]) {
   return res;
 }
 
-// تصدير المحدّدين — يرجّع صفوف مبسّطة للـ CSV (على دفعات)
 export async function bulkExportRows(ids: string[]): Promise<{ name: string; phone1: string; phone2: string; email: string; company: string; stage: string }[]> {
   if (!ids.length) return [];
   const supabase = createClient();
@@ -79,6 +77,63 @@ export async function bulkExportRows(ids: string[]): Promise<{ name: string; pho
       name: r.name || "", phone1: r.phone1 || "", phone2: r.phone2 || "",
       email: r.email || "", company: r.company || "", stage: r.stage || "",
     });
+  }
+  return out;
+}
+
+/* ===== مرحلة ٢ ===== */
+
+// متابعة جماعية — ينشئ follow_up لكل عميل محدّد
+export async function bulkFollowUp(ids: string[], dueAt: string, note: string) {
+  if (!ids.length || !dueAt) return { ok: 0, error: null };
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  let ok = 0;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const rows = ids.slice(i, i + CHUNK).map((cid) => ({
+      customer_id: cid, owner_id: user?.id || null, due_at: dueAt, note: note || "", done: false,
+    }));
+    const { error } = await supabase.from("follow_ups").insert(rows);
+    if (error) return { ok, error: error.message };
+    ok += rows.length;
+  }
+  await logBulk("bulk_followup", ids, "متابعة جماعية");
+  revalidateAll();
+  return { ok, error: null as string | null };
+}
+
+// حذف نهائي جماعي — DELETE فعلي (RLS بتفرض can_manage_batches)
+export async function bulkDelete(ids: string[]) {
+  if (!ids.length) return { ok: 0, error: null };
+  const supabase = createClient();
+  let ok = 0;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const slice = ids.slice(i, i + CHUNK);
+    const { error } = await supabase.from("customers").delete().in("id", slice);
+    if (error) return { ok, error: error.message };
+    ok += slice.length;
+  }
+  revalidateAll();
+  return { ok, error: null as string | null };
+}
+
+// أرقام المحدّدين (للإرسال الجماعي عبر واتساب) — مطابقة آخر ٩ أرقام لمنع التكرار
+export async function bulkGetPhones(ids: string[]): Promise<string[]> {
+  if (!ids.length) return [];
+  const supabase = createClient();
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const { data } = await supabase.from("customers").select("phone1,phone2").in("id", ids.slice(i, i + CHUNK));
+    for (const r of (data as any[]) || []) {
+      for (const p of [r.phone1, r.phone2]) {
+        const v = String(p || "").replace(/\D/g, "");
+        if (v.length < 9) continue;
+        const key = v.slice(-9);
+        if (seen.has(key)) continue;
+        seen.add(key); out.push(String(p).trim());
+      }
+    }
   }
   return out;
 }

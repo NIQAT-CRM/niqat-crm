@@ -5,6 +5,7 @@ import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 import {
   selectAllFilteredIds, bulkSetOwner, bulkSetStage, bulkSignTerms, bulkArchive, bulkExportRows,
+  bulkFollowUp, bulkDelete, bulkGetPhones,
 } from "./bulkActions";
 import type { CustFilterSP } from "@/lib/customerFilter";
 
@@ -60,7 +61,6 @@ function useSel() {
   return c;
 }
 
-/* ===== checkbox لكل صف ===== */
 export function RowCheck({ id }: { id: string }) {
   const { isSel, toggle } = useSel();
   return (
@@ -70,7 +70,6 @@ export function RowCheck({ id }: { id: string }) {
   );
 }
 
-/* ===== checkbox رأس الجدول (تحديد/إلغاء الصفحة) ===== */
 export function SelectAllHeader({ pageIds }: { pageIds: string[] }) {
   const { pageAllSelected, togglePage } = useSel();
   const on = pageAllSelected(pageIds);
@@ -80,10 +79,10 @@ export function SelectAllHeader({ pageIds }: { pageIds: string[] }) {
   );
 }
 
-/* ===== شريط الأكشنز الجماعية ===== */
-export function BulkBar({ owners, stages, totalFiltered, canManageBatches, canExport, canMessage }: {
+export function BulkBar({ owners, stages, templates, totalFiltered, canManageBatches, canExport, canMessage }: {
   owners: { id: string; name: string }[];
   stages: { key: string; label: string }[];
+  templates: { id: string; name: string }[];
   totalFiltered: number;
   canManageBatches: boolean;
   canExport: boolean;
@@ -93,7 +92,10 @@ export function BulkBar({ owners, stages, totalFiltered, canManageBatches, canEx
   const tr = useT();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [menu, setMenu] = useState<"" | "owner" | "stage">("");
+  const [menu, setMenu] = useState<"" | "owner" | "stage" | "follow">("");
+  const [waNums, setWaNums] = useState<string[] | null>(null);
+  const [fuDate, setFuDate] = useState("");
+  const [fuNote, setFuNote] = useState("");
 
   if (count === 0) return null;
   const ids = () => Array.from(sel);
@@ -116,12 +118,35 @@ export function BulkBar({ owners, stages, totalFiltered, canManageBatches, canEx
     if (!confirm(tr("bulkTermsConfirm").replace("{n}", String(count)))) return;
     run(() => bulkSignTerms(ids()), tr("bulkTermsOk"));
   }
-  async function doOwner(ownerId: string | null) {
-    run(() => bulkSetOwner(ids(), ownerId), tr("bulkOwnerOk"));
+  async function doOwner(ownerId: string | null) { run(() => bulkSetOwner(ids(), ownerId), tr("bulkOwnerOk")); }
+  async function doStage(stage: string) { run(() => bulkSetStage(ids(), stage), tr("bulkStageOk")); }
+
+  async function doDelete() {
+    if (!confirm(tr("bulkDeleteConfirm1").replace("{n}", String(count)))) return;
+    if (!confirm(tr("bulkDeleteConfirm2").replace("{n}", String(count)))) return;
+    run(() => bulkDelete(ids()), tr("bulkDeletedOk"));
   }
-  async function doStage(stage: string) {
-    run(() => bulkSetStage(ids(), stage), tr("bulkStageOk"));
+
+  async function doFollow() {
+    if (!fuDate) { toast(tr("bulkFollowNoDate")); return; }
+    setBusy(true); setMenu("");
+    try {
+      const res = await bulkFollowUp(ids(), new Date(fuDate).toISOString(), fuNote);
+      if (res.error) toast(tr("bulkGenericError"));
+      else { toast(tr("bulkFollowOk").replace("{n}", String(res.ok))); setFuDate(""); setFuNote(""); clear(); router.refresh(); }
+    } catch { toast(tr("bulkGenericError")); }
+    setBusy(false);
   }
+
+  async function doWhatsapp() {
+    setBusy(true); setMenu("");
+    try {
+      const nums = await bulkGetPhones(ids());
+      setWaNums(nums);
+    } catch { toast(tr("bulkGenericError")); }
+    setBusy(false);
+  }
+
   async function doExport() {
     setBusy(true);
     try {
@@ -143,55 +168,103 @@ export function BulkBar({ owners, stages, totalFiltered, canManageBatches, canEx
     height: 34, padding: "0 12px", borderRadius: 8, fontWeight: 700, fontSize: 12.5,
     border: "1px solid var(--line)", background: "var(--surface)", color: "var(--text)", cursor: "pointer", whiteSpace: "nowrap",
   };
+  const menuBox: React.CSSProperties = {
+    position: "absolute", top: 38, insetInlineStart: 0, zIndex: 20, background: "var(--surface)",
+    border: "1px solid var(--line)", borderRadius: 10, boxShadow: "var(--shadow)", minWidth: 180, maxHeight: 280, overflow: "auto", padding: 4,
+  };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "10px 12px", marginBottom: 12, borderRadius: 10, background: "var(--brand-soft)", border: "1px solid #f6d6b0" }}>
-      <span style={{ fontWeight: 800, fontSize: 13, color: "var(--brand-d)" }}>
-        {tr("bulkSelectedCount").replace("{n}", String(count))}
-      </span>
+    <>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "10px 12px", marginBottom: 12, borderRadius: 10, background: "var(--brand-soft)", border: "1px solid #f6d6b0" }}>
+        <span style={{ fontWeight: 800, fontSize: 13, color: "var(--brand-d)" }}>
+          {tr("bulkSelectedCount").replace("{n}", String(count))}
+        </span>
 
-      {count < totalFiltered && (
-        <button style={{ ...btn, borderColor: "var(--brand)", color: "var(--brand)" }} onClick={selectAllFiltered} disabled={loadingAll}>
-          {loadingAll ? "..." : tr("bulkSelectAllFiltered").replace("{n}", String(totalFiltered))}
-        </button>
+        {count < totalFiltered && (
+          <button style={{ ...btn, borderColor: "var(--brand)", color: "var(--brand)" }} onClick={selectAllFiltered} disabled={loadingAll}>
+            {loadingAll ? "..." : tr("bulkSelectAllFiltered").replace("{n}", String(totalFiltered))}
+          </button>
+        )}
+        <button style={btn} onClick={clear}>{tr("bulkClear")}</button>
+
+        <span style={{ width: 1, height: 22, background: "var(--line)", margin: "0 2px" }} />
+
+        {/* واتساب جماعي */}
+        {canMessage && (
+          <button style={{ ...btn, background: "var(--wa)", color: "#fff", borderColor: "var(--wa)" }} disabled={busy} onClick={doWhatsapp}>💬 {tr("bulkWhatsapp")}</button>
+        )}
+
+        {/* تعيين مسؤول */}
+        <div style={{ position: "relative" }}>
+          <button style={btn} disabled={busy} onClick={() => setMenu(menu === "owner" ? "" : "owner")}>👤 {tr("bulkAssignOwner")}</button>
+          {menu === "owner" && (
+            <div style={menuBox}>
+              <button style={{ ...btn, width: "100%", border: "none", textAlign: "start", color: "var(--muted)" }} onClick={() => doOwner(null)}>{tr("unassigned")}</button>
+              {owners.map((o) => (
+                <button key={o.id} style={{ ...btn, width: "100%", border: "none", textAlign: "start" }} onClick={() => doOwner(o.id)}>{o.name}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* تغيير المرحلة */}
+        <div style={{ position: "relative" }}>
+          <button style={btn} disabled={busy} onClick={() => setMenu(menu === "stage" ? "" : "stage")}>🔄 {tr("bulkChangeStage")}</button>
+          {menu === "stage" && (
+            <div style={{ ...menuBox, minWidth: 160 }}>
+              {stages.map((s) => (
+                <button key={s.key} style={{ ...btn, width: "100%", border: "none", textAlign: "start" }} onClick={() => doStage(s.key)}>{s.label}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* متابعة جماعية */}
+        <div style={{ position: "relative" }}>
+          <button style={btn} disabled={busy} onClick={() => setMenu(menu === "follow" ? "" : "follow")}>🗓️ {tr("bulkFollowUp")}</button>
+          {menu === "follow" && (
+            <div style={{ ...menuBox, minWidth: 230, padding: 12 }}>
+              <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, display: "block", marginBottom: 4 }}>{tr("bulkFollowDate")}</label>
+              <input type="datetime-local" className="inp" value={fuDate} onChange={(e) => setFuDate(e.target.value)} style={{ marginBottom: 8 }} />
+              <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, display: "block", marginBottom: 4 }}>{tr("bulkFollowNote")}</label>
+              <input className="inp" value={fuNote} onChange={(e) => setFuNote(e.target.value)} placeholder={tr("bulkFollowNotePh")} style={{ marginBottom: 8 }} />
+              <button className="btn" style={{ width: "100%", height: 34 }} disabled={busy} onClick={doFollow}>{busy ? "..." : tr("bulkFollowCreate")}</button>
+            </div>
+          )}
+        </div>
+
+        {/* إمضاء الشروط */}
+        <button style={btn} disabled={busy} onClick={doTerms}>✍️ {tr("bulkSignTerms")}</button>
+
+        {/* أرشفة */}
+        {canManageBatches && <button style={{ ...btn, color: "var(--red)", borderColor: "#f3c9c4" }} disabled={busy} onClick={doArchive}>🗄️ {tr("bulkArchive")}</button>}
+
+        {/* تصدير */}
+        {canExport && <button style={btn} disabled={busy} onClick={doExport}>📥 {tr("bulkExport")}</button>}
+
+        {/* حذف نهائي */}
+        {canManageBatches && <button style={{ ...btn, background: "var(--red)", color: "#fff", borderColor: "var(--red)" }} disabled={busy} onClick={doDelete}>🗑️ {tr("bulkDelete")}</button>}
+      </div>
+
+      {/* مودال أرقام الواتساب */}
+      {waNums && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,27,48,.45)", zIndex: 60, display: "grid", placeItems: "center", padding: 16 }} onClick={() => setWaNums(null)}>
+          <div className="card" style={{ padding: 20, width: "min(460px,100%)" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)", marginBottom: 12 }}>💬 {tr("bulkWhatsapp")} — {waNums.length}</div>
+            {templates.length > 0 && (
+              <div className="fld"><label>{tr("chooseTpl")}</label>
+                <select className="inp">{templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
+            )}
+            <div className="fld"><label>{tr("numbers")}</label>
+              <textarea className="inp num" dir="ltr" rows={5} readOnly value={waNums.join("\n")} /></div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn ghost" onClick={() => { if (navigator.clipboard) navigator.clipboard.writeText(waNums.join("\n")); toast(tr("copied")); }}>{tr("copyNums")}</button>
+              <button className="btn" onClick={() => setWaNums(null)}>{tr("done")}</button>
+            </div>
+            <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10 }}>{tr("watiHint")}</p>
+          </div>
+        </div>
       )}
-      <button style={btn} onClick={clear}>{tr("bulkClear")}</button>
-
-      <span style={{ width: 1, height: 22, background: "var(--line)", margin: "0 2px" }} />
-
-      {/* تعيين مسؤول */}
-      <div style={{ position: "relative" }}>
-        <button style={btn} disabled={busy} onClick={() => setMenu(menu === "owner" ? "" : "owner")}>👤 {tr("bulkAssignOwner")}</button>
-        {menu === "owner" && (
-          <div style={{ position: "absolute", top: 38, insetInlineStart: 0, zIndex: 20, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "var(--shadow)", minWidth: 180, maxHeight: 260, overflow: "auto", padding: 4 }}>
-            <button style={{ ...btn, width: "100%", border: "none", textAlign: "start", color: "var(--muted)" }} onClick={() => doOwner(null)}>{tr("unassigned")}</button>
-            {owners.map((o) => (
-              <button key={o.id} style={{ ...btn, width: "100%", border: "none", textAlign: "start" }} onClick={() => doOwner(o.id)}>{o.name}</button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* تغيير المرحلة */}
-      <div style={{ position: "relative" }}>
-        <button style={btn} disabled={busy} onClick={() => setMenu(menu === "stage" ? "" : "stage")}>🔄 {tr("bulkChangeStage")}</button>
-        {menu === "stage" && (
-          <div style={{ position: "absolute", top: 38, insetInlineStart: 0, zIndex: 20, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "var(--shadow)", minWidth: 160, padding: 4 }}>
-            {stages.map((s) => (
-              <button key={s.key} style={{ ...btn, width: "100%", border: "none", textAlign: "start" }} onClick={() => doStage(s.key)}>{s.label}</button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* إمضاء الشروط */}
-      <button style={btn} disabled={busy} onClick={doTerms}>✍️ {tr("bulkSignTerms")}</button>
-
-      {/* أرشفة */}
-      {canManageBatches && <button style={{ ...btn, color: "var(--red)", borderColor: "#f3c9c4" }} disabled={busy} onClick={doArchive}>🗄️ {tr("bulkArchive")}</button>}
-
-      {/* تصدير */}
-      {canExport && <button style={btn} disabled={busy} onClick={doExport}>📥 {tr("bulkExport")}</button>}
-    </div>
+    </>
   );
 }

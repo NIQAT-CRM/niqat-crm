@@ -8,10 +8,6 @@ export type CustFilterSP = {
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const arr = (s?: string) => (s || "").split(",").map((x) => x.trim()).filter(Boolean);
 
-/**
- * يرجّع كل IDs العملاء المطابقين للفلتر الحالي (بدون تقسيم صفحات).
- * منطق مطابق لصفحة العملاء: داخل الفلتر = OR، بين الفلاتر = AND، استبعاد المحذوف/المؤرشف.
- */
 export async function filteredCustomerIds(sp: CustFilterSP): Promise<string[]> {
   const q = (sp?.q || "").trim();
   const stageVals = arr(sp.stage);
@@ -27,7 +23,6 @@ export async function filteredCustomerIds(sp: CustFilterSP): Promise<string[]> {
   const { data: meProf } = await supabase.from("profiles").select("can_see_finance").eq("id", user?.id || "").maybeSingle();
   const canFinance = !!meProf?.can_see_finance;
 
-  // مجموعات فلتر الدفع
   const payBalanceSet = new Set<string>();
   const payDueSet = new Set<string>();
   const payOverdueSet = new Set<string>();
