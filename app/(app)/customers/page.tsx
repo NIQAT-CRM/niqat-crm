@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import ExportButton from "./ExportButton";
 import CustomersTools from "./CustomersTools";
 import CustomerBrief from "./CustomerBrief";
+import { BulkSelectProvider, RowCheck, SelectAllHeader, BulkBar } from "./BulkSelect";
 
 export const dynamic = "force-dynamic";
 
@@ -36,10 +37,11 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: meProf } = await supabase.from("profiles")
-    .select("can_export,can_see_finance,can_message").eq("id", user?.id || "").maybeSingle();
+    .select("can_export,can_see_finance,can_message,can_manage_batches").eq("id", user?.id || "").maybeSingle();
   const canExport = !!meProf?.can_export;
   const canFinance = !!meProf?.can_see_finance;
   const canMessage = !!meProf?.can_message;
+  const canManageBatches = !!meProf?.can_manage_batches;
 
   // ===== مجموعات فلتر الدفع (تُحسب فقط لما يكون فلتر الدفع مفعّل) =====
   // (installments محميّة بالـ RLS؛ يشوفها من عنده can_see_finance فقط)
@@ -300,10 +302,17 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         {canFinance && chip(tr("overdueWord"), "pay", "over", payVals.includes("over") || payVals.includes("overdue"))}
       </div>
 
+      <BulkSelectProvider filter={{ q, stage: f.stage, owner: f.owner, dip: f.dip, spec: f.spec, batch: f.batch, company: f.company, pay: f.pay }}>
+        <BulkBar
+          owners={owners.map((o) => ({ id: o.v, name: o.label }))}
+          stages={STAGE_OPTS.map((s) => ({ key: s.v, label: s.label }))}
+          totalFiltered={totalCount}
+          canManageBatches={canManageBatches} canExport={canExport} canMessage={canMessage} />
       <div className="tbl-wrap">
         <table>
           <thead>
             <tr>
+              <th style={{ width: 34 }}><SelectAllHeader pageIds={customers.map((r) => r.id)} /></th>
               <th>{tr("name")}</th><th>{tr("diplomas")}</th><th>{tr("specialty")}</th><th>{tr("phone")}</th><th>{tr("stage")}</th>
               {canFinance && <th>{tr("remaining")}</th>}<th>{tr("owner")}</th><th></th>
             </tr>
@@ -316,6 +325,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
               const od = overdueSet.has(r.id);
               return (
                 <tr key={r.id}>
+                  <td style={{ textAlign: "center" }}><RowCheck id={r.id} /></td>
                   <td>
                     <Link href={`/customers/${r.id}`} style={{ color: "var(--blue)", fontWeight: 700 }}>
                       <div className="cust-name">{r.name}</div>
@@ -348,11 +358,12 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
               );
             })}
             {customers.length === 0 && (
-              <tr><td colSpan={canFinance ? 8 : 7} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>{tr("noResultsTable")}</td></tr>
+              <tr><td colSpan={canFinance ? 9 : 8} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>{tr("noResultsTable")}</td></tr>
             )}
           </tbody>
         </table>
       </div>
+      </BulkSelectProvider>
 
       {totalPages > 1 && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 16 }}>
