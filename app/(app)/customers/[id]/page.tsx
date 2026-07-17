@@ -158,6 +158,12 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
   const st = STAGE[c.stage as string] || STAGE.interested;
   const ini = (n: string) => { const p = (n || "?").trim().split(/\s+/); return p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2); };
+  // شيبس الهيدر: الدبلومة·الباتش (أول اشتراك) + المتبقّي (canFinance)
+  const firstEnr = enrolls[0];
+  const headerRemaining = (finEnrollments || []).reduce((s: number, e: any) => {
+    const paid = (e.installments || []).filter((i: any) => i.paidAt || i.status === "paid").reduce((a: number, i: any) => a + (i.amount || 0), 0);
+    return s + ((e.agreed || 0) - paid);
+  }, 0);
 
   return (
     <>
@@ -169,6 +175,16 @@ export default async function CustomerDetail({ params }: { params: { id: string 
             <h2>{c.name}</h2>
             <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span className="stg" style={{ background: st.color + "1a", color: st.color }}>{tr(st.labelKey)}</span>
+              {firstEnr && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 20, background: "var(--muted-soft)", color: "var(--muted)" }}>
+                  📜 {firstEnr.diploma} · <span className="num">{firstEnr.batch}</span>
+                </span>
+              )}
+              {canFinance && headerRemaining > 0 && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 20, background: "rgba(230,167,0,.14)", color: "#a5790a" }}>
+                  {tr("remainingWord")} <span className="num">{new Intl.NumberFormat("en").format(Math.round(headerRemaining))}</span>
+                </span>
+              )}
               <CopyNumbers phones={[c.phone1 as string, c.phone2 as string]} />
             </div>
           </div>

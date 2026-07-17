@@ -21,10 +21,11 @@ const STATUS: Record<string, { labelKey: string; color: string; bg: string }> = 
 const REFUND_CLOSE_LABEL = "قفل الأكسس (ريفند)";
 
 export default function RefundPanel({
-  customerId, refund, meId, tableMissing, accessItems = [],
+  customerId, refund, meId, tableMissing, accessItems = [], enrolls = [],
 }: {
   customerId: string; refund: Refund; meId: string; tableMissing: boolean;
   accessItems?: { id: string; label: string; done: boolean }[];
+  enrolls?: { id: string; diploma: string; batch: string }[];
 }) {
   const supabase = createClient();
   const tr = useT();
@@ -32,23 +33,9 @@ export default function RefundPanel({
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("EGP");
   const [reason, setReason] = useState("");
+  const [enrollId, setEnrollId] = useState(enrolls.length === 1 ? enrolls[0].id : "");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
-  const [accOpen, setAccOpen] = useState(false);   // أكورديون الريفند — مقفول افتراضياً
-
-  // ستايلات الأكورديون (theme tokens — مطابق للموك)
-  const accWrap: React.CSSProperties = { border: "1px solid var(--line)", borderRadius: 9, overflow: "hidden", marginBottom: 14 };
-  const accHead: React.CSSProperties = { display: "flex", alignItems: "center", gap: 9, padding: "12px 14px", cursor: "pointer", background: "var(--surface)", fontWeight: 700, fontSize: 13, color: "var(--muted)" };
-  const accBody: React.CSSProperties = { padding: "0 14px 14px", borderTop: "1px solid var(--line)" };
-  const AccHeader = () => (
-    <div style={accHead} onClick={() => setAccOpen((o) => !o)}>
-      <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}><path d="M3 7h13a4 4 0 0 1 0 8H8m0 0l3 3m-3-3l3-3" /></svg>
-      {tr("refundAccTitle")}
-      <span style={{ marginInlineStart: "auto", transition: "transform .2s", transform: accOpen ? "rotate(180deg)" : "none", display: "inline-flex" }}>
-        <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}><path d="M6 9l6 6 6-6" /></svg>
-      </span>
-    </div>
-  );
 
   async function uploadShot(): Promise<string> {
     if (!file) return "";
@@ -62,15 +49,17 @@ export default function RefundPanel({
   async function request() {
     const a = Number(amount) || 0;
     if (a <= 0) { alert(tr("enterRefundAmount")); return; }
+    if (enrolls.length > 1 && !enrollId) { toast(tr("selectRefundEnrollment")); return; }
     setBusy(true);
     const { error } = await supabase.from("refunds").insert({
       customer_id: customerId, amount: a, currency, reason: reason.trim(),
       shot_url: "", status: "requested", requested_by: meId,
+      enrollment_id: enrollId || (enrolls.length === 1 ? enrolls[0].id : null),
     });
     if (!error) await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "refund_request", detail: `${tr("auditRefundRequest")} ${money(a, currency)}` });
     setBusy(false);
     if (error) { alert(tr("logRequestFailed") + error.message); return; }
-    setAmount(""); setReason("");
+    setAmount(""); setReason(""); setEnrollId(enrolls.length === 1 ? enrolls[0].id : "");
     toast(tr("refundRequestLogged")); router.refresh();
   }
 
@@ -140,35 +129,28 @@ export default function RefundPanel({
   }
 
   if (tableMissing) {
-    return (
-      <div style={accWrap}>
-        <AccHeader />
-        {accOpen && (
-          <div style={accBody}>
-            <div style={{ fontSize: 13, color: "var(--muted)", paddingTop: 12 }}>
-              {tr("refundSqlHint")}
-            </div>
-          </div>
-        )}
-      </div>
-    );
+    return <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("refundSqlHint")}</div>;
   }
 
   return (
-    <div style={accWrap}>
-      <AccHeader />
-      {accOpen && (
-        <div style={accBody}>
-          {refund && (
-            <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 12 }}>
-              <span className="stg" style={{ background: (STATUS[refund.status]?.color || "#94A2BB") + "22", color: STATUS[refund.status]?.color }}>
-                {STATUS[refund.status]?.labelKey ? tr(STATUS[refund.status].labelKey) : refund.status}
-              </span>
-            </div>
-          )}
+    <div>
+      {refund && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+          <span className="stg" style={{ background: (STATUS[refund.status]?.color || "#94A2BB") + "22", color: STATUS[refund.status]?.color }}>
+            {STATUS[refund.status]?.labelKey ? tr(STATUS[refund.status].labelKey) : refund.status}
+          </span>
+        </div>
+      )}
 
       {!refund ? (
-        <div style={{ marginTop: 10 }}>
+        <div>
+          {enrolls.length > 1 && (
+            <div className="fld"><label>{tr("refundEnrollment")}</label>
+              <select className="inp" value={enrollId} onChange={(e) => setEnrollId(e.target.value)}>
+                <option value="">{tr("selectRefundEnrollment")}</option>
+                {enrolls.map((e) => <option key={e.id} value={e.id}>{e.diploma} — {e.batch}</option>)}
+              </select></div>
+          )}
           <div className="frow">
             <div className="fld"><label>{tr("refundAmount")}</label>
               <input className="inp num" dir="ltr" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
@@ -182,7 +164,7 @@ export default function RefundPanel({
           <button onClick={request} disabled={busy} className="btn danger">{busy ? "..." : tr("refundRequestBtn")}</button>
         </div>
       ) : (
-        <div style={{ marginTop: 10 }}>
+        <div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 20px", fontSize: 13.5, color: "var(--ink)", marginBottom: 10 }}>
             <span>{tr("amount")}: <b className="num" dir="ltr">{money(refund.amount, refund.currency)}</b></span>
             {refund.reason && <span>{tr("reason")}: {refund.reason}</span>}
@@ -203,18 +185,15 @@ export default function RefundPanel({
             )}
             {refund.status === "refunded" && (() => {
               const closeItem = accessItems.find((i) => i.label === REFUND_CLOSE_LABEL) || null;
-              // 1) لسه ماتحولش للدعم → زر التحويل
               if (!closeItem) return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
                   <div style={{ fontSize: 12, color: "var(--muted)" }}>{tr("supportWillCloseHint")}</div>
                   <button onClick={sendToSupportForClose} disabled={busy} className="btn">{busy ? "..." : tr("refundHandoffToSupport")}</button>
                 </div>
               );
-              // 2) اتحوّل للدعم بس لسه ما قفلش الأكسس → انتظار
               if (!closeItem.done) return (
                 <div style={{ fontSize: 12.5, color: "var(--muted)", width: "100%" }}>⏳ {tr("awaitingSupportClose")}</div>
               );
-              // 3) الدعم قفل الأكسس → زر أرشفة العميل
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
                   <div style={{ fontSize: 12, color: "var(--green)" }}>✓ {tr("accDone")}</div>
@@ -223,8 +202,6 @@ export default function RefundPanel({
               );
             })()}
           </div>
-        </div>
-      )}
         </div>
       )}
     </div>
