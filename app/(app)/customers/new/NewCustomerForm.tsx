@@ -15,6 +15,40 @@ const STAGES = [
 
 type Aff = { name: string; code: string; discount: number };
 
+/* ===== أيقونة خط (ستايل lucide) ===== */
+function Ic({ name, size = 16 }: { name: string; size?: number }) {
+  const p: Record<string, React.ReactNode> = {
+    user: <><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>,
+    briefcase: <><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>,
+    graduation: <><path d="M22 10 12 5 2 10l10 5 10-5z" /><path d="M6 12v5c0 1 2.5 2.5 6 2.5s6-1.5 6-2.5v-5" /></>,
+    book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></>,
+    wallet: <><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4" /><path d="M4 6v12a2 2 0 0 0 2 2h14v-4" /><circle cx="16" cy="14" r="1.5" /></>,
+    calendar: <><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>,
+    note: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></>,
+    cash: <><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6 12h.01M18 12h.01" /></>,
+    installment: <><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="3" y1="10" x2="21" y2="10" /><path d="M8 14h2M8 17h2M14 14h2" /></>,
+    check: <><polyline points="20 6 9 17 4 12" /></>,
+    reset: <><polyline points="1 4 1 10 7 10" /><path d="M3.5 15a9 9 0 1 0 2.1-9.4L1 10" /></>,
+    alert: <><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></>,
+    plus: <><path d="M12 5v14M5 12h14" /></>,
+    upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></>,
+    tag: <><path d="M20.6 13.4 12 22l-9-9V3h10z" /><circle cx="7.5" cy="7.5" r="1.5" /></>,
+  };
+  return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">{p[name]}</svg>;
+}
+
+/* ===== عنوان قسم موحّد: أيقونة في مربّع + عنوان رمادي غامق ===== */
+function Head({ icon, tint, title }: { icon: string; tint: string; title: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "4px 0 14px" }}>
+      <span style={{ width: 30, height: 30, borderRadius: 9, display: "grid", placeItems: "center", flexShrink: 0, background: tint + "1a", color: tint }}>
+        <Ic name={icon} size={17} />
+      </span>
+      <h3 style={{ margin: 0, fontSize: 15, color: "var(--ink)" }}>{title}</h3>
+    </div>
+  );
+}
+
 export default function NewCustomerForm({
   specialties, diplomas, batches, meId, affiliates = [],
 }: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; meId: string; affiliates?: Aff[] }) {
@@ -45,6 +79,8 @@ export default function NewCustomerForm({
   const [showSubManual, setShowSubManual] = useState(false);
   // بند 6: المبلغ النهائي بعد الخصم — يُحسب تلقائي، وقابل للتعديل يدوي
   const [netOverride, setNetOverride] = useState<string | null>(null);
+  // خطوة العرض (شكل فقط — لا يؤثّر على أي منطق)
+  const [step, setStep] = useState<1 | 2>(1);
   // ===== مودال التفعيل عند الإنشاء (يظهر فقط لو الدفع تمّ بالكامل دلوقتي) =====
   // العميل بيتحفظ الأول، والمودال بيظهر بعد الحفظ. لو اتقفل من غير تأكيد → يفضل محفوظ بدون handoff.
   const [actOpen, setActOpen] = useState(false);
@@ -118,9 +154,9 @@ export default function NewCustomerForm({
   const schedule = payMode === "installment" && net > 0 ? buildSchedule(net, Number(instCount), Number(instGap)) : [];
 
   async function save() {
-    if (!f.name.trim()) { toast(tr("nameRequired")); return; }
-    if (!f.phone1.trim()) { toast(tr("phoneRequired")); return; }
-    if (affUnknown) { toast(tr("affNotInList")); return; }
+    if (!f.name.trim()) { toast(tr("nameRequired")); setStep(1); return; }
+    if (!f.phone1.trim()) { toast(tr("phoneRequired")); setStep(1); return; }
+    if (affUnknown) { toast(tr("affNotInList")); setStep(1); return; }
     setSaving(true);
     setDup(null);
 
@@ -138,6 +174,7 @@ export default function NewCustomerForm({
       .select("id,name").eq("deleted", false).or(ors.join(",")).limit(1).maybeSingle();
     if (exist) {
       setSaving(false);
+      setStep(1);
       setDup({ id: exist.id as string, name: (exist.name as string) || tr("customer") });
       toast(tr("customerAlreadyExists"));
       setTimeout(() => dupRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
@@ -324,189 +361,253 @@ export default function NewCustomerForm({
     </div>
   );
 
+  const stepDot = (n: 1 | 2, label: string) => {
+    const active = step === n, done = step > n;
+    return (
+      <button type="button" onClick={() => setStep(n)} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", padding: 0, flex: 1 }}>
+        <span style={{
+          width: 28, height: 28, borderRadius: "50%", display: "grid", placeItems: "center", flexShrink: 0,
+          fontWeight: 800, fontSize: 13, transition: "all .2s",
+          background: active ? "var(--brand)" : done ? "var(--green)" : "var(--muted-soft)",
+          color: active || done ? "#fff" : "var(--muted)",
+          border: active ? "none" : done ? "none" : "1px solid var(--line)",
+        }}>{done ? <Ic name="check" size={15} /> : n}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: active ? "var(--ink)" : "var(--muted)", whiteSpace: "nowrap" }}>{label}</span>
+      </button>
+    );
+  };
+
   return (
-    <div className="card" style={{ padding: 20 }}>
-      <div className="sec-t" style={{ marginTop: 0 }}>{tr("basicData")}</div>
-      <div className="fld"><label>{tr("name")} *</label>
-        <input className="inp" value={f.name} onChange={(e) => setName(e.target.value)} placeholder={tr("nameEnOnlyPh")} dir="ltr" /></div>
-      <div className="frow">{PhoneField(tr("phone1"), "phone1", dial1, setDial1)}{PhoneField(tr("phone2"), "phone2", dial2, setDial2)}</div>
-      <div className="frow">{I(tr("email"), "email", true)}{I(tr("company"), "company")}</div>
-
-      {/* بند 3: تحذير تكرار فوري أثناء الكتابة */}
-      {liveDup && (
-        <div style={{ border: "1px solid var(--amber)", background: "rgba(230,167,0,.08)", borderRadius: 10, padding: 10, marginBottom: 8, fontSize: 13 }}>
-          ⚠️ <b>{tr("possibleDuplicate")}:</b> {liveDup.name}
-          <a href={`/customers/${liveDup.id}`} style={{ color: "var(--brand)", fontWeight: 700, marginInlineStart: 8 }}>{tr("openExistingAccount")} ←</a>
-        </div>
-      )}
-
-      {I(tr("affiliateCode"), "affiliate_code", true)}
-      {affMatch && <div style={{ fontSize: 12.5, color: "var(--green)", marginTop: -6, marginBottom: 8 }}>✓ {affMatch.name} — {tr("discountWord")} {discPct}%</div>}
-      {affUnknown && <div style={{ fontSize: 12.5, color: "#E0483B", marginTop: -6, marginBottom: 8 }}>{tr("codeNotInList")}</div>}
-
-      {dup && (
-        <div ref={dupRef} style={{ border: "1px solid var(--red)", background: "var(--red-soft)", borderRadius: 10, padding: 12, marginBottom: 10, fontSize: 13.5 }}>
-          <b style={{ color: "var(--red)" }}>{tr("customerExistsColon")} {dup.name}</b>
-          <div style={{ marginTop: 6 }}>
-            <a href={`/customers/${dup.id}`} style={{ color: "var(--brand)", fontWeight: 700 }}>{tr("openCustomerCardEdit")} ←</a>
-          </div>
-        </div>
-      )}
-
-      <div className="sec-t">{tr("salesData")}</div>
-      <div className="frow">
-        <div className="fld"><label>{tr("engSpec")}</label>
-          <select className="inp" value={f.specialty_id} onChange={(e) => set("specialty_id", e.target.value)}>
-            <option value="">{tr("selectDash")}</option>
-            {specialties.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select></div>
-        <div className="fld"><label>{tr("stage")}</label>
-          <select className="inp" value={f.stage} onChange={(e) => set("stage", e.target.value)}>
-            {STAGES.map((s) => <option key={s[0]} value={s[0]}>{tr(s[1])}</option>)}
-          </select></div>
-      </div>
-      <div className="frow">{I(tr("residence"), "residency")}{I(tr("gradYear"), "grad_year", true)}</div>
-      <div className="frow">
-        {I(tr("source"), "source")}
-        <div className="fld"><label>{tr("followUpDate")}</label>
-          <input className="inp num" type="datetime-local" dir="ltr" value={f.follow} onChange={(e) => set("follow", e.target.value)} /></div>
+    <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      {/* ===== stepper ===== */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "16px 20px", borderBottom: "1px solid var(--line)" }}>
+        {stepDot(1, tr("customerStep"))}
+        <span style={{ height: 1, flex: 1, background: "var(--line)", maxWidth: 60 }} />
+        {stepDot(2, tr("paymentStep"))}
       </div>
 
-      {!showSub ? (
-        <button type="button" onClick={() => setShowSubManual(true)}
-          className="btn ghost" style={{ marginTop: 14, width: "100%", justifyContent: "center" }}>
-          ＋ {tr("addSubscription")}
-        </button>
-      ) : (
-      <>
-      <div className="sec-t">{tr("subscriptionOpt")}</div>
-      <div className="frow">
-        <div className="fld"><label>{tr("theDiploma")}</label>
-          <select className="inp" value={f.diploma_id} onChange={(e) => {
-            const dip = e.target.value;
-            set("diploma_id", dip);
-            const b = batches.find((x) => x.id === f.batch_id);
-            if (b && b.diploma_id && b.diploma_id !== dip) set("batch_id", "");
-          }}>
-            <option value="">{tr("noneDash")}</option>
-            {diplomas.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select></div>
-        <div className="fld"><label>{tr("theBatch")}</label>
-          <select className="inp" value={f.batch_id} onChange={(e) => set("batch_id", e.target.value)} disabled={!f.diploma_id}>
-            <option value="">{f.diploma_id ? tr("noneDash") : tr("selectDiplomaFirst")}</option>
-            {batches.filter((b) => !b.diploma_id || b.diploma_id === f.diploma_id).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select></div>
-      </div>
+      <div style={{ padding: 20 }}>
+        {/* ============ خطوة 1: بيانات العميل ============ */}
+        {step === 1 && (
+          <div className="fade-in">
+            <Head icon="user" tint="#2F6BFF" title={tr("basicData")} />
+            <div className="fld"><label>{tr("name")} *</label>
+              <input className="inp" value={f.name} onChange={(e) => setName(e.target.value)} placeholder={tr("nameEnOnlyPh")} dir="ltr" /></div>
+            <div className="frow">{PhoneField(tr("phone1"), "phone1", dial1, setDial1)}{PhoneField(tr("phone2"), "phone2", dial2, setDial2)}</div>
+            <div className="frow">{I(tr("email"), "email", true)}{I(tr("company"), "company")}</div>
 
-      <label className="chkrow"><input type="checkbox" checked={f.free} onChange={(e) => set("free", e.target.checked)} /> {tr("giftFree")}</label>
-      {!f.free && (
-        <div className="frow" style={{ marginTop: 8 }}>
-          <div className="fld"><label>{tr("agreedAmount")}</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input className="inp num" dir="ltr" inputMode="numeric" value={f.amount} onChange={(e) => set("amount", e.target.value)} />
-              <select className="inp" style={{ width: 80 }} value={f.currency} onChange={(e) => set("currency", e.target.value)}>
-                <option value="EGP">{tr("egpShort")}</option><option value="USD">$</option>
-              </select>
-            </div>
-          </div>
-          <div className="fld"><label>{tr("dueAfterDiscount")}{discPct > 0 && <span style={{ color: "var(--green)", fontSize: 11.5, fontWeight: 700 }}> — {tr("discountWord")} {discPct}%</span>}</label>
-            <input className="inp num" dir="ltr" inputMode="numeric"
-              value={netOverride !== null ? netOverride : String(netAuto)}
-              onChange={(e) => setNetOverride(e.target.value)}
-              style={{ fontWeight: 700, background: discPct > 0 ? "rgba(24,169,87,.06)" : undefined }} />
-            {netOverride !== null && (
-              <button type="button" onClick={() => setNetOverride(null)} style={{ fontSize: 11, color: "var(--brand)", background: "none", border: "none", cursor: "pointer", marginTop: 2, padding: 0 }}>
-                ↺ {tr("resetToAuto")}
-              </button>
+            {/* بند 3: تحذير تكرار فوري أثناء الكتابة */}
+            {liveDup && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--amber)", background: "rgba(230,167,0,.08)", borderRadius: 10, padding: 10, marginBottom: 8, fontSize: 13 }}>
+                <span style={{ color: "var(--amber)", flexShrink: 0 }}><Ic name="alert" size={16} /></span>
+                <span><b>{tr("possibleDuplicate")}:</b> {liveDup.name}</span>
+                <a href={`/customers/${liveDup.id}`} style={{ color: "var(--brand)", fontWeight: 700, marginInlineStart: "auto", whiteSpace: "nowrap" }}>{tr("openExistingAccount")} ←</a>
+              </div>
             )}
-          </div>
-        </div>
-      )}
 
-      {!f.free && net > 0 && (
-        <div className="fld" style={{ marginTop: 8 }}>
-          <label>{tr("paymentMethod")}</label>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" onClick={() => setPayMode("cash")}
-              className={"btn" + (payMode === "cash" ? "" : " ghost")} style={{ flex: 1, justifyContent: "center" }}>
-              💵 {tr("cashFull")}
-            </button>
-            <button type="button" onClick={() => setPayMode("installment")}
-              className={"btn" + (payMode === "installment" ? "" : " ghost")} style={{ flex: 1, justifyContent: "center" }}>
-              🗓️ {tr("installmentWord")}
-            </button>
-          </div>
+            {I(tr("affiliateCode"), "affiliate_code", true)}
+            {affMatch && <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: "var(--green)", marginTop: -6, marginBottom: 8 }}><Ic name="check" size={14} /> {affMatch.name} — {tr("discountWord")} {discPct}%</div>}
+            {affUnknown && <div style={{ fontSize: 12.5, color: "#E0483B", marginTop: -6, marginBottom: 8 }}>{tr("codeNotInList")}</div>}
 
-          {payMode === "cash" && (
-            <div style={{ marginTop: 8 }}>
-              <label className="chkrow" style={{ background: cashPaidNow ? "rgba(24,169,87,.08)" : "transparent", borderRadius: 8, padding: cashPaidNow ? "6px 8px" : "0" }}>
-                <input type="checkbox" checked={cashPaidNow} onChange={(e) => setCashPaidNow(e.target.checked)} />
-                💵 {tr("paidNow")} — {net} {f.currency === "USD" ? "$" : tr("egpShort")}
-              </label>
-              <div style={{ fontSize: 11.5, color: cashPaidNow ? "var(--green)" : "var(--muted)", marginTop: 4 }}>
-                {cashPaidNow
-                  ? `${tr("cashPayNote1")} ${net} ${f.currency === "USD" ? "$" : tr("egpShort")} ${tr("cashPayNote2")}`
-                  : `${tr("agreedAmount")}: ${net} ${f.currency === "USD" ? "$" : tr("egpShort")} — ${tr("unpaid")}`}
+            {dup && (
+              <div ref={dupRef} style={{ border: "1px solid var(--red)", background: "var(--red-soft)", borderRadius: 10, padding: 12, marginBottom: 10, fontSize: 13.5 }}>
+                <b style={{ color: "var(--red)" }}>{tr("customerExistsColon")} {dup.name}</b>
+                <div style={{ marginTop: 6 }}>
+                  <a href={`/customers/${dup.id}`} style={{ color: "var(--brand)", fontWeight: 700 }}>{tr("openCustomerCardEdit")} ←</a>
+                </div>
               </div>
+            )}
+
+            <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
+            <Head icon="briefcase" tint="#7B61FF" title={tr("salesData")} />
+            <div className="frow">
+              <div className="fld"><label>{tr("engSpec")}</label>
+                <select className="inp" value={f.specialty_id} onChange={(e) => set("specialty_id", e.target.value)}>
+                  <option value="">{tr("selectDash")}</option>
+                  {specialties.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select></div>
+              <div className="fld"><label>{tr("stage")}</label>
+                <select className="inp" value={f.stage} onChange={(e) => set("stage", e.target.value)}>
+                  {STAGES.map((s) => <option key={s[0]} value={s[0]}>{tr(s[1])}</option>)}
+                </select></div>
             </div>
-          )}
+            <div className="frow">{I(tr("residence"), "residency")}{I(tr("gradYear"), "grad_year", true)}</div>
+            <div className="frow">
+              {I(tr("source"), "source")}
+              <div className="fld"><label>{tr("followUpDate")}</label>
+                <input className="inp num" type="datetime-local" dir="ltr" value={f.follow} onChange={(e) => set("follow", e.target.value)} /></div>
+            </div>
 
-          {payMode === "installment" && (
-            <div style={{ marginTop: 10 }}>
-              <div className="frow">
-                <div className="fld"><label>{tr("installmentCount")}</label>
-                  <input className="inp num" dir="ltr" inputMode="numeric" value={instCount} onChange={(e) => setInstCount(e.target.value)} /></div>
-                <div className="fld"><label>{tr("installmentGap")}</label>
-                  <input className="inp num" dir="ltr" inputMode="numeric" value={instGap} onChange={(e) => setInstGap(e.target.value)} /></div>
+            <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+              <button type="button" onClick={() => setStep(2)} className="btn" style={{ flex: 1, justifyContent: "center" }}>{tr("nextStep")} ←</button>
+            </div>
+          </div>
+        )}
+
+        {/* ============ خطوة 2: الاشتراك والدفع ============ */}
+        {step === 2 && (
+          <div className="fade-in">
+            {!showSub ? (
+              <div style={{ textAlign: "center", padding: "20px 0" }}>
+                <div style={{ color: "var(--muted)", fontSize: 13.5, marginBottom: 14 }}>{tr("noSubHint")}</div>
+                <button type="button" onClick={() => setShowSubManual(true)}
+                  className="btn ghost" style={{ justifyContent: "center", gap: 6 }}>
+                  <Ic name="plus" size={15} /> {tr("addSubscription")}
+                </button>
               </div>
-              {schedule.length > 0 && (
-                <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 10, marginTop: 8 }}>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6, fontWeight: 700 }}>
-                    {tr("installmentDatesAuto")}
-                  </div>
-                  {schedule.map((s, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "3px 0" }}>
-                      <span>{tr("installmentWord")} {i + 1}{payFirstNow && i === 0 ? " ✅ " + tr("paidNow") : ""}</span>
-                      <b className="num" dir="ltr">{s.amount} {f.currency === "USD" ? "$" : tr("egpShort")}</b>
-                      <span className="num" dir="ltr" style={{ color: "var(--muted)" }}>{payFirstNow && i === 0 ? tr("today") : s.due}</span>
+            ) : (
+            <>
+            <Head icon="graduation" tint="#F08A24" title={tr("subscriptionOpt")} />
+            <div className="frow">
+              <div className="fld"><label>{tr("theDiploma")}</label>
+                <select className="inp" value={f.diploma_id} onChange={(e) => {
+                  const dip = e.target.value;
+                  set("diploma_id", dip);
+                  const b = batches.find((x) => x.id === f.batch_id);
+                  if (b && b.diploma_id && b.diploma_id !== dip) set("batch_id", "");
+                }}>
+                  <option value="">{tr("noneDash")}</option>
+                  {diplomas.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select></div>
+              <div className="fld"><label>{tr("theBatch")}</label>
+                <select className="inp" value={f.batch_id} onChange={(e) => set("batch_id", e.target.value)} disabled={!f.diploma_id}>
+                  <option value="">{f.diploma_id ? tr("noneDash") : tr("selectDiplomaFirst")}</option>
+                  {batches.filter((b) => !b.diploma_id || b.diploma_id === f.diploma_id).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select></div>
+            </div>
+
+            <label className="chkrow"><input type="checkbox" checked={f.free} onChange={(e) => set("free", e.target.checked)} /> {tr("giftFree")}</label>
+            {!f.free && (
+              <>
+              <div className="fld" style={{ marginTop: 8 }}>
+                <label>{tr("agreedAmount")}</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input className="inp num" dir="ltr" inputMode="numeric" value={f.amount} onChange={(e) => set("amount", e.target.value)} />
+                  <select className="inp" style={{ width: 80 }} value={f.currency} onChange={(e) => set("currency", e.target.value)}>
+                    <option value="EGP">{tr("egpShort")}</option><option value="USD">$</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* بند 4: إبراز المستحق بعد الخصم كرقم واضح */}
+              <div style={{ border: "1px solid " + (discPct > 0 ? "rgba(24,169,87,.35)" : "var(--line)"), background: discPct > 0 ? "rgba(24,169,87,.06)" : "var(--muted-soft)", borderRadius: 12, padding: "12px 14px", marginBottom: 13 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
+                      <Ic name="wallet" size={13} /> {tr("dueAfterDiscount")}
+                      {discPct > 0 && <span style={{ color: "var(--green)", fontWeight: 800 }}>· {tr("discountWord")} {discPct}%</span>}
                     </div>
-                  ))}
+                    <input className="num" dir="ltr" inputMode="numeric"
+                      value={netOverride !== null ? netOverride : String(netAuto)}
+                      onChange={(e) => setNetOverride(e.target.value)}
+                      style={{ border: "none", background: "transparent", outline: "none", fontWeight: 800, fontSize: 26, color: discPct > 0 ? "var(--green)" : "var(--ink)", width: "100%", padding: 0, marginTop: 2 }} />
+                  </div>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: "var(--muted)", flexShrink: 0 }}>{f.currency === "USD" ? "$" : tr("egpShort")}</span>
                 </div>
-              )}
-              <label className="chkrow" style={{ marginTop: 10 }}>
-                <input type="checkbox" checked={payFirstNow} onChange={(e) => setPayFirstNow(e.target.checked)} />
-                {tr("payFirstNow")}
-              </label>
-              {payFirstNow && (
-                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
-                  {tr("payFirstNowHint")}
+                {netOverride !== null && (
+                  <button type="button" onClick={() => setNetOverride(null)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, color: "var(--brand)", background: "none", border: "none", cursor: "pointer", marginTop: 6, padding: 0 }}>
+                    <Ic name="reset" size={12} /> {tr("resetToAuto")}
+                  </button>
+                )}
+              </div>
+              </>
+            )}
+
+            {!f.free && net > 0 && (
+              <div className="fld" style={{ marginTop: 8 }}>
+                <label>{tr("paymentMethod")}</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button type="button" onClick={() => setPayMode("cash")}
+                    className={"btn" + (payMode === "cash" ? "" : " ghost")} style={{ flex: 1, justifyContent: "center", gap: 6 }}>
+                    <Ic name="cash" size={15} /> {tr("cashFull")}
+                  </button>
+                  <button type="button" onClick={() => setPayMode("installment")}
+                    className={"btn" + (payMode === "installment" ? "" : " ghost")} style={{ flex: 1, justifyContent: "center", gap: 6 }}>
+                    <Ic name="installment" size={15} /> {tr("installmentWord")}
+                  </button>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
-      {!f.free && (
-        <div className="fld" style={{ marginTop: 8 }}>
-          <label>{tr("agreedTransferShot")}</label>
-          <label className="addshot" style={{ width: "100%" }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
-            {payFile ? payFile.name : tr("uploadTransferShot")}
-            <input type="file" accept="image/*" onChange={(e) => setPayFile(e.target.files?.[0] || null)} />
-          </label>
-          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>{tr("shotStoredHint")}</div>
-        </div>
-      )}
-      </>
-      )}
+                {payMode === "cash" && (
+                  <div style={{ marginTop: 8 }}>
+                    <label className="chkrow" style={{ background: cashPaidNow ? "rgba(24,169,87,.08)" : "transparent", borderRadius: 8, padding: cashPaidNow ? "6px 8px" : "0" }}>
+                      <input type="checkbox" checked={cashPaidNow} onChange={(e) => setCashPaidNow(e.target.checked)} />
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Ic name="cash" size={14} /> {tr("paidNow")} — {net} {f.currency === "USD" ? "$" : tr("egpShort")}</span>
+                    </label>
+                    <div style={{ fontSize: 11.5, color: cashPaidNow ? "var(--green)" : "var(--muted)", marginTop: 4 }}>
+                      {cashPaidNow
+                        ? `${tr("cashPayNote1")} ${net} ${f.currency === "USD" ? "$" : tr("egpShort")} ${tr("cashPayNote2")}`
+                        : `${tr("agreedAmount")}: ${net} ${f.currency === "USD" ? "$" : tr("egpShort")} — ${tr("unpaid")}`}
+                    </div>
+                  </div>
+                )}
 
-      <div className="sec-t">{tr("initialNote")}</div>
-      <textarea className="inp" rows={2} value={f.note} onChange={(e) => set("note", e.target.value)} placeholder={tr("customerNotesPh")} />
+                {payMode === "installment" && (
+                  <div style={{ marginTop: 10 }}>
+                    <div className="frow">
+                      <div className="fld"><label>{tr("installmentCount")}</label>
+                        <input className="inp num" dir="ltr" inputMode="numeric" value={instCount} onChange={(e) => setInstCount(e.target.value)} /></div>
+                      <div className="fld"><label>{tr("installmentGap")}</label>
+                        <input className="inp num" dir="ltr" inputMode="numeric" value={instGap} onChange={(e) => setInstGap(e.target.value)} /></div>
+                    </div>
+                    {schedule.length > 0 && (
+                      <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 10, marginTop: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--muted)", marginBottom: 6, fontWeight: 700 }}>
+                          <Ic name="calendar" size={13} /> {tr("installmentDatesAuto")}
+                        </div>
+                        {schedule.map((s, i) => (
+                          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, padding: "3px 0" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>{tr("installmentWord")} {i + 1}{payFirstNow && i === 0 ? <><Ic name="check" size={12} /> {tr("paidNow")}</> : ""}</span>
+                            <b className="num" dir="ltr">{s.amount} {f.currency === "USD" ? "$" : tr("egpShort")}</b>
+                            <span className="num" dir="ltr" style={{ color: "var(--muted)" }}>{payFirstNow && i === 0 ? tr("today") : s.due}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <label className="chkrow" style={{ marginTop: 10 }}>
+                      <input type="checkbox" checked={payFirstNow} onChange={(e) => setPayFirstNow(e.target.checked)} />
+                      {tr("payFirstNow")}
+                    </label>
+                    {payFirstNow && (
+                      <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+                        {tr("payFirstNowHint")}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-        <button onClick={save} disabled={saving} className="btn">{saving ? "..." : tr("saveCustomer")}</button>
-        <button onClick={() => router.back()} className="btn ghost">{tr("back")}</button>
+            {!f.free && (
+              <div className="fld" style={{ marginTop: 8 }}>
+                <label>{tr("agreedTransferShot")}</label>
+                <label className="addshot" style={{ width: "100%" }}>
+                  <Ic name="upload" size={14} />
+                  {payFile ? payFile.name : tr("uploadTransferShot")}
+                  <input type="file" accept="image/*" onChange={(e) => setPayFile(e.target.files?.[0] || null)} />
+                </label>
+                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>{tr("shotStoredHint")}</div>
+              </div>
+            )}
+
+            <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
+            </>
+            )}
+
+            <Head icon="note" tint="#0FA3A3" title={tr("initialNote")} />
+            <textarea className="inp" rows={2} value={f.note} onChange={(e) => set("note", e.target.value)} placeholder={tr("customerNotesPh")} />
+          </div>
+        )}
+      </div>
+
+      {/* ===== شريط الحفظ المثبّت ===== */}
+      <div style={{ position: "sticky", bottom: 0, display: "flex", gap: 8, alignItems: "center", padding: "12px 20px", borderTop: "1px solid var(--line)", background: "var(--surface)", zIndex: 5 }}>
+        {step === 2 && (
+          <button onClick={() => setStep(1)} className="btn ghost" style={{ gap: 5 }}>→ {tr("back")}</button>
+        )}
+        <button onClick={save} disabled={saving} className="btn" style={{ flex: 1, justifyContent: "center" }}>
+          {saving ? "..." : <><Ic name="check" size={16} /> {tr("saveCustomer")}</>}
+        </button>
+        <button onClick={() => router.back()} className="btn ghost">{tr("cancel")}</button>
       </div>
 
       {/* ===== مودال التفعيل عند الإنشاء (دبلومة ثابتة + باتش + تفعيل المكتبة) ===== */}
@@ -515,8 +616,8 @@ export default function NewCustomerForm({
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} className="card"
             style={{ padding: 20, width: "100%", maxWidth: 440, maxHeight: "90vh", overflow: "auto" }}>
-            <div className="sec-t" style={{ marginTop: 0, marginBottom: 4 }}>{tr("activationChecklistTitle")}</div>
-            <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 14 }}>{tr("activationChecklistHint")}</div>
+            <Head icon="check" tint="#18A957" title={tr("activationChecklistTitle")} />
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 14, marginTop: -8 }}>{tr("activationChecklistHint")}</div>
 
             {/* الدبلومة (ثابتة) */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "10px 12px", marginBottom: 8, background: "var(--brand-soft)" }}>
