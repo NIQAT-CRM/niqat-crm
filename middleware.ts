@@ -1,6 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 export async function middleware(request: NextRequest) {
+  // security.txt يُخدَم مباشرة قبل أي auth (الـ matcher بقى بيمرّره)
+  const p = request.nextUrl.pathname;
+  if (p === "/.well-known/security.txt") {
+    return new NextResponse(
+      "Contact: mailto:security@niqatcrm.com\n" +
+      "Expires: 2027-07-18T00:00:00.000Z\n" +
+      "Preferred-Languages: ar, en\n",
+      { headers: { "content-type": "text/plain; charset=utf-8" } }
+    );
+  }
   let response = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,5 +34,5 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.well-known|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"]
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"]
 };
