@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import BatchDoneBtn from "./batches/BatchDoneBtn";
 import BatchesByDiploma from "./BatchesByDiploma";
-import { CountUp, Donut, BarRow, Kpi, LineIcon } from "./Charts";
+import { CountUp, Donut, BarRow, Kpi, LineIcon, MiniSpark, Radial, HeroBarLine } from "./Charts";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,7 @@ const STAGES = [
 ];
 const DC = ["#F08A24", "#2F6BFF", "#0FA3A3", "#7B61FF", "#18A957", "#E6A700", "#E0483B"];
 const fmtDate = (d: string) => { try { return new Date(d).toLocaleDateString("ar-EG", { month: "short", day: "numeric" }); } catch { return d; } };
+const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 
 export default async function Dashboard() {
   const supabase = createClient();
@@ -158,14 +159,15 @@ export default async function Dashboard() {
     for (const c of (cr as any[]) || []) cName.set(c.id, c.name);
   }
 
-  // مطلوب إجراء
-  const actionRow = (cid: string, text: string, sub: string, color: string) => (
-    <Link key={cid + sub} href={`/customers/${cid}`} className="rmd">
-      <span className="rdot" style={{ background: color }} />
+  // مطلوب إجراء (ستايل v4: نقطة ملوّنة + بادچ)
+  const actionRow = (cid: string, text: string, sub: string, color: string, badge?: { label: string; bg: string; fg: string }) => (
+    <Link key={cid + sub} href={`/customers/${cid}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--line)", textDecoration: "none" }}>
+      <span style={{ width: 9, height: 9, borderRadius: "50%", flexShrink: 0, background: color }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, color: "var(--ink)", fontSize: 13.5 }}>{text}</div>
-        <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{sub}</div>
+        <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 13.5 }}>{text}</div>
+        <div style={{ fontSize: 11.5, color: "var(--muted-d)" }}>{sub}</div>
       </div>
+      {badge && <span style={{ marginInlineStart: "auto", fontSize: 10.5, fontWeight: 800, padding: "2px 9px", borderRadius: 20, background: badge.bg, color: badge.fg, flexShrink: 0 }}>{badge.label}</span>}
     </Link>
   );
   const grp = (title: string, color: string, rows: any[]) =>
@@ -176,10 +178,10 @@ export default async function Dashboard() {
       </div>
     ) : null;
 
-  const overdueRows = overdueInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customerFallback"), `${tr("overdueInstSub")} · ${fmtDate(i.due_date)}`, "#E5484D") : null; }).filter(Boolean);
-  const soonRows = soonInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customerFallback"), `${tr("dueOn")} ${fmtDate(i.due_date)}`, "#F5A623") : null; }).filter(Boolean);
-  const followRows = followItems.map((f) => actionRow(f.customer_id, cName.get(f.customer_id) || tr("customerFallback"), f.note || tr("followDueSub"), "#2F6BFF"));
-  const handoffRows = handoffItems.map((h) => actionRow(h.customer_id, cName.get(h.customer_id) || tr("customerFallback"), tr("awaitAccessSub"), "#F08A24"));
+  const overdueRows = overdueInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customerFallback"), `${tr("overdueInstSub")} · ${fmtDate(i.due_date)}`, "#E5484D", { label: tr("badgeOverdue"), bg: "var(--red-soft)", fg: "var(--red)" }) : null; }).filter(Boolean);
+  const soonRows = soonInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customerFallback"), `${tr("dueOn")} ${fmtDate(i.due_date)}`, "#F5A623", { label: tr("badgeSoon"), bg: "#FFFAEB", fg: "#B54708" }) : null; }).filter(Boolean);
+  const followRows = followItems.map((f) => actionRow(f.customer_id, cName.get(f.customer_id) || tr("customerFallback"), f.note || tr("followDueSub"), "#2F6BFF", { label: tr("badgeFollow"), bg: "#EFF6FF", fg: "#2F6BFF" }));
+  const handoffRows = handoffItems.map((h) => actionRow(h.customer_id, cName.get(h.customer_id) || tr("customerFallback"), tr("awaitAccessSub"), "#F08A24", { label: tr("badgeActivate"), bg: "var(--brand-soft)", fg: "var(--brand-d)" }));
   const actionCount = overdueRows.length + soonRows.length + followRows.length + handoffRows.length;
 
   // ===== دونات الدبلومات (من دالة القاعدة) =====
@@ -218,6 +220,71 @@ export default async function Dashboard() {
     const pct = newPrev > 0 ? Math.round((diff / newPrev) * 100) : 100;
     return { newThis, dir: diff > 0 ? "up" : diff < 0 ? "down" : "flat", pct: Math.abs(pct) };
   })();
+
+  // ===== سلاسل الرسومات (استعلامات قراءة فقط) =====
+  // 12 شهر: عملاء جدد شهرياً (للكل) + التحصيل شهرياً (للماليات) — للرسم الهيرو
+  const monthKeys: string[] = [];
+  {
+    const d0 = new Date(nowD.getFullYear(), nowD.getMonth(), 1);
+    for (let i = 11; i >= 0; i--) { const d = new Date(d0.getFullYear(), d0.getMonth() - i, 1); monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`); }
+  }
+  const start12 = new Date(nowD.getFullYear(), nowD.getMonth() - 11, 1).toISOString();
+  const custByMonth: Record<string, number> = {};
+  const colByMonth: Record<string, number> = {};
+  monthKeys.forEach((k) => { custByMonth[k] = 0; colByMonth[k] = 0; });
+  {
+    // عملاء جدد شهرياً — نجيب created_at للـ 12 شهر ونجمّعهم
+    const P = 1000;
+    for (let from = 0; from < 200000; from += P) {
+      const { data, error } = await supabase.from("customers").select("created_at")
+        .eq("deleted", false).eq("archived", false).gte("created_at", start12).range(from, from + P - 1);
+      if (error) break;
+      const rows = (data as any[]) || [];
+      for (const r of rows) { const k = String(r.created_at).slice(0, 7); if (k in custByMonth) custByMonth[k]++; }
+      if (rows.length < P) break;
+    }
+  }
+  // سلسلة 30 يوم يومية (للماليات): محصّل بالـ paid_at + ديون بالـ due_date
+  const dayKeys: string[] = [];
+  {
+    for (let i = 29; i >= 0; i--) { const d = new Date(Date.now() - i * 864e5); dayKeys.push(d.toISOString().slice(0, 10)); }
+  }
+  const collectedDaily: Record<string, number> = {}; dayKeys.forEach((k) => (collectedDaily[k] = 0));
+  const debtDaily: Record<string, number> = {}; dayKeys.forEach((k) => (debtDaily[k] = 0));
+  if (canFinance) {
+    const start30 = dayKeys[0];
+    // محصّل يومياً (جنيه) — من الأقساط المدفوعة آخر 30 يوم
+    const { data: paidRows } = await supabase.from("installments")
+      .select("amount,currency,paid_at").not("paid_at", "is", null).gte("paid_at", start30 + "T00:00:00");
+    for (const r of (paidRows as any[]) || []) {
+      if (r.currency === "USD") continue;
+      const k = String(r.paid_at).slice(0, 10);
+      if (k in collectedDaily) collectedDaily[k] += Number(r.amount) || 0;
+      if (k in colByMonth) {} // (شهري تحت)
+    }
+    // ديون يومياً (جنيه) — أقساط غير مدفوعة تاريخ استحقاقها في آخر 30 يوم
+    const { data: dueRows } = await supabase.from("installments")
+      .select("amount,currency,due_date,paid_at,status").is("paid_at", null).neq("status", "paid")
+      .not("due_date", "is", null).gte("due_date", start30).lte("due_date", dayKeys[dayKeys.length - 1]);
+    for (const r of (dueRows as any[]) || []) {
+      if (r.currency === "USD") continue;
+      const k = String(r.due_date).slice(0, 10);
+      if (k in debtDaily) debtDaily[k] += Number(r.amount) || 0;
+    }
+    // تحصيل شهري (جنيه) آخر 12 شهر — للخط في الرسم الهيرو
+    const { data: colRows } = await supabase.from("installments")
+      .select("amount,currency,paid_at").not("paid_at", "is", null).gte("paid_at", start12);
+    for (const r of (colRows as any[]) || []) {
+      if (r.currency === "USD") continue;
+      const k = String(r.paid_at).slice(0, 7);
+      if (k in colByMonth) colByMonth[k] += Number(r.amount) || 0;
+    }
+  }
+  const heroBars = monthKeys.map((k) => custByMonth[k]);
+  const heroLine = canFinance ? monthKeys.map((k) => colByMonth[k]) : undefined;
+  const heroLabels = monthKeys.map((k, i) => (i % 2 === 0 ? new Intl.DateTimeFormat("ar-EG", { month: "short", timeZone: "Africa/Cairo" }).format(new Date(Number(k.slice(0, 4)), Number(k.slice(5, 7)) - 1, 1)) : ""));
+  const sparkCollected = dayKeys.map((k) => collectedDaily[k]);
+  const sparkDebt = dayKeys.map((k) => debtDaily[k]);
 
   const generalKpis = [
     { label: tr("totalCust"), value: total, color: "#2F6BFF", icon: "users", trend: custTrend },
@@ -349,32 +416,68 @@ export default async function Dashboard() {
         </div>
       )}
 
-      {/* ===== KPIs عامة مكثّفة (كومبوننت موحّد) ===== */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 }}>
+      {/* ===== KPIs عامة مكثّفة (كومبوننت موحّد ذكي) ===== */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 16 }}>
         {generalKpis.map((k) => (
           <Kpi key={k.label} label={k.label} value={k.value} color={k.color} icon={(k as any).icon}
             suffix={(k as any).suffix || ""}
-            trend={(k as any).trend ? { dir: (k as any).trend.dir, pct: (k as any).trend.pct, note: `· +${(k as any).trend.newThis} ${tr("thisMonth")}` } : null} />
+            progress={k.label === tr("convRate") ? conv : undefined}
+            subtitle={(k as any).trend ? `+${(k as any).trend.newThis} ${tr("thisMonth")}` : undefined}
+            trend={(k as any).trend ? { dir: (k as any).trend.dir, pct: (k as any).trend.pct } : null} />
         ))}
       </div>
 
-      {/* ===== مطلوب إجراء + جدول الباتشات ===== */}
-      <div className="grid2" style={{ marginTop: 16 }}>
-        <div className="card" style={{ padding: 18 }}>
-          <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3>{tr("alertsT")}</h3><span className="chip">{actionCount}</span>
+      {/* ===== كروت الفلوس بسباركلاين (آخر 30 يوم) ===== */}
+      {canFinance && (
+        <div className="grid2" style={{ marginTop: 16 }}>
+          <div className="card" style={{ padding: 16 }}>
+            <div style={{ fontSize: 12, color: "var(--muted-d)", fontWeight: 700 }}>{tr("collected30d")}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--fe)", color: "var(--ink)", marginTop: 4 }}>{money(egpCollected)} <span style={{ fontSize: 13, color: "var(--muted)" }}>{tr("egpShort")}</span></div>
+            <MiniSpark points={sparkCollected} color="var(--green)" />
           </div>
-          <div style={{ marginTop: 10, maxHeight: 360, overflowY: "auto" }}>
-            {actionCount === 0 ? (
-              <div style={{ fontSize: 13.5, color: "var(--muted)", textAlign: "center", padding: 20 }}>{tr("noAlerts")} 🎉</div>
-            ) : (
-              <>
-                {canFinance && grp(tr("overdueInst"), "#E5484D", overdueRows)}
-                {canFinance && grp(tr("dueSoon"), "#F5A623", soonRows)}
-                {grp(tr("followDue"), "#2F6BFF", followRows)}
-                {grp(tr("pendingAccessT"), "#F08A24", handoffRows)}
-              </>
-            )}
+          <div className="card" style={{ padding: 16 }}>
+            <div style={{ fontSize: 12, color: "var(--muted-d)", fontWeight: 700 }}>{tr("remainingDebts")}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--fe)", color: "var(--ink)", marginTop: 4 }}>{money(egpDue)} <span style={{ fontSize: 13, color: "var(--muted)" }}>{tr("egpShort")}</span></div>
+            <MiniSpark points={sparkDebt} color="var(--amber)" />
+          </div>
+        </div>
+      )}
+
+      {/* ===== رسم الأداء (أعمدة عملاء + خط تحصيل) — آخر 12 شهر ===== */}
+      <div className="card" style={{ padding: 18, marginTop: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <span style={{ width: 32, height: 32, borderRadius: 10, display: "grid", placeItems: "center", background: "#EFF6FF", color: "var(--blue)", flexShrink: 0 }}><LineIcon name="trending" size={16} /></span>
+          <h3 style={{ margin: 0, fontSize: 15 }}>{tr("perf12mo")}</h3>
+          <span style={{ marginInlineStart: "auto", fontSize: 11.5, color: "var(--muted-d)", fontWeight: 700, display: "flex", gap: 10 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 9, height: 9, borderRadius: 2, background: "var(--brand)", display: "inline-block" }} />{tr("newCustomersShort")}</span>
+            {canFinance && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 9, height: 9, borderRadius: 2, background: "var(--blue)", display: "inline-block" }} />{tr("collectionWord")}</span>}
+          </span>
+        </div>
+        <HeroBarLine bars={heroBars} line={heroLine} labels={heroLabels} barColor="var(--brand)" lineColor="var(--blue)" />
+      </div>
+
+      {/* ===== مطلوب إجراء (ستايل v4) + جدول الباتشات ===== */}
+      <div className="grid2" style={{ marginTop: 16 }}>
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ height: 4, background: "linear-gradient(90deg,var(--brand),var(--amber))" }} />
+          <div style={{ padding: 18 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <span style={{ width: 32, height: 32, borderRadius: 10, display: "grid", placeItems: "center", background: "var(--brand-soft)", color: "var(--brand)", flexShrink: 0 }}><LineIcon name="clipboard" size={16} /></span>
+              <h3 style={{ margin: 0, fontSize: 15 }}>{tr("alertsT")}</h3>
+              {actionCount > 0 && <span style={{ marginInlineStart: "auto", fontSize: 12, fontWeight: 800, background: "var(--red)", color: "#fff", borderRadius: 20, padding: "2px 11px" }}>{actionCount}</span>}
+            </div>
+            <div style={{ maxHeight: 360, overflowY: "auto" }}>
+              {actionCount === 0 ? (
+                <div style={{ fontSize: 13.5, color: "var(--muted)", textAlign: "center", padding: 20 }}>{tr("noAlerts")} 🎉</div>
+              ) : (
+                <>
+                  {canFinance && overdueRows}
+                  {canFinance && soonRows}
+                  {followRows}
+                  {handoffRows}
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -439,6 +542,21 @@ export default async function Dashboard() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* ===== نسبة التحويل (راديال) ===== */}
+      <div className="card" style={{ padding: 18, marginTop: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <span style={{ width: 32, height: 32, borderRadius: 10, display: "grid", placeItems: "center", background: "var(--green-soft)", color: "var(--green)", flexShrink: 0 }}><LineIcon name="trending" size={16} /></span>
+          <h3 style={{ margin: 0, fontSize: 15 }}>{tr("convRate")}</h3>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
+          <Radial pct={conv} color="var(--green)" centerLabel={conv + "%"} />
+          <div>
+            <div style={{ fontSize: 30, fontWeight: 800, fontFamily: "var(--fe)", color: "var(--ink)", lineHeight: 1 }}>{enrolled}</div>
+            <div style={{ fontSize: 12, color: "var(--muted-d)", fontWeight: 600, marginTop: 3 }}>{tr("enrolledOfTotal").replace("{e}", String(enrolled)).replace("{t}", String(total))}</div>
+          </div>
         </div>
       </div>
 

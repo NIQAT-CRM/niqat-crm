@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useT, useLang } from "@/lib/i18n/client";
 import { toast } from "@/lib/toast";
-import { CountUp, Donut, BarRow, AreaChart } from "../Charts";
+import { CountUp, Donut, BarRow, AreaChart, MiniSpark } from "../Charts";
 import ExportButton from "../ExportButton";
 import AffiliateReport from "./AffiliateReport";
 
@@ -156,6 +156,20 @@ export default function ReportsView({
       {/* ===== تبويب التحصيل ===== */}
       {tab === "collection" && canFinance && (
         <div className="fade-in">
+          {/* هيرو الفلوس الغامق */}
+          <div style={{ background: "linear-gradient(135deg,#101828,#1f2a44)", color: "#fff", borderRadius: "var(--r)", padding: 22, marginBottom: 16, position: "relative", overflow: "hidden" }}>
+            <div style={{ fontSize: 12.5, color: "#98A2B3", fontWeight: 700 }}>{tr("collected30dTotal")}</div>
+            <div style={{ fontSize: 38, fontWeight: 800, fontFamily: "var(--fe)", lineHeight: 1.1, marginTop: 8 }}>{fmt(collected)} <span style={{ fontSize: 17, color: "#98A2B3" }}>{tr("egpShort")}</span></div>
+            <div style={{ marginTop: 8, fontSize: 12.5, color: "#D0D5DD", display: "flex", gap: 16, flexWrap: "wrap" }}>
+              <span>{tr("remaining")}: <b className="num" dir="ltr">{fmt(agreed - collected)} {tr("egpShort")}</b></span>
+              <span>· {tr("collectionRate")}: <b className="num" style={{ color: "#6CE9A6" }} dir="ltr">{agreed ? Math.round((collected / agreed) * 100) : 0}%</b></span>
+              {collectedUsd > 0 && <span>· <b className="num" dir="ltr">${fmt(collectedUsd)}</b></span>}
+            </div>
+            <div style={{ position: "absolute", insetInlineEnd: 12, bottom: 8, width: 180, opacity: 0.65 }}>
+              <MiniSpark points={monthly.map((m) => m.value)} color="#6CE9A6" height={54} />
+            </div>
+          </div>
+
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 14, marginBottom: 16 }}>
             <KpiCard label={tr("totalAgreed")} color="#2F6BFF"><CountUp value={agreed} prefix="EGP " /></KpiCard>
             <KpiCard label={tr("totalCollected")} color="#18A957"><CountUp value={collected} prefix="EGP " /></KpiCard>

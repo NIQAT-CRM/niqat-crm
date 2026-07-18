@@ -191,20 +191,26 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
                 <th className="text-start px-4 py-3 font-bold">{tr("discountCol")}</th>
                 <th className="text-start px-4 py-3 font-bold">{tr("customerCount")}</th>
                 <th className="text-start px-4 py-3 font-bold">{tr("enrolledCol")}</th>
+                <th className="text-start px-4 py-3 font-bold">{tr("convRate")}</th>
                 <th className="text-start px-4 py-3 font-bold">{tr("refundWord")}</th>
               </tr></thead>
               <tbody>
-                {affRows.length === 0 && <tr><td colSpan={6} className="px-4 py-6 text-center" style={{ color: "var(--muted)" }}>{tr("noAffiliatesYet")}</td></tr>}
-                {affRows.map((r) => (
+                {affRows.length === 0 && <tr><td colSpan={7} className="px-4 py-6 text-center" style={{ color: "var(--muted)" }}>{tr("noAffiliatesYet")}</td></tr>}
+                {affRows.map((r) => {
+                  const cv = r.customers ? Math.round((r.enrolled / r.customers) * 100) : 0;
+                  const cvColor = cv >= 30 ? { bg: "var(--green-soft)", fg: "var(--green)" } : cv >= 15 ? { bg: "#FFFAEB", fg: "#B54708" } : { bg: "var(--muted-soft)", fg: "var(--muted-d)" };
+                  return (
                   <tr key={r.code} className="border-t border-line">
                     <td className="px-4 py-3 font-bold text-brand">{r.code}</td>
                     <td className="px-4 py-3">{r.name}</td>
                     <td className="px-4 py-3 num">{r.discount != null ? r.discount + "%" : "—"}</td>
                     <td className="px-4 py-3 num font-bold">{r.customers}</td>
                     <td className="px-4 py-3 num font-bold text-green">{r.enrolled}</td>
+                    <td className="px-4 py-3"><span style={{ fontSize: 10.5, fontWeight: 800, padding: "2px 9px", borderRadius: 20, background: cvColor.bg, color: cvColor.fg }} className="num">{cv}%</span></td>
                     <td className="px-4 py-3 num font-bold" style={{ color: "#E0483B" }}>{r.refunded}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

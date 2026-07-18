@@ -190,33 +190,127 @@ export function LineIcon({ name, size = 18 }: { name: string; size?: number }) {
 }
 
 // ===== كارت KPI موحّد (مشترك بين الداشبورد والتقارير) =====
-export function Kpi({ label, value, color, icon, suffix = "", prefix = "", trend, animate = true }: {
+export function Kpi({ label, value, color, icon, suffix = "", prefix = "", trend, animate = true, progress, subtitle, deltaText }: {
   label: string; value: number | string; color: string; icon?: string;
   suffix?: string; prefix?: string;
   trend?: { dir: string; pct: number; note?: string } | null;
   animate?: boolean;
+  progress?: number;      // 0-100 لشريط التقدّم الرفيع
+  subtitle?: string;      // سطر فرعي تحت (زي "٣٤ عميل النهاردة")
+  deltaText?: string;     // نص الدلتا بدل النسبة (اختياري)
 }) {
+  const up = trend?.dir === "up", dn = trend?.dir === "down";
   return (
-    <div className="card rise" style={{ padding: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--muted)", fontSize: 12.5, marginBottom: 8 }}>
+    <div className="kpi2">
+      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
         {icon && (
-          <span style={{ width: 26, height: 26, borderRadius: 8, display: "grid", placeItems: "center", flexShrink: 0, background: color + "1a", color }}>
-            <LineIcon name={icon} size={15} />
+          <span style={{ width: 34, height: 34, borderRadius: 10, display: "grid", placeItems: "center", flexShrink: 0, background: color + "1a", color }}>
+            <LineIcon name={icon} size={17} />
           </span>
         )}
-        <span>{label}</span>
+        <span style={{ fontSize: 12, color: "var(--muted-d)", fontWeight: 700 }}>{label}</span>
       </div>
-      <div style={{ fontSize: 26, fontWeight: 800, color }}>
-        {typeof value === "number" && animate ? <CountUp value={value} prefix={prefix} suffix={suffix} /> : <span>{prefix}{value}{suffix}</span>}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 26, fontWeight: 800, fontFamily: "var(--fe)", color: "var(--ink)", lineHeight: 1 }}>
+          {typeof value === "number" && animate ? <CountUp value={value} prefix={prefix} suffix={suffix} /> : <span>{prefix}{value}{suffix}</span>}
+        </span>
+        {trend && (
+          <span style={{ fontSize: 11, fontWeight: 800, fontFamily: "var(--fe)", padding: "2px 7px", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 2,
+            background: up ? "var(--green-soft)" : dn ? "var(--red-soft)" : "var(--muted-soft)",
+            color: up ? "var(--green)" : dn ? "var(--red)" : "var(--muted-d)" }}>
+            <span>{up ? "▲" : dn ? "▼" : "■"}</span>
+            <span dir="ltr">{deltaText || trend.pct + "%"}</span>
+          </span>
+        )}
       </div>
-      {trend && (
-        <div style={{ marginTop: 4, fontSize: 11.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 4,
-          color: trend.dir === "up" ? "#18A957" : trend.dir === "down" ? "#E0483B" : "var(--muted)" }}>
-          <span>{trend.dir === "up" ? "▲" : trend.dir === "down" ? "▼" : "■"}</span>
-          <span dir="ltr">{trend.pct}%</span>
-          {trend.note && <span style={{ color: "var(--muted)", fontWeight: 500 }}>{trend.note}</span>}
+      {typeof progress === "number" && (
+        <div style={{ height: 6, background: "var(--muted-soft)", borderRadius: 20, marginTop: 13, overflow: "hidden" }}>
+          <div style={{ display: "block", height: "100%", borderRadius: 20, width: Math.max(0, Math.min(100, progress)) + "%", background: color }} />
         </div>
       )}
+      {(subtitle || trend?.note) && (
+        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 9, fontWeight: 500 }}>{subtitle || trend?.note}</div>
+      )}
+    </div>
+  );
+}
+
+// ===== Sparkline مصغّر (منحنى ناعم من نقاط) =====
+export function MiniSpark({ points, color, height = 36 }: { points: number[]; color: string; height?: number }) {
+  const n = points.length;
+  if (n < 2) return <div style={{ height }} />;
+  const max = Math.max(...points, 1), min = Math.min(...points, 0);
+  const rng = max - min || 1;
+  const W = 200, H = height;
+  const xs = (i: number) => (i / (n - 1)) * W;
+  const ys = (v: number) => H - 3 - ((v - min) / rng) * (H - 6);
+  const line = points.map((v, i) => `${i === 0 ? "M" : "L"}${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(" ");
+  const area = `${line} L${W},${H} L0,${H} Z`;
+  const gid = "sp" + Math.random().toString(36).slice(2, 8);
+  return (
+    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: "block", marginTop: 8 }}>
+      <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor={color} stopOpacity="0.18" /><stop offset="1" stopColor={color} stopOpacity="0" />
+      </linearGradient></defs>
+      <path d={area} fill={`url(#${gid})`} />
+      <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// ===== راديال تقدّم (دائرة) =====
+export function Radial({ pct, size = 96, color = "var(--green)", thickness = 11, centerLabel }: {
+  pct: number; size?: number; color?: string; thickness?: number; centerLabel?: string;
+}) {
+  const r = (size - thickness) / 2 - 2;
+  const c = 2 * Math.PI * r;
+  const p = Math.max(0, Math.min(100, pct));
+  const dash = (p / 100) * c;
+  const cx = size / 2;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--muted-soft)" strokeWidth={thickness} />
+      <circle cx={cx} cy={cx} r={r} fill="none" stroke={color} strokeWidth={thickness} strokeLinecap="round"
+        strokeDasharray={`${dash.toFixed(1)} ${c.toFixed(1)}`} transform={`rotate(-90 ${cx} ${cx})`} />
+      <text x={cx} y={cx + 5} textAnchor="middle" style={{ fontSize: size * 0.21, fontWeight: 800, fill: "var(--ink)" }} className="num">{centerLabel ?? p + "%"}</text>
+    </svg>
+  );
+}
+
+// ===== رسم هيرو: أعمدة + خط (آخر 12 شهر) =====
+export function HeroBarLine({ bars, line, labels, barColor = "var(--brand)", lineColor = "var(--blue)", height = 180 }: {
+  bars: number[]; line?: number[]; labels: string[]; barColor?: string; lineColor?: string; height?: number;
+}) {
+  const W = 560, H = height, pad = 8;
+  const n = bars.length || 1;
+  const bMax = Math.max(...bars, 1);
+  const slot = W / n;
+  const bw = Math.min(28, slot * 0.5);
+  const barY = (v: number) => H - 22 - (v / bMax) * (H - 50);
+  const lMax = line && line.length ? Math.max(...line, 1) : 1;
+  const lx = (i: number) => i * slot + slot / 2;
+  const ly = (v: number) => H - 22 - (v / lMax) * (H - 50);
+  const linePath = line && line.length
+    ? line.map((v, i) => `${i === 0 ? "M" : "L"}${lx(i).toFixed(1)},${ly(v).toFixed(1)}`).join(" ")
+    : "";
+  return (
+    <div>
+      <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+        <g stroke="var(--line)" strokeWidth="1">
+          {[0.2, 0.45, 0.7].map((f, i) => <line key={i} x1="0" y1={H * f} x2={W} y2={H * f} />)}
+        </g>
+        <g fill={barColor} opacity="0.85">
+          {bars.map((v, i) => {
+            const h = H - 22 - barY(v);
+            return <rect key={i} x={i * slot + (slot - bw) / 2} y={barY(v)} width={bw} height={Math.max(0, h)} rx="5" />;
+          })}
+        </g>
+        {linePath && <path d={linePath} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
+        {linePath && line!.map((v, i) => <circle key={i} cx={lx(i)} cy={ly(v)} r="3" fill={lineColor} />)}
+      </svg>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--muted)", fontFamily: "var(--fe)", marginTop: 6 }}>
+        {labels.map((l, i) => <span key={i}>{l}</span>)}
+      </div>
     </div>
   );
 }
