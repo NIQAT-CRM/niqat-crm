@@ -182,15 +182,15 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
     for (const c of (cr as any[]) || []) cName.set(c.id, c.name);
   }
 
-  // مطلوب إجراء (ستايل v4: نقطة ملوّنة + بادچ)
-  const actionRow = (cid: string, text: string, sub: string, color: string, badge?: { label: string; bg: string; fg: string }) => (
-    <Link key={cid + sub} href={`/customers/${cid}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--line)", textDecoration: "none" }}>
-      <span style={{ width: 9, height: 9, borderRadius: "50%", flexShrink: 0, background: color }} />
+  // مطلوب إجراء (ستايل v6: أيقونة ملوّنة في مربّع + اسم + وصف + رابط أكشن)
+  const actionRow = (cid: string, text: string, sub: string, color: string, badge?: { label: string; bg: string; fg: string }, icon = "clipboard", go = "") => (
+    <Link key={cid + sub} href={`/customers/${cid}`} className="ar" style={{ textDecoration: "none" }}>
+      <span className="tag" style={{ background: badge?.bg || "var(--brand-soft)", color: badge?.fg || "var(--brand-d)" }}><LineIcon name={icon} size={15} /></span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: 13.5 }}>{text}</div>
-        <div style={{ fontSize: 11.5, color: "var(--muted-d)" }}>{sub}</div>
+        <div className="an">{text}</div>
+        <div className="as">{sub}</div>
       </div>
-      {badge && <span style={{ marginInlineStart: "auto", fontSize: 10.5, fontWeight: 800, padding: "2px 9px", borderRadius: 20, background: badge.bg, color: badge.fg, flexShrink: 0 }}>{badge.label}</span>}
+      <span className="go">{go || badge?.label || tr("openWord")} ←</span>
     </Link>
   );
   const grp = (title: string, color: string, rows: any[]) =>
@@ -201,10 +201,10 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
       </div>
     ) : null;
 
-  const overdueRows = overdueInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customerFallback"), `${tr("overdueInstSub")} · ${fmtDate(i.due_date)}`, "#E5484D", { label: tr("badgeOverdue"), bg: "var(--red-soft)", fg: "var(--red)" }) : null; }).filter(Boolean);
-  const soonRows = soonInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customerFallback"), `${tr("dueOn")} ${fmtDate(i.due_date)}`, "#F5A623", { label: tr("badgeSoon"), bg: "#FFFAEB", fg: "#B54708" }) : null; }).filter(Boolean);
-  const followRows = followItems.map((f) => actionRow(f.customer_id, cName.get(f.customer_id) || tr("customerFallback"), f.note || tr("followDueSub"), "#2F6BFF", { label: tr("badgeFollow"), bg: "#EFF6FF", fg: "#2F6BFF" }));
-  const handoffRows = handoffItems.map((h) => actionRow(h.customer_id, cName.get(h.customer_id) || tr("customerFallback"), tr("awaitAccessSub"), "#F08A24", { label: tr("badgeActivate"), bg: "var(--brand-soft)", fg: "var(--brand-d)" }));
+  const overdueRows = overdueInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customerFallback"), `${tr("overdueInstSub")} · ${fmtDate(i.due_date)}`, "#E5484D", { label: tr("badgeOverdue"), bg: "var(--red-soft)", fg: "var(--red)" }, "wallet") : null; }).filter(Boolean);
+  const soonRows = soonInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customerFallback"), `${tr("dueOn")} ${fmtDate(i.due_date)}`, "#F5A623", { label: tr("badgeSoon"), bg: "#FFFAEB", fg: "#B54708" }, "calendarCheck") : null; }).filter(Boolean);
+  const followRows = followItems.map((f) => actionRow(f.customer_id, cName.get(f.customer_id) || tr("customerFallback"), f.note || tr("followDueSub"), "#2F6BFF", { label: tr("badgeFollow"), bg: "#EFF6FF", fg: "#2F6BFF" }, "calendarCheck"));
+  const handoffRows = handoffItems.map((h) => actionRow(h.customer_id, cName.get(h.customer_id) || tr("customerFallback"), tr("awaitAccessSub"), "#F08A24", { label: tr("badgeActivate"), bg: "var(--brand-soft)", fg: "var(--brand-d)" }, "check"));
   const actionCount = overdueRows.length + soonRows.length + followRows.length + handoffRows.length;
 
   // ===== دونات الدبلومات (من دالة القاعدة) =====
@@ -446,7 +446,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
               <h3 style={{ margin: 0, fontSize: 15 }}>{tr("alertsT")}</h3>
               {actionCount > 0 && <span style={{ marginInlineStart: "auto", fontSize: 12, fontWeight: 800, background: "var(--red)", color: "#fff", borderRadius: 20, padding: "2px 11px" }}>{actionCount}</span>}
             </div>
-            <div style={{ maxHeight: 360, overflowY: "auto" }}>
+            <div className="actions6" style={{ maxHeight: 360, overflowY: "auto" }}>
               {actionCount === 0 ? (
                 <div style={{ fontSize: 13.5, color: "var(--muted)", textAlign: "center", padding: 20 }}>{tr("noAlerts")} 🎉</div>
               ) : (
@@ -526,17 +526,18 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
       <div className="grid2" style={{ marginTop: 16 }}>
         <div className="card" style={{ padding: 18 }}>
           <div className="card-h"><h3>{tr("pipelineSummary")}</h3><span className="chip">{total}</span></div>
-          <div className="stack">
+          <div className="funnel">
             {STAGES.map((s) => {
               const v = byStage[s.key] || 0;
-              const pct = total ? (v / total) * 100 : 0;
-              return pct > 0 ? <i key={s.key} style={{ width: pct + "%", background: s.color }} /> : null;
+              const max = Math.max(...STAGES.map((x) => byStage[x.key] || 0), 1);
+              const pct = Math.max(14, Math.round((v / max) * 100));
+              return (
+                <div key={s.key} className="fn">
+                  <span className="fl">{tr(s.labelKey)}</span>
+                  <div className="fb" style={{ width: pct + "%", background: s.color }}>{v}</div>
+                </div>
+              );
             })}
-          </div>
-          <div className="plegend">
-            {STAGES.map((s) => (
-              <span key={s.key} className="r"><i style={{ background: s.color }} />{tr(s.labelKey)} <b>{byStage[s.key] || 0}</b></span>
-            ))}
           </div>
         </div>
 
