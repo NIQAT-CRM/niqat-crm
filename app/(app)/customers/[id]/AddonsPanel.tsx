@@ -113,10 +113,7 @@ export default function AddonsPanel({
                 <div className="fld" style={{ margin: 0 }}><label>{tr("amountPaidEgp")}</label>
                   <input className="inp num" dir="ltr" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={tr("egExample1500")} /></div>
                 <div className="fld" style={{ margin: 0 }}><label>{tr("paymentShot")}</label>
-                  <FileDrop className="addshot" style={{ width: "100%" }} accept="image/*" onFile={setFile}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
-                    {file ? file.name : tr("uploadTransferImg")}
-                  </FileDrop></div>
+                  <FileDrop value={file} onFile={setFile} onClear={() => setFile(null)} accept="image/*" label={tr("uploadTransferImg")} /></div>
               </div>
             </div>
           )}

@@ -250,9 +250,7 @@ export default function RefundPanel({
                 <div style={{ marginTop: 8 }}>
                   {r.status === "requested" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <FileDrop style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--brand)", fontWeight: 700 }} accept="image/*" onFile={setFile}>
-                        🖼️ {file ? file.name : tr("refundTransferShot")}
-                      </FileDrop>
+                      <FileDrop compact value={file} onFile={setFile} onClear={() => setFile(null)} accept="image/*" label={tr("refundTransferShot")} />
                       <button onClick={() => markRefunded(r)} disabled={busy === "ref:" + r.id} className="btn" style={{ fontSize: 12.5 }}>{busy === "ref:" + r.id ? "..." : tr("refundTransfer")}</button>
                     </div>
                   )}

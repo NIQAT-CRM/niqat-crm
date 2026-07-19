@@ -222,9 +222,7 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
                      </div>
                      {payFor === i.id && !paidNow && (
                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, borderTop: "1px dashed var(--line)", paddingTop: 8 }}>
-                         <FileDrop style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--brand)", fontWeight: 700 }} accept="image/*" onFile={setPayFile}>
-                           🖼️ {payFile ? payFile.name : tr("uploadReceiptOpt")}
-                         </FileDrop>
+                         <FileDrop compact value={payFile} onFile={setPayFile} onClear={() => setPayFile(null)} accept="image/*" label={tr("uploadReceiptOpt")} />
                          <button onClick={() => markPaid(i.id, payFile, e)} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{busy === i.id ? "..." : tr("confirmPayment")}</button>
                          <button onClick={() => { setPayFor(null); setPayFile(null); }} className="btn ghost" style={{ height: 30, padding: "0 10px", fontSize: 12 }}>{tr("cancel")}</button>
                        </div>
@@ -239,9 +237,7 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
                     <input className="inp num" style={{ width: 110 }} placeholder={tr("instAmount")} value={amt} onChange={(ev) => setAmt(ev.target.value)} />
                     <input type="date" className="inp num" style={{ width: 150 }} value={due} onChange={(ev) => setDue(ev.target.value)} />
                   </div>
-                  <FileDrop style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--brand)", fontWeight: 700 }} accept="image/*" onFile={setFile}>
-                    🖼️ {file ? file.name : tr("addShot")}
-                  </FileDrop>
+                  <FileDrop compact value={file} onFile={setFile} onClear={() => setFile(null)} accept="image/*" label={tr("addShot")} />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => addInstallment(e)} disabled={busy === "add"} className="btn" style={{ height: 38 }}>{busy === "add" ? tr("saving") : tr("save")}</button>
                     <button onClick={() => { setAddFor(null); setFile(null); }} className="btn ghost" style={{ height: 38 }}>{tr("cancel")}</button>

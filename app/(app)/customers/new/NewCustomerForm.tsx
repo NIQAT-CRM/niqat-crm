@@ -590,10 +590,7 @@ export default function NewCustomerForm({
             {!f.free && (
               <div className="fld" style={{ marginTop: 8 }}>
                 <label>{tr("agreedTransferShot")}</label>
-                <FileDrop className="addshot" style={{ width: "100%" }} accept="image/*" onFile={setPayFile}>
-                  <Ic name="upload" size={14} />
-                  {payFile ? payFile.name : tr("uploadTransferShot")}
-                </FileDrop>
+                <FileDrop value={payFile} onFile={setPayFile} onClear={() => setPayFile(null)} accept="image/*" label={tr("uploadTransferShot")} />
                 <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>{tr("shotStoredHint")}</div>
               </div>
             )}

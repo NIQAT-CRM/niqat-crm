@@ -57,10 +57,7 @@ export default function DocsPanel({
       ) : (
         <>
           <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "12px 0" }}>
-            <FileDrop className="addshot" accept="image/*,application/pdf" onFile={setFile}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
-              {file ? file.name : tr("pickFileImage")}
-            </FileDrop>
+            <FileDrop value={file} onFile={setFile} onClear={() => setFile(null)} accept="image/*,application/pdf" label={tr("pickFileImage")} />
             <button className="btn" type="button" disabled={!file || busy} onClick={upload}>
               {busy ? tr("uploading") : tr("upload")}
             </button>
