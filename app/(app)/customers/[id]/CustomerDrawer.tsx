@@ -60,7 +60,7 @@ export default function CustomerDrawer(props: {
   handoff: any; accessItems: any[]; accOpts: any[]; libOpts: any[];
   fuOpen: any; fuHistory: any[];
   finEnrollments: any[];
-  refund: any; refundTableMissing: boolean;
+  refunds: any[]; refundServices: any[]; allServicesClosed: boolean; refundTableMissing: boolean;
   canFinance: boolean; canMessage: boolean; canManageBatches: boolean;
   docs: any[]; docsMissing: boolean;
   waCtx: any; templates: any[];
@@ -252,7 +252,7 @@ export default function CustomerDrawer(props: {
           <>
             <Sec emoji="↩️" bg="rgba(47,107,255,.12)" title={tr("refundAccTitle")} />
             <div className="card" style={{ padding: 14, marginBottom: 14 }}>
-              <RefundPanel customerId={props.c.id} refund={props.refund} meId={props.user?.id || ""} tableMissing={props.refundTableMissing} accessItems={props.accessItems} enrolls={props.enrolls} />
+              <RefundPanel customerId={props.c.id} refunds={props.refunds} refundServices={props.refundServices} allServicesClosed={props.allServicesClosed} meId={props.user?.id || ""} tableMissing={props.refundTableMissing} accessItems={props.accessItems} />
             </div>
           </>
         )}

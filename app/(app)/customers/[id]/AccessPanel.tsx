@@ -4,9 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/lib/i18n/client";
 import { toast } from "@/lib/toast";
-import { revalidateCustomers } from "../actions";
 
-const REFUND_CLOSE_LABEL = "قفل الأكسس (ريفند)";
 
 type Item = { id: string; label: string; done: boolean; done_by: string | null; done_at: string | null };
 type Handoff = { id: string; status: string; note: string; assignee: string; by: string; at: string } | null;
@@ -88,20 +86,6 @@ export default function AccessPanel({
   }
 
   const done = items.filter((i) => i.done).length;
-
-  async function archiveAfterRefund() {
-    setBusy("archive");
-    const { error } = await supabase.from("customers").update({ archived: true }).eq("id", customerId);
-    if (error) { setBusy(null); alert(tr("updateFailed") + error.message); return; }
-    // قفل الريفند (best-effort — ممكن يترفض بالـ RLS لو الدعم مالوش صلاحية مالية، والفلترة بالأرشفة بتخفيه برضه)
-    await supabase.from("refunds").update({ status: "closed" }).eq("customer_id", customerId).neq("status", "closed");
-    await supabase.from("audit_log").insert({
-      customer_id: customerId, actor_id: meId || null, action: "refunded", detail: tr("closedArchiveBtn"),
-    });
-    setBusy(null);
-    await revalidateCustomers();
-    toast(tr("customerArchived")); router.refresh();
-  }
 
   // لوحة اختيار البنود (combobox فاضي) — تُستخدم في الحالتين
   const picker = (
@@ -201,12 +185,6 @@ export default function AccessPanel({
                   <span style={{ flex: 1, fontWeight: 600, textDecoration: it.done ? "line-through" : "none", color: it.done ? "var(--muted)" : "var(--ink)" }}>{it.label}</span>
                   {it.done && it.done_by && <span style={{ fontSize: 11, color: "var(--green)" }}>{tr("accActivatedBy")} {it.done_by}</span>}
                 </label>
-                {/* بند قفل الأكسس (ريفند) بعد ما يتعلّم → زر أرشفة العميل جنبه مباشرةً */}
-                {it.label === REFUND_CLOSE_LABEL && it.done && (
-                  <button onClick={archiveAfterRefund} disabled={busy === "archive"} className="btn danger" style={{ width: "100%", marginTop: 6 }}>
-                    {busy === "archive" ? "..." : "🗄️ " + tr("closedArchiveBtn")}
-                  </button>
-                )}
               </div>
             ))}
           </div>

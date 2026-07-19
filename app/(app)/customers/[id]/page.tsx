@@ -72,7 +72,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     supabase.from("customer_docs").select("id,url,name,created_at").eq("customer_id", params.id).order("created_at", { ascending: false }),
     supabase.from("follow_ups").select("id,due_at,note,done").eq("customer_id", params.id).order("due_at", { ascending: false }),
     supabase.from("wa_templates").select("id,name,body").order("created_at"),
-    supabase.from("customer_addons").select("id,type,name,amount,free,note,paid,shot_url").eq("customer_id", params.id).order("created_at"),
+    supabase.from("customer_addons").select("id,type,name,amount,free,note,paid,shot_url,refunded").eq("customer_id", params.id).order("created_at"),
     supabase.from("accreditations").select("name").order("name"),
     supabase.from("projects").select("name").order("name"),
   ]);
@@ -139,22 +139,52 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const fuAll = (fuRows || []).map((x: any) => ({ id: x.id, due_at: x.due_at, note: x.note || "", done: !!x.done }));
   const fuOpen = fuAll.find((x: any) => !x.done) || null;
 
-  // ===== refund: يعتمد على canFinance (يفضل بعد الموجة) =====
-  let refund: any = null;
+  // ===== refunds: كل ريفندات العميل (يفضل بعد الموجة) =====
+  let refunds: any[] = [];
   let refundTableMissing = false;
   if (canFinance) {
-    const { data: rf, error: rfErr } = await supabase.from("refunds").select("id,amount,currency,reason,shot_url,status,created_at").eq("customer_id", params.id).order("created_at", { ascending: false }).limit(1);
-    if (rfErr) refundTableMissing = true; else refund = (rf || [])[0] || null;
-    if (refund?.shot_url) refund = { ...refund, shot_url: await receiptSignedUrl(supabase, refund.shot_url) };
+    const { data: rf, error: rfErr } = await supabase.from("refunds")
+      .select("id,enrollment_id,addon_id,amount,currency,reason,shot_url,status,closes_service,created_at")
+      .eq("customer_id", params.id).order("created_at", { ascending: false });
+    if (rfErr) refundTableMissing = true;
+    else refunds = await Promise.all((rf || []).map(async (r: any) => ({
+      id: r.id, enrollmentId: r.enrollment_id || "", addonId: r.addon_id || "",
+      amount: Number(r.amount) || 0, currency: r.currency || "EGP", reason: r.reason || "",
+      status: r.status || "requested", closesService: !!r.closes_service,
+      shot_url: r.shot_url ? await receiptSignedUrl(supabase, r.shot_url) : "",
+      at: String(r.created_at || "").slice(0, 10),
+    })));
   }
 
   const templates = tplRows || [];
   const waCtx = { name: (c.name as string) || "", phone1: (c.phone1 as string) || "", diploma: enrolls[0]?.diploma || "", batch: enrolls[0]?.batch || "", remaining: "" };
 
   let addons: any[] = []; let addonsMissing = false;
-  if (adRes.error) addonsMissing = true; else addons = await Promise.all((adRes.data || []).map(async (a: any) => ({ id: a.id, type: a.type, name: a.name, amount: Number(a.amount) || 0, free: !!a.free, note: a.note || "", paid: !!a.paid, shot_url: a.shot_url ? await receiptSignedUrl(supabase, a.shot_url) : "" })));
+  if (adRes.error) addonsMissing = true; else addons = await Promise.all((adRes.data || []).map(async (a: any) => ({ id: a.id, type: a.type, name: a.name, amount: Number(a.amount) || 0, free: !!a.free, note: a.note || "", paid: !!a.paid, refunded: !!a.refunded, shot_url: a.shot_url ? await receiptSignedUrl(supabase, a.shot_url) : "" })));
   const accredList = (accredRows || []).map((x: any) => x.name);
   const projList = (projRows || []).map((x: any) => x.name);
+
+  // ===== خدمات الريفند: دبلومات (بالمدفوع فعلاً) + إضافات مدفوعة =====
+  let refundServices: any[] = [];
+  let allServicesClosed = false;
+  if (canFinance) {
+    const enrServices = (finEnrollments || []).map((e: any) => {
+      const paid = (e.installments || []).filter((i: any) => i.status === "paid" || i.paidAt).reduce((s: number, i: any) => s + (Number(i.amount) || 0), 0);
+      return {
+        kind: "enrollment", id: e.id,
+        name: `${e.diploma}${e.batch ? " — " + e.batch : ""}`,
+        paid, currency: e.currency || "EGP",
+        free: !!e.free, closed: e.status === "refunded",
+      };
+    });
+    const addonServices = (addons || []).filter((a: any) => a.paid || a.free).map((a: any) => ({
+      kind: "addon", id: a.id, name: a.name || a.type || "—",
+      paid: Number(a.amount) || 0, currency: "EGP",
+      free: !!a.free, closed: !!a.refunded,
+    }));
+    refundServices = [...enrServices, ...addonServices];
+    allServicesClosed = refundServices.length > 0 && refundServices.every((s: any) => s.closed);
+  }
 
   const st = STAGE[c.stage as string] || STAGE.interested;
   const ini = (n: string) => { const p = (n || "?").trim().split(/\s+/); return p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2); };
@@ -200,7 +230,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
             handoff={handoff} accessItems={accessItems} accOpts={accOpts || []} libOpts={(libOpts || []).map((l: any) => ({ id: l.id, name: l.name }))}
             fuOpen={fuOpen} fuHistory={(fuAll || []).filter((x: any) => x.done).slice(0, 5)}
             finEnrollments={finEnrollments}
-            refund={refund} refundTableMissing={refundTableMissing}
+            refunds={refunds} refundServices={refundServices} allServicesClosed={allServicesClosed} refundTableMissing={refundTableMissing}
             canFinance={canFinance} canMessage={canMessage} canManageBatches={canManageBatches}
             docs={docs} docsMissing={docsMissing}
             waCtx={waCtx} templates={templates as any}
