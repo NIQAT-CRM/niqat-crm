@@ -129,7 +129,7 @@ export default function ReportsView({
   const supRanked = [...supportRows].sort((a, b) => b.total - a.total);
 
   return (
-    <div>
+    <div style={{ maxWidth: 1180, margin: "0 auto" }}>
       <div className="page-h"><div><h1>{tr("reports")}</h1><p>{tr("reportsDesc")}</p></div></div>
       <PeriodFilter />
 

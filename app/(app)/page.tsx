@@ -333,7 +333,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
   const spMax = Math.max(...spRows.map((r) => r.n), 1);
 
   return (
-    <div>
+    <div style={{ maxWidth: 1180, margin: "0 auto" }}>
       <div className="page-h"><div><h1>{tr("dash")}</h1><p>{tr("dashDesc")}</p></div></div>
       <PeriodFilter />
 
@@ -413,7 +413,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
       )}
 
       {/* ===== KPIs عامة — ستايل v6 ===== */}
-      <div className="grid6 g4-6">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 14 }}>
         {generalKpis.map((k) => {
           const td = (k as any).trend;
           return (
@@ -439,7 +439,9 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
       </div>
 
       {/* ===== مطلوب إجراء (ستايل v4) + جدول الباتشات ===== */}
-      {/* ===== مطلوب إجراء ===== */}
+      {/* ===== مطلوب إجراء + مواعيد الباتشات (عمودين) ===== */}
+      <div className="grid6 g2-6" style={{ alignItems: "start" }}>
+       <div>
       <div className="sh6"><span className="tick" /><h2>{tr("alertsT")}</h2>{actionCount > 0 && <span className="meta">{actionCount} {tr("itemsWord")}</span>}</div>
       <div className="card6 actions6">
         {actionCount === 0 ? (
@@ -453,7 +455,9 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
           </div>
         )}
       </div>
+       </div>
 
+       <div>
       {/* ===== مواعيد الباتشات ===== */}
       <div className="sh6"><span className="tick" /><h2>{tr("schedule")}</h2>
         <Link href="/batches" className="side" style={{ textDecoration: "none" }}>{tr("viewAll")} ←</Link>
@@ -502,9 +506,11 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
             );
           })}
       </div>
+       </div>
+      </div>
 
       {/* ===== ملخص المسار + دونات الدبلومات ===== */}
-      <div className="grid2" style={{ marginTop: 16 }}>
+      <div className="grid6 g2-6" style={{ marginTop: 16 }}>
         <div className="card" style={{ padding: 18 }}>
           <div className="card-h"><h3>{tr("pipelineSummary")}</h3><span className="chip">{total}</span></div>
           <div className="funnel">
@@ -534,20 +540,18 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
       </div>
 
       {/* ===== نسبة التحويل (راديال) ===== */}
-      <div className="card" style={{ padding: 18, marginTop: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-          <span style={{ width: 32, height: 32, borderRadius: 10, display: "grid", placeItems: "center", background: "var(--green-soft)", color: "var(--green)", flexShrink: 0 }}><LineIcon name="trending" size={16} /></span>
-          <h3 style={{ margin: 0, fontSize: 15 }}>{tr("convRate")}</h3>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-          <div style={{ minWidth: 210, flex: "0 0 210px" }}>
-            <ApexRadial pct={conv} label={tr("enrolledOfTotal").replace("{e}", String(enrolled)).replace("{t}", String(total))} />
+      <div className="grid6 g2-6" style={{ marginTop: 16, alignItems: "start" }}>
+        <div className="card6" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 180, flexShrink: 0 }}>
+            <ApexRadial pct={conv} label={tr("convRate")} />
           </div>
           <div>
-            <div style={{ fontSize: 30, fontWeight: 800, fontFamily: "var(--fe)", color: "var(--ink)", lineHeight: 1 }}>{enrolled}</div>
-            <div style={{ fontSize: 12, color: "var(--muted-d)", fontWeight: 600, marginTop: 3 }}>{tr("enrolledOfTotal").replace("{e}", String(enrolled)).replace("{t}", String(total))}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("convRate")}</div>
+            <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "var(--fd)", color: "var(--ink)", lineHeight: 1, marginTop: 8 }}>{enrolled}</div>
+            <div style={{ fontSize: 11.5, color: "var(--muted-d)", fontWeight: 600, marginTop: 4 }}>{tr("enrolledOfTotal").replace("{e}", String(enrolled)).replace("{t}", String(total))}</div>
           </div>
         </div>
+        <div />
       </div>
 
       {/* ===== التخصصات الهندسية + العملاء حسب الباتش ===== */}

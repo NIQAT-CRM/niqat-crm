@@ -449,11 +449,12 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .g2-6{grid-template-columns:1fr 1fr}
 @media(min-width:760px){.g4-6{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:520px){.g2-6{grid-template-columns:1fr}}
-.card6{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:20px;display:flex;flex-direction:column}
+.card6{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column}
+.card6.kpi6{padding:15px 16px}
 /* KPI v6 */
 .kpi6 .kl{font-size:12px;color:var(--muted);font-weight:700}
-.kpi6 .kv{font-family:var(--fd);font-size:29px;font-weight:700;color:var(--ink);line-height:1;margin-top:11px;letter-spacing:-.5px}
-.kpi6 .kf{display:flex;align-items:center;gap:7px;margin-top:11px;flex-wrap:wrap}
+.kpi6 .kv{font-family:var(--fd);font-size:25px;font-weight:700;color:var(--ink);line-height:1;margin-top:9px;letter-spacing:-.5px}
+.kpi6 .kf{display:flex;align-items:center;gap:7px;margin-top:9px;flex-wrap:wrap}
 .kpi6 .kc{font-size:11px;color:var(--muted);font-weight:500}
 .delta6{font-family:var(--fd);font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;display:inline-flex;align-items:center;gap:2px}
 .delta6.up{background:var(--green-soft);color:var(--green)}
