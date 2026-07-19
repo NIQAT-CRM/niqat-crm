@@ -31,7 +31,7 @@ export async function filteredCustomerIds(sp: CustFilterSP): Promise<string[]> {
     const enrFlags = new Map<string, { due: boolean; over: boolean }>();
     for (let from = 0; from < CAP; from += PAGE) {
       const { data, error } = await supabase.from("installments")
-        .select("enrollment_id,due_date,paid_at,status").neq("status", "paid").range(from, from + PAGE - 1);
+        .select("enrollment_id,due_date,paid_at,status").neq("status", "paid").order("id", { ascending: true }).range(from, from + PAGE - 1);
       if (error) break;
       const rows = (data as any[]) || [];
       for (const i of rows) {
@@ -60,7 +60,7 @@ export async function filteredCustomerIds(sp: CustFilterSP): Promise<string[]> {
     const set = new Set<string>();
     const P = 1000, C = 60000;
     for (let from = 0; from < C; from += P) {
-      const { data } = await supabase.from("enrollments").select("customer_id").in(col, vals).range(from, from + P - 1);
+      const { data } = await supabase.from("enrollments").select("customer_id").in(col, vals).order("id", { ascending: true }).range(from, from + P - 1);
       const rows = (data as any[]) || [];
       for (const r of rows) if (r.customer_id) set.add(r.customer_id);
       if (rows.length < P) break;
@@ -117,7 +117,7 @@ export async function filteredCustomerIds(sp: CustFilterSP): Promise<string[]> {
       let cq = supabase.from("customers").select("id")
         .eq("deleted", false).not("archived", "is", true);
       cq = applyCols(cq);
-      const { data, error } = await cq.order("created_at", { ascending: false }).range(from, from + P - 1);
+      const { data, error } = await cq.order("id", { ascending: true }).range(from, from + P - 1);
       if (error) break;
       const rows = (data as any[]) || [];
       for (const r of rows) out.add(r.id);
