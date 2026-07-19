@@ -71,7 +71,6 @@ export default function FileDrop({
         <path d="M12 16V4M7 9l5-5 5 5" /><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
       </svg>
       <span className="fdrop-t">{label || tr("dropOrPick")}</span>
-      {!compact && <span className="fdrop-h">{hint || tr("dropHint")}</span>}
       <input type="file" accept={accept} disabled={disabled} style={{ display: "none" }}
         onChange={(e) => { emit(e.target.files); e.currentTarget.value = ""; }} />
     </label>

@@ -517,3 +517,23 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .st6.g{background:var(--green-soft);color:var(--green)}.st6.b{background:var(--blue-soft);color:var(--blue)}.st6.a{background:var(--amber-soft);color:#9a6a12}
 [data-theme="dark"] .st6.b{background:rgba(75,107,155,.2);color:#8AA6D0}[data-theme="dark"] .st6.a{background:rgba(224,163,46,.16);color:#E0A32E}
 .cn6{display:flex;align-items:center;gap:9px}
+
+/* ===================== FileDrop — منطقة رفع مدمجة ومتناسقة ===================== */
+.fdrop{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:56px;padding:12px 14px;border:1.5px dashed var(--line);border-radius:12px;background:var(--muted-soft);color:var(--muted-d);text-align:center;transition:border-color .15s,background .15s,color .15s}
+.fdrop:hover{border-color:var(--brand);color:var(--brand-d);background:var(--brand-soft)}
+.fdrop.drag{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-d)}
+.fdrop-up{width:18px !important;height:18px !important;flex-shrink:0}
+.fdrop-t{font-size:12.5px;font-weight:700}
+.fdrop-h{font-size:11px;color:var(--muted);font-weight:600}
+.fdrop.compact{min-height:0;padding:9px 12px;gap:7px}
+.fdrop.compact .fdrop-up{width:15px !important;height:15px !important}
+.fdrop-has{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.fdrop-has.compact{padding:6px 10px}
+.fdrop-thumb{width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--line)}
+.fdrop-ficon{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;background:var(--muted-soft);font-size:18px;flex-shrink:0}
+.fdrop-fname{flex:1;min-width:0;font-size:12.5px;color:var(--ink);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fdrop-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.fdrop-replace{font-size:11.5px;font-weight:700;color:var(--brand);cursor:pointer;padding:5px 9px;border:1px solid var(--line);border-radius:8px;white-space:nowrap}
+.fdrop-replace:hover{border-color:var(--brand);background:var(--brand-soft)}
+.fdrop-x{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--red);cursor:pointer;font-size:13px;font-weight:800;display:grid;place-items:center;flex-shrink:0}
+.fdrop-x:hover{background:var(--red-soft);border-color:var(--red)}
