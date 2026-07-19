@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import BatchDoneBtn from "./batches/BatchDoneBtn";
 import BatchesByDiploma from "./BatchesByDiploma";
-import { CountUp, Donut, BarRow, Kpi, LineIcon, MiniSpark, Radial, HeroBarLine, ApexCombo, ApexRadial, ApexDonut } from "./Charts";
+import { CountUp, BarRow, Kpi, LineIcon, ApexCombo, ApexRadial, ApexDonut } from "./Charts";
 import PeriodFilter from "./PeriodFilter";
 
 export const dynamic = "force-dynamic";
@@ -267,33 +267,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
       if (rows.length < P) break;
     }
   }
-  // سلسلة 30 يوم يومية (للماليات): محصّل بالـ paid_at + ديون بالـ due_date
-  const dayKeys: string[] = [];
-  {
-    for (let i = 29; i >= 0; i--) { const d = new Date(Date.now() - i * 864e5); dayKeys.push(d.toISOString().slice(0, 10)); }
-  }
-  const collectedDaily: Record<string, number> = {}; dayKeys.forEach((k) => (collectedDaily[k] = 0));
-  const debtDaily: Record<string, number> = {}; dayKeys.forEach((k) => (debtDaily[k] = 0));
   if (canFinance) {
-    const start30 = dayKeys[0];
-    // محصّل يومياً (جنيه) — من الأقساط المدفوعة آخر 30 يوم
-    const { data: paidRows } = await supabase.from("installments")
-      .select("amount,currency,paid_at").not("paid_at", "is", null).gte("paid_at", start30 + "T00:00:00");
-    for (const r of (paidRows as any[]) || []) {
-      if (r.currency === "USD") continue;
-      const k = String(r.paid_at).slice(0, 10);
-      if (k in collectedDaily) collectedDaily[k] += Number(r.amount) || 0;
-      if (k in colByMonth) {} // (شهري تحت)
-    }
-    // ديون يومياً (جنيه) — أقساط غير مدفوعة تاريخ استحقاقها في آخر 30 يوم
-    const { data: dueRows } = await supabase.from("installments")
-      .select("amount,currency,due_date,paid_at,status").is("paid_at", null).neq("status", "paid")
-      .not("due_date", "is", null).gte("due_date", start30).lte("due_date", dayKeys[dayKeys.length - 1]);
-    for (const r of (dueRows as any[]) || []) {
-      if (r.currency === "USD") continue;
-      const k = String(r.due_date).slice(0, 10);
-      if (k in debtDaily) debtDaily[k] += Number(r.amount) || 0;
-    }
     // تحصيل شهري (جنيه) آخر 12 شهر — للخط في الرسم الهيرو
     const { data: colRows } = await supabase.from("installments")
       .select("amount,currency,paid_at").not("paid_at", "is", null).gte("paid_at", start12);
@@ -305,9 +279,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
   }
   const heroBars = monthKeys.map((k) => custByMonth[k]);
   const heroLine = canFinance ? monthKeys.map((k) => colByMonth[k]) : undefined;
-  const heroLabels = monthKeys.map((k, i) => (i % 2 === 0 ? new Intl.DateTimeFormat("ar-EG", { month: "short", timeZone: "Africa/Cairo" }).format(new Date(Number(k.slice(0, 4)), Number(k.slice(5, 7)) - 1, 1)) : ""));
-  const sparkCollected = dayKeys.map((k) => collectedDaily[k]);
-  const sparkDebt = dayKeys.map((k) => debtDaily[k]);
+  const heroLabels = monthKeys.map((k) => new Intl.DateTimeFormat("ar-EG", { month: "short", timeZone: "Africa/Cairo" }).format(new Date(Number(k.slice(0, 4)), Number(k.slice(5, 7)) - 1, 1)));
 
   const generalKpis = [
     { label: tr("totalCust"), value: total, color: "#2F6BFF", icon: "users", trend: custTrend },
@@ -451,22 +423,6 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
         ))}
       </div>
 
-      {/* ===== كروت الفلوس بسباركلاين (آخر 30 يوم) ===== */}
-      {canFinance && (
-        <div className="grid2" style={{ marginTop: 16 }}>
-          <div className="card" style={{ padding: 16 }}>
-            <div style={{ fontSize: 12, color: "var(--muted-d)", fontWeight: 700 }}>{tr("collected30d")}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--fe)", color: "var(--ink)", marginTop: 4 }}>{money(egpCollected)} <span style={{ fontSize: 13, color: "var(--muted)" }}>{tr("egpShort")}</span></div>
-            <MiniSpark points={sparkCollected} color="var(--green)" />
-          </div>
-          <div className="card" style={{ padding: 16 }}>
-            <div style={{ fontSize: 12, color: "var(--muted-d)", fontWeight: 700 }}>{tr("remainingDebts")}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--fe)", color: "var(--ink)", marginTop: 4 }}>{money(egpDue)} <span style={{ fontSize: 13, color: "var(--muted)" }}>{tr("egpShort")}</span></div>
-            <MiniSpark points={sparkDebt} color="var(--amber)" />
-          </div>
-        </div>
-      )}
-
       {/* ===== رسم الأداء (أعمدة عملاء + خط تحصيل) — آخر 12 شهر ===== */}
       <div className="card" style={{ padding: 18, marginTop: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
@@ -519,27 +475,46 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
                 const enr = batchCountMap.get(b.id) || 0;
                 const cap = Number(b.capacity) || 0;
                 const pct = cap > 0 ? Math.min(100, Math.round((enr / cap) * 100)) : 0;
-                const stt = b.status === "full"
-                  ? { l: tr("fullLabel"), cls: "full", bar: "var(--amber)" }
-                  : { l: tr("availableLabel"), cls: "open", bar: "var(--green)" };
                 const end = endMap.get(b.id);
                 const dip = dName.get(b.diploma_id) || "";
-                const range = (b.start_date ? fmtDate(b.start_date) : "—") + (end ? " — " + fmtDate(end) : "");
+                // توقيت: يبدأ خلال / جارية / منتهية
+                const dayMs = 864e5;
+                const startD = b.start_date ? new Date(b.start_date + "T00:00:00") : null;
+                const endD = end ? new Date(end + "T23:59:59") : null;
+                const nowT = Date.now();
+                let timing = "", tcolor = "var(--muted-d)";
+                if (endD && nowT > endD.getTime()) { timing = tr("batchEnded"); tcolor = "var(--muted)"; }
+                else if (startD && nowT < startD.getTime()) {
+                  const days = Math.ceil((startD.getTime() - nowT) / dayMs);
+                  timing = tr("batchStartsIn").replace("{n}", String(days)); tcolor = "var(--brand-d)";
+                } else if (startD) { timing = tr("batchOngoing"); tcolor = "var(--green)"; }
+                // الحالة
+                const stt = b.status === "full"
+                  ? { l: tr("fullLabel"), s: "full", bar: "var(--amber)" }
+                  : { l: tr("availableLabel"), s: "open", bar: "var(--green)" };
+                const accent = (endD && nowT > endD.getTime()) ? "var(--muted)" : stt.bar;
+                const range = (startD ? fmtDate(b.start_date) : "—") + (end ? " — " + fmtDate(end) : "");
                 return (
-                  <div key={b.id} className="bsch">
-                    <div className="bcode">{b.code}</div>
-                    <div className="bmid">
-                      <div className="bt">{dip || b.code} <span className={"bstat " + stt.cls}>{stt.l}</span>
-                        {canManageBatches && b.status !== "closed" && <span style={{ marginInlineStart: "auto" }}><BatchDoneBtn id={b.id} /></span>}
-                      </div>
-                      <div className="bd">{range}</div>
-                      <div className="btrack"><i style={{ width: pct + "%", background: stt.bar }} /></div>
-                      <div className="bcap num">{enr}{cap > 0 ? " / " + cap : ""} {tr("seatWord")}</div>
+                  <div key={b.id} className="bxrow" style={{ ["--accent" as any]: accent }}>
+                    <div className="bxtop">
+                      <span className="bxname">{dip || b.code}</span>
+                      <span className="bxcode num">{b.code}</span>
+                      <span className={"bxstat " + stt.s}>{stt.l}</span>
+                      {canManageBatches && b.status !== "closed" && <span className="bxdone"><BatchDoneBtn id={b.id} /></span>}
+                    </div>
+                    <div className="bxmeta">
+                      <LineIcon name="calendarCheck" size={13} />
+                      <span className="num">{range}</span>
+                      {timing && <><span className="bxdot">·</span><span style={{ color: tcolor, fontWeight: 700 }}>{timing}</span></>}
+                    </div>
+                    <div className="bxbar">
+                      <div className="bxtrack"><i style={{ width: pct + "%", background: stt.bar }} /></div>
+                      <span className="bxcap num">{cap > 0 ? `${enr}/${cap} · ${pct}%` : `${enr} ${tr("seatWord")}`}</span>
                     </div>
                   </div>
                 );
               })}
-            <Link href="/batches" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 12, padding: "9px 0", borderRadius: 10, border: "1px solid var(--line)", color: "var(--brand)", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
+            <Link href="/batches" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 4, padding: "9px 0", borderRadius: 10, border: "1px solid var(--line)", color: "var(--brand)", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
               {tr("viewAll")} ({batches.length})
               <span style={{ fontSize: 15 }}>←</span>
             </Link>

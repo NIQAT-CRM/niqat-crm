@@ -347,25 +347,39 @@ export function ApexCombo({ bars, line, labels, barName, lineName, showLine = tr
   bars: number[]; line?: number[]; labels: string[]; barName: string; lineName: string; showLine?: boolean;
 }) {
   const c = useThemeColors();
+  const nf = (v: number) => new Intl.NumberFormat("en").format(Math.round(v || 0));
   const series: any[] = [{ name: barName, type: "column", data: bars }];
-  if (showLine && line) series.push({ name: lineName, type: "line", data: line });
+  if (showLine && line) series.push({ name: lineName, type: "area", data: line });
   const options: any = {
-    chart: { height: 250, type: "line", fontFamily: AR_FONT, toolbar: { show: false }, animations: { easing: "easeinout", speed: 600 }, background: "transparent" },
+    chart: { height: 260, type: "line", fontFamily: AR_FONT, toolbar: { show: false }, stacked: false,
+      animations: { enabled: true, easing: "easeinout", speed: 700, dynamicAnimation: { enabled: true } }, background: "transparent" },
     theme: { mode: c.mode },
-    stroke: { width: showLine ? [0, 3] : [0], curve: "smooth" },
+    stroke: { width: showLine ? [0, 3.5] : [0], curve: "smooth", lineCap: "round" },
     colors: showLine ? [c.brand, c.blue] : [c.brand],
-    plotOptions: { bar: { columnWidth: "50%", borderRadius: 5 } },
+    plotOptions: { bar: { columnWidth: "45%", borderRadius: 6, borderRadiusApplication: "end" } },
+    fill: {
+      type: showLine ? ["solid", "gradient"] : ["solid"],
+      gradient: { shade: c.mode, type: "vertical", shadeIntensity: 0.3, opacityFrom: 0.35, opacityTo: 0.02, stops: [0, 100] },
+    },
     dataLabels: { enabled: false },
-    grid: { borderColor: c.line, strokeDashArray: 4, padding: { left: 0, right: 0 } },
-    markers: { size: 0, hover: { size: 5 } },
-    xaxis: { categories: labels, labels: { style: { colors: c.muted, fontFamily: AR_FONT, fontSize: "11px" } }, axisBorder: { show: false }, axisTicks: { show: false } },
+    grid: { borderColor: c.line, strokeDashArray: 4, padding: { left: 6, right: 6, top: 0 }, xaxis: { lines: { show: false } } },
+    markers: { size: 0, strokeWidth: 2, strokeColors: c.surface, hover: { size: 6 } },
+    xaxis: {
+      categories: labels,
+      labels: { rotate: 0, hideOverlappingLabels: true, style: { colors: c.muted, fontFamily: AR_FONT, fontSize: "10.5px" } },
+      axisBorder: { show: false }, axisTicks: { show: false }, tooltip: { enabled: false },
+    },
     yaxis: showLine
-      ? [{ labels: { style: { colors: c.muted, fontSize: "10px" } } }, { opposite: true, labels: { style: { colors: c.muted, fontSize: "10px" } } }]
-      : [{ labels: { style: { colors: c.muted, fontSize: "10px" } } }],
-    legend: { position: "top", horizontalAlign: "right", fontFamily: AR_FONT, fontWeight: 700, labels: { colors: c.mutedD }, markers: { radius: 12 } },
-    tooltip: { theme: c.mode, style: { fontFamily: AR_FONT } },
+      ? [
+          { seriesName: barName, labels: { style: { colors: c.muted, fontSize: "10px" }, formatter: (v: number) => nf(v) } },
+          { seriesName: lineName, opposite: true, labels: { style: { colors: c.muted, fontSize: "10px" }, formatter: (v: number) => nf(v) } },
+        ]
+      : [{ labels: { style: { colors: c.muted, fontSize: "10px" }, formatter: (v: number) => nf(v) } }],
+    legend: { position: "top", horizontalAlign: "right", fontFamily: AR_FONT, fontWeight: 700, fontSize: "12px", labels: { colors: c.mutedD }, markers: { radius: 12, width: 10, height: 10 }, itemMargin: { horizontal: 8 } },
+    tooltip: { shared: true, intersect: false, theme: c.mode, style: { fontFamily: AR_FONT, fontSize: "12px" },
+      y: { formatter: (v: number) => nf(v) } },
   };
-  return <div key={c.tick}><ReactApex options={options} series={series} type="line" height={250} /></div>;
+  return <div key={c.tick + String(showLine)}><ReactApex options={options} series={series} type="line" height={260} /></div>;
 }
 
 // دائرة التحويل radialBar بتدرّج
