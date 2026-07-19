@@ -562,3 +562,25 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .vfn-col{flex:1;width:100%;max-width:64px;display:flex;align-items:flex-end;background:var(--muted-soft);border-radius:10px;overflow:hidden}
 .vfn-col i{display:block;width:100%;border-radius:10px 10px 0 0;transition:height .5s ease}
 .vfn-l{font-size:11.5px;font-weight:700;color:var(--muted-d);text-align:center}
+
+/* ===================== نافذة منبثقة (See all) ===================== */
+.seeall-btn{width:100%;margin-top:12px;height:38px;border:1px solid var(--line);background:var(--surface);border-radius:10px;color:var(--brand);font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s}
+.seeall-btn:hover{border-color:var(--brand);background:var(--brand-soft)}
+.modal-ov{position:fixed;inset:0;background:rgba(10,15,25,.55);backdrop-filter:blur(3px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;animation:mfade .15s ease}
+@keyframes mfade{from{opacity:0}to{opacity:1}}
+.modal-bx{background:var(--surface);border:1px solid var(--line);border-radius:16px;width:100%;max-width:640px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(10,15,25,.4);animation:mpop .18s cubic-bezier(.22,1,.36,1)}
+@keyframes mpop{from{transform:translateY(12px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line)}
+.modal-hd h3{font-size:15px;font-weight:800;color:var(--ink)}
+.modal-x{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--muted-d);cursor:pointer;font-size:14px;font-weight:800;display:grid;place-items:center}
+.modal-x:hover{background:var(--red-soft);color:var(--red);border-color:var(--red)}
+.modal-bd{padding:8px 20px 20px;overflow-y:auto}
+/* ===================== التخصصات — ارتفاع ثابت + بارات ملوّنة ===================== */
+.spec-scroll{overflow-y:auto;height:100%;padding-inline-end:4px;display:flex;flex-direction:column;gap:11px}
+.spec-row{}
+.spec-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px}
+.spec-name{font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center}
+.spec-val{font-size:12.5px;color:var(--ink);flex-shrink:0}
+.spec-track{height:8px;background:var(--muted-soft);border-radius:20px;overflow:hidden}
+.spec-track i{display:block;height:100%;border-radius:20px;animation:specgrow .7s cubic-bezier(.22,1,.36,1)}
+@keyframes specgrow{from{width:0 !important}}

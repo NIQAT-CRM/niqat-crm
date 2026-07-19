@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
-import BatchDoneBtn from "./batches/BatchDoneBtn";
 import BatchesByDiploma from "./BatchesByDiploma";
-import { CountUp, BarRow, Kpi, LineIcon, ApexCombo, ApexRadial, ApexDonut } from "./Charts";
+import { CountUp, BarRow, Kpi, LineIcon, ApexCombo } from "./Charts";
 import PeriodFilter from "./PeriodFilter";
+import SeeAllModal from "./SeeAllModal";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +57,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
     supabase.from("tickets").select("*", { count: "exact", head: true }).in("status", ["open", "progress"]),
     supabase.from("follow_ups").select("customer_id,due_at,note").eq("done", false).lte("due_at", new Date().toISOString()),
     supabase.from("handoffs").select("customer_id").eq("status", "pending"),
-    supabase.from("audit_log").select("customer_id,actor_id,action,detail,at").order("at", { ascending: false }).limit(8),
+    supabase.from("audit_log").select("customer_id,actor_id,action,detail,at").order("at", { ascending: false }).limit(100),
     supabase.from("profiles").select("id,full_name"),
     supabase.rpc("dash_stage_counts", rpcArgs),
     supabase.rpc("dash_specialty_enrolled", rpcArgs),
@@ -205,13 +205,26 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
   const soonRows = soonInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customerFallback"), `${tr("dueOn")} ${fmtDate(i.due_date)}`, "#F5A623", { label: tr("badgeSoon"), bg: "#FFFAEB", fg: "#B54708" }, "calendarCheck") : null; }).filter(Boolean);
   const followRows = followItems.map((f) => actionRow(f.customer_id, cName.get(f.customer_id) || tr("customerFallback"), f.note || tr("followDueSub"), "#2F6BFF", { label: tr("badgeFollow"), bg: "#EFF6FF", fg: "#2F6BFF" }, "calendarCheck"));
   const handoffRows = handoffItems.map((h) => actionRow(h.customer_id, cName.get(h.customer_id) || tr("customerFallback"), tr("awaitAccessSub"), "#F08A24", { label: tr("badgeActivate"), bg: "var(--brand-soft)", fg: "var(--brand-d)" }, "check"));
+
+  // كل صفوف الإجراءات مجمّعة (المالية أولاً لمن يملك الصلاحية)
+  const allActionRows = [...(canFinance ? [...overdueRows, ...soonRows] : []), ...followRows, ...handoffRows];
+
+  const logRow = (l: any, idx: number) => (
+    <div key={idx} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "9px 0", borderBottom: "1px solid var(--line)" }}>
+      <span style={{ marginTop: 5, width: 7, height: 7, borderRadius: "50%", background: "#18A957", flexShrink: 0 }} />
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13, color: "var(--ink)" }}>{l.action}{l.detail ? ` — ${l.detail}` : ""}</div>
+        <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
+          {l.customer_id ? (cName.get(l.customer_id) || "") + " · " : ""}{pName.get(l.actor_id) || ""}
+        </div>
+      </div>
+    </div>
+  );
   const actionCount = overdueRows.length + soonRows.length + followRows.length + handoffRows.length;
 
   // ===== دونات الدبلومات (من دالة القاعدة) =====
   const dipCountMap = new Map<string, number>();
   for (const r of (edRes.data as any[]) || []) dipCountMap.set(r.diploma_id, Number(r.n) || 0);
-  const byDip = diplomas.map((d: any) => ({ name: d.name_ar, n: dipCountMap.get(d.id) || 0 })).filter((x) => x.n).sort((a, b) => b.n - a.n);
-  const dipDonut = byDip.map((x, i) => ({ label: x.name, value: x.n, color: DC[i % DC.length] }));
 
   // ===== الباتشات مجمّعة تحت كل دبلومة (من دالة عدّ الباتشات) =====
   const batchCountMap = new Map<string, number>();
@@ -332,32 +345,6 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
   const spRows = Object.entries(spCount).map(([id, n]) => ({ name: spName.get(id) || "—", n })).sort((a, b) => b.n - a.n);
   const spMax = Math.max(...spRows.map((r) => r.n), 1);
 
-  // ===== بيانات الجدول الزمني للباتشات =====
-  const tlBatches = batches
-    .filter((b) => b.start_date)
-    .map((b) => {
-      const s = new Date(b.start_date + "T00:00:00").getTime();
-      const eRaw = endMap.get(b.id);
-      const e = eRaw ? new Date(eRaw + "T00:00:00").getTime() : s + 90 * 864e5;
-      return { id: b.id, code: b.code, name: dName.get(b.diploma_id) || b.code, status: b.status, start: s, end: Math.max(e, s + 7 * 864e5), startStr: b.start_date, endStr: eRaw || "" };
-    })
-    .sort((a, b) => a.start - b.start);
-  let tlMonths: { label: string; ts: number }[] = [];
-  let tlMin = 0, tlSpan = 1;
-  if (tlBatches.length) {
-    tlMin = Math.min(...tlBatches.map((b) => b.start));
-    const tlMax = Math.max(...tlBatches.map((b) => b.end));
-    const d0 = new Date(tlMin); d0.setDate(1); d0.setHours(0, 0, 0, 0);
-    const dEnd = new Date(tlMax); dEnd.setDate(1); dEnd.setMonth(dEnd.getMonth() + 1);
-    tlMin = d0.getTime(); tlSpan = Math.max(1, dEnd.getTime() - tlMin);
-    const cur = new Date(d0);
-    while (cur.getTime() < dEnd.getTime() && tlMonths.length < 24) {
-      tlMonths.push({ label: new Intl.DateTimeFormat("ar-EG", { month: "short", timeZone: "Africa/Cairo" }).format(cur), ts: cur.getTime() });
-      cur.setMonth(cur.getMonth() + 1);
-    }
-  }
-  const tlColor = (st: string) => st === "full" ? "var(--amber)" : st === "closed" ? "#C9CDD6" : "var(--green)";
-
   return (
     <div>
       <div className="page-h"><div><h1>{tr("dash")}</h1><p>{tr("dashDesc")}</p></div></div>
@@ -464,250 +451,143 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
         <ApexCombo bars={heroBars} line={heroLine} labels={heroLabels} barName={tr("newCustomersShort")} lineName={tr("collectionWord")} showLine={canFinance} />
       </div>
 
-      {/* ===== مطلوب إجراء (ستايل v4) + جدول الباتشات ===== */}
-      {/* ===== مطلوب إجراء + مواعيد الباتشات (عمودين) ===== */}
-      <div className="grid6 g2-6" style={{ alignItems: "start" }}>
-       <div>
-      <div className="sh6"><span className="tick" /><h2>{tr("alertsT")}</h2>{actionCount > 0 && <span className="meta">{actionCount} {tr("itemsWord")}</span>}</div>
-      <div className="card6 actions6">
-        {actionCount === 0 ? (
-          <div style={{ fontSize: 13.5, color: "var(--muted)", textAlign: "center", padding: 12 }}>{tr("noAlerts")} 🎉</div>
-        ) : (
-          <div style={{ maxHeight: 380, overflowY: "auto" }}>
-            {canFinance && overdueRows}
-            {canFinance && soonRows}
-            {followRows}
-            {handoffRows}
+      {/* ===== مطلوب إجراء (10 + مودال) | ملخص المسار (قمع رأسي) ===== */}
+      <div className="grid6 g2-6">
+        <div>
+          <div className="sh6"><span className="tick" /><h2>{tr("alertsT")}</h2>{actionCount > 0 && <span className="meta">{actionCount} {tr("itemsWord")}</span>}</div>
+          <div className="card6 actions6" style={{ minHeight: 300 }}>
+            {actionCount === 0 ? (
+              <div style={{ fontSize: 13.5, color: "var(--muted)", textAlign: "center", padding: 20 }}>{tr("noAlerts")} 🎉</div>
+            ) : (
+              <>
+                <div>{allActionRows.slice(0, 10)}</div>
+                {allActionRows.length > 10 && (
+                  <SeeAllModal title={tr("alertsT")} label={tr("viewAll")} count={allActionRows.length}>
+                    <div className="actions6">{allActionRows}</div>
+                  </SeeAllModal>
+                )}
+              </>
+            )}
           </div>
-        )}
-      </div>
-       </div>
+        </div>
 
-       <div>
-      {/* ===== مواعيد الباتشات ===== */}
-      <div className="sh6"><span className="tick" /><h2>{tr("schedule")}</h2>
-        <Link href="/batches" className="side" style={{ textDecoration: "none" }}>{tr("viewAll")} ←</Link>
-      </div>
-      <div className="card6">
-        {batches.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noBatches")}</div>}
-        {batches
-          .filter((b) => b.status !== "closed")
-          .sort((a, b) => String(a.start_date || "9999").localeCompare(String(b.start_date || "9999")))
-          .slice(0, 6)
-          .map((b) => {
-            const enr = batchCountMap.get(b.id) || 0;
-            const cap = Number(b.capacity) || 0;
-            const pct = cap > 0 ? Math.min(100, Math.round((enr / cap) * 100)) : 0;
-            const end = endMap.get(b.id);
-            const dip = dName.get(b.diploma_id) || "";
-            const dayMs = 864e5;
-            const startD = b.start_date ? new Date(b.start_date + "T00:00:00") : null;
-            const endD = end ? new Date(end + "T23:59:59") : null;
-            const nowT = Date.now();
-            let timing = "", tcolor = "var(--muted-d)";
-            if (endD && nowT > endD.getTime()) { timing = tr("batchEnded"); tcolor = "var(--muted)"; }
-            else if (startD && nowT < startD.getTime()) {
-              const days = Math.ceil((startD.getTime() - nowT) / dayMs);
-              timing = tr("batchStartsIn").replace("{n}", String(days)); tcolor = "var(--brand-d)";
-            } else if (startD) { timing = tr("batchOngoing"); tcolor = "var(--green)"; }
-            const stt = (endD && nowT > endD.getTime())
-              ? { l: tr("batchEnded"), s: "done", bar: "#C9CDD6" }
-              : b.status === "full"
-                ? { l: tr("fullLabel"), s: "full", bar: "var(--amber)" }
-                : { l: tr("availableLabel"), s: "open", bar: "var(--green)" };
-            const range = (startD ? fmtDate(b.start_date) : "—") + (end ? " — " + fmtDate(end) : "");
-            return (
-              <div key={b.id} className="bs6">
-                <div className="bc">{b.code}</div>
-                <div className="bm">
-                  <div className="bt">{dip || b.code}</div>
-                  <div className="bd">{range}{timing && <span style={{ color: tcolor, fontWeight: 700 }}> · {timing}</span>}</div>
-                  <div className="bt-track"><i style={{ width: pct + "%", background: stt.bar }} /></div>
-                  <div className="bcap">{cap > 0 ? `${enr} / ${cap} ${tr("seatWord")} · ${pct}%` : `${enr} ${tr("seatWord")}`}</div>
-                </div>
-                {canManageBatches && b.status !== "closed"
-                  ? <BatchDoneBtn id={b.id} />
-                  : <span className={"pill6 " + stt.s}>{stt.l}</span>}
-              </div>
-            );
-          })}
-      </div>
-       </div>
+        <div>
+          <div className="sh6"><span className="tick" /><h2>{tr("pipelineSummary")}</h2><span className="meta">{total}</span></div>
+          <div className="card6" style={{ minHeight: 300, justifyContent: "center" }}>
+            <div className="vfunnel">
+              {STAGES.map((s) => {
+                const v = byStage[s.key] || 0;
+                const max = Math.max(...STAGES.map((x) => byStage[x.key] || 0), 1);
+                const h = Math.max(6, Math.round((v / max) * 100));
+                return (
+                  <div key={s.key} className="vfn">
+                    <span className="vfn-v num">{v}</span>
+                    <div className="vfn-col"><i style={{ height: h + "%", background: s.color }} /></div>
+                    <span className="vfn-l">{tr(s.labelKey)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* ===== الجدول الزمني للباتشات (كاليندر) ===== */}
-      {tlBatches.length > 0 && (
-        <>
-          <div className="sh6"><span className="tick" /><h2>{tr("batchTimeline")}</h2>
-            <span className="side" style={{ display: "flex", gap: 12, color: "var(--muted-d)" }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 9, height: 9, borderRadius: 2, background: "var(--green)" }} />{tr("availableLabel")}</span>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 9, height: 9, borderRadius: 2, background: "var(--amber)" }} />{tr("fullLabel")}</span>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 9, height: 9, borderRadius: 2, background: "#C9CDD6" }} />{tr("batchEnded")}</span>
-            </span>
-          </div>
-          <div className="card6">
-            <div className="tl">
-              <div className="tl-months">
-                {tlMonths.map((m, i) => (
-                  <div key={i} className="tl-mo" style={{ left: ((m.ts - tlMin) / tlSpan) * 100 + "%" }}><span>{m.label}</span></div>
-                ))}
-              </div>
-              <div className="tl-rows">
-                {tlBatches.map((b) => {
-                  const left = ((b.start - tlMin) / tlSpan) * 100;
-                  const width = Math.max(4, ((b.end - b.start) / tlSpan) * 100);
-                  const enr = batchCountMap.get(b.id) || 0;
+      {/* ===== التخصصات الهندسية (ارتفاع ثابت + ألوان) | العملاء حسب الباتش ===== */}
+      <div className="grid6 g2-6" style={{ marginTop: 16 }}>
+        <div>
+          <div className="sh6"><span className="tick" /><h2>{tr("specDist")}</h2><span className="meta">{spRows.length}</span></div>
+          <div className="card6" style={{ height: 420 }}>
+            {spRows.length === 0 ? <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noEnrolledYet")}</div> : (
+              <div className="spec-scroll">
+                {spRows.map((x, i) => {
+                  const col = DC[i % DC.length];
+                  const w = Math.max(3, Math.round((x.n / spMax) * 100));
                   return (
-                    <div key={b.id} className="tl-row">
-                      <div className="tl-lane">
-                        {tlMonths.map((m, i) => <span key={i} className="tl-grid" style={{ left: ((m.ts - tlMin) / tlSpan) * 100 + "%" }} />)}
-                        <div className="tl-bar" style={{ left: left + "%", width: width + "%", background: tlColor(b.status) }} title={`${b.name} · ${b.startStr}${b.endStr ? " — " + b.endStr : ""}`}>
-                          <span className="tl-code">{b.code}</span>
-                          <span className="tl-name">{b.name}</span>
-                        </div>
+                    <div key={x.name} className="spec-row">
+                      <div className="spec-top">
+                        <span className="spec-name">{i === 0 && <span style={{ color: "#E6A700", display: "inline-flex", marginInlineEnd: 4 }}><LineIcon name="trophy" size={12} /></span>}{x.name}</span>
+                        <b className="spec-val num">{x.n}</b>
                       </div>
+                      <div className="spec-track"><i style={{ width: w + "%", background: `linear-gradient(90deg,${col},${col}bb)` }} /></div>
                     </div>
                   );
                 })}
               </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      <div className="grid6 g2-6" style={{ marginTop: 16 }}>
-        <div className="card" style={{ padding: 18 }}>
-          <div className="card-h"><h3>{tr("pipelineSummary")}</h3><span className="chip">{total}</span></div>
-          <div className="vfunnel">
-            {STAGES.map((s) => {
-              const v = byStage[s.key] || 0;
-              const max = Math.max(...STAGES.map((x) => byStage[x.key] || 0), 1);
-              const h = Math.max(6, Math.round((v / max) * 100));
-              return (
-                <div key={s.key} className="vfn">
-                  <span className="vfn-v num">{v}</span>
-                  <div className="vfn-col"><i style={{ height: h + "%", background: s.color }} /></div>
-                  <span className="vfn-l">{tr(s.labelKey)}</span>
-                </div>
-              );
-            })}
+            )}
           </div>
         </div>
 
-        <div className="card" style={{ padding: 18 }}>
-          <div className="card-h"><h3>{tr("byDiploma")}</h3></div>
-          {dipDonut.length === 0 ? (
-            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12 }}>{tr("noEnrolls")}</div>
-          ) : (
-            <ApexDonut labels={dipDonut.map((x) => x.label)} series={dipDonut.map((x) => x.value)}
-              totalLabel={tr("enrolledCol")} totalValue={String(dipDonut.reduce((a, x) => a + x.value, 0))} />
-          )}
-        </div>
-      </div>
-
-      {/* ===== التحويل (راديال) + التخصصات الهندسية ===== */}
-      <div className="grid6 g2-6" style={{ marginTop: 16, alignItems: "start" }}>
-        <div className="card" style={{ padding: 18 }}>
-          <div className="card-h"><h3>{tr("convRate")}</h3></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4 }}>
-            <div style={{ width: 170, flexShrink: 0 }}>
-              <ApexRadial pct={conv} label={tr("convRate")} />
-            </div>
-            <div>
-              <div style={{ fontSize: 28, fontWeight: 800, fontFamily: "var(--fd)", color: "var(--ink)", lineHeight: 1 }}>{enrolled}</div>
-              <div style={{ fontSize: 11.5, color: "var(--muted-d)", fontWeight: 600, marginTop: 5 }}>{tr("enrolledOfTotal").replace("{e}", String(enrolled)).replace("{t}", String(total))}</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: 18 }}>
-          <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3>{tr("specDist")}</h3><span className="chip">{spRows.length}</span>
-          </div>
-          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-            {spRows.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noEnrolledYet")}</div>}
-            {spRows.map((x, i) => (
-              <BarRow key={x.name} label={<span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>{i === 0 && <span style={{ color: "#E6A700", display: "inline-flex" }}><LineIcon name="trophy" size={13} /></span>}{x.name}</span>} value={x.n} max={spMax} color="#2F6BFF" />
-            ))}
+        <div>
+          <div className="sh6"><span className="tick" /><h2>{tr("byBatch")}</h2><span className="meta">{batchesByDiploma.length}</span></div>
+          <div className="card6" style={{ height: 420, overflowY: "auto" }}>
+            <BatchesByDiploma groups={batchesByDiploma} />
           </div>
         </div>
       </div>
 
-      {/* ===== العملاء حسب الباتش + آخر النشاطات ===== */}
-      <div className="grid6 g2-6" style={{ marginTop: 16, alignItems: "start" }}>
-        <div className="card" style={{ padding: 18 }}>
-          <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3>{tr("byBatch")}</h3><span className="chip">{batchesByDiploma.length}</span>
-          </div>
-          <BatchesByDiploma groups={batchesByDiploma} />
-        </div>
-
-        <div className="card" style={{ padding: 18 }}>
-          <div className="card-h"><h3>{tr("recentAct")}</h3></div>
-          <div style={{ marginTop: 8 }}>
-            {logItems.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noActivity")}</div>}
-            {logItems.map((l, idx) => (
-              <div key={idx} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
-                <span style={{ marginTop: 5, width: 7, height: 7, borderRadius: "50%", background: "#18A957", flexShrink: 0 }} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: "var(--ink)" }}>{l.action}{l.detail ? ` — ${l.detail}` : ""}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
-                    {l.customer_id ? (cName.get(l.customer_id) || "") + " · " : ""}{pName.get(l.actor_id) || ""}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* ===== آخر النشاطات (20 + مودال) ===== */}
+      <div className="sh6"><span className="tick" /><h2>{tr("recentAct")}</h2></div>
+      <div className="card6">
+        {logItems.length === 0 ? <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noActivity")}</div> : (
+          <>
+            <div>{logItems.slice(0, 20).map((l, i) => logRow(l, i))}</div>
+            {logItems.length > 20 && (
+              <SeeAllModal title={tr("recentAct")} label={tr("viewAll")} count={logItems.length}>
+                <div>{logItems.map((l, i) => logRow(l, i))}</div>
+              </SeeAllModal>
+            )}
+          </>
+        )}
       </div>
 
       {/* ===== الريفند لكل دبلومة/باتش — مطوي في الآخر (مرجع تشوفه لما تحتاجه) ===== */}
       {canFinance && refundGroups.length > 0 && (
-        <details className="card" style={{ padding: 0 }}>
-          <summary style={{ display: "flex", alignItems: "center", gap: 8, padding: "13px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13.5, color: "var(--ink)", listStyle: "none" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><LineIcon name="undo" size={15} /> {tr("refundByDiplomaTitle")}</span>
-            <span className="chip" style={{ marginInlineStart: 4 }}>{refundGroups.reduce((a, g) => a + g.count, 0)}</span>
-            <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} style={{ marginInlineStart: "auto", color: "var(--muted)" }}><path d="M6 9l6 6 6-6" /></svg>
-          </summary>
-          <div style={{ padding: "0 16px 16px" }}>
-            {(() => {
-              const maxR = Math.max(...refundGroups.map((g) => g.egp), 1);
-              return (
-                <div style={{ margin: "4px 0 14px" }}>
-                  {refundGroups.slice(0, 8).map((g, i) => (
-                    <div key={i} className="rbar2">
-                      <div className="rbar2-top">
-                        <span className="rbar2-l">{g.diploma}{g.batch ? " · " + g.batch : ""}</span>
-                        <span className="rbar2-v num" dir="ltr">{g.egp > 0 ? new Intl.NumberFormat("en").format(Math.round(g.egp)) : "—"}</span>
-                      </div>
-                      <div className="rbar2-track"><i style={{ width: Math.max(3, Math.round((g.egp / maxR) * 100)) + "%" }} /></div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-            <div className="tbl-wrap">
-              <table style={{ minWidth: 480 }}>
-                <thead><tr>
-                  <th>{tr("theDiploma")}</th><th>{tr("theBatch")}</th>
-                  <th>{tr("refundCount")}</th><th>{tr("egpShort")}</th><th>$</th>
-                </tr></thead>
-                <tbody>
-                  {refundGroups.map((g, i) => (
-                    <tr key={i}>
-                      <td style={{ fontWeight: 700 }}>{g.diploma}</td>
-                      <td>{g.batch}</td>
-                      <td className="num"><span dir="ltr">{g.count}</span></td>
-                      <td className="num" style={{ color: g.egp > 0 ? "#E0483B" : "var(--muted)" }}><span dir="ltr">{g.egp > 0 ? new Intl.NumberFormat("en").format(Math.round(g.egp)) : "—"}</span></td>
-                      <td className="num" style={{ color: g.usd > 0 ? "#E0483B" : "var(--muted)" }}><span dir="ltr">{g.usd > 0 ? "$" + new Intl.NumberFormat("en").format(Math.round(g.usd)) : "—"}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10, lineHeight: 1.6 }}>{tr("refundByDiplomaHint")}</div>
+        <>
+          <div className="sh6"><span className="tick" /><h2>{tr("refundByDiplomaTitle")}</h2>
+            <span className="meta">{refundGroups.reduce((a, g) => a + g.count, 0)}</span>
           </div>
-        </details>
+          <div className="grid6 g2-6" style={{ alignItems: "start" }}>
+            {/* كارت الرسم */}
+            <div className="card6">
+              <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, marginBottom: 14 }}>{tr("refundByService")}</div>
+              {(() => {
+                const maxR = Math.max(...refundGroups.map((g) => g.egp + g.usd), 1);
+                return refundGroups.slice(0, 8).map((g, i) => (
+                  <div key={i} className="rbar2">
+                    <div className="rbar2-top">
+                      <span className="rbar2-l">{g.diploma}{g.batch ? " · " + g.batch : ""}</span>
+                      <span className="rbar2-v num" dir="ltr">{new Intl.NumberFormat("en").format(Math.round(g.egp + g.usd))}</span>
+                    </div>
+                    <div className="rbar2-track"><i style={{ width: Math.max(3, Math.round(((g.egp + g.usd) / maxR) * 100)) + "%" }} /></div>
+                  </div>
+                ));
+              })()}
+            </div>
+            {/* كارت الجدول */}
+            <div className="card6" style={{ padding: 0 }}>
+              <div className="tbl-wrap">
+                <table style={{ minWidth: 420 }}>
+                  <thead><tr>
+                    <th>{tr("theDiploma")}</th><th>{tr("theBatch")}</th>
+                    <th>{tr("refundCount")}</th><th>{tr("egpShort")}</th><th>$</th>
+                  </tr></thead>
+                  <tbody>
+                    {refundGroups.map((g, i) => (
+                      <tr key={i}>
+                        <td style={{ fontWeight: 700 }}>{g.diploma}</td>
+                        <td>{g.batch}</td>
+                        <td className="num"><span dir="ltr">{g.count}</span></td>
+                        <td className="num" style={{ color: g.egp > 0 ? "#E0483B" : "var(--muted)" }}><span dir="ltr">{g.egp > 0 ? new Intl.NumberFormat("en").format(Math.round(g.egp)) : "—"}</span></td>
+                        <td className="num" style={{ color: g.usd > 0 ? "#E0483B" : "var(--muted)" }}><span dir="ltr">{g.usd > 0 ? "$" + new Intl.NumberFormat("en").format(Math.round(g.usd)) : "—"}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10, lineHeight: 1.6 }}>{tr("refundByDiplomaHint")}</div>
+        </>
       )}
     </div>
   );
