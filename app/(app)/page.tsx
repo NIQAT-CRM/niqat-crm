@@ -332,8 +332,34 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
   const spRows = Object.entries(spCount).map(([id, n]) => ({ name: spName.get(id) || "—", n })).sort((a, b) => b.n - a.n);
   const spMax = Math.max(...spRows.map((r) => r.n), 1);
 
+  // ===== بيانات الجدول الزمني للباتشات =====
+  const tlBatches = batches
+    .filter((b) => b.start_date)
+    .map((b) => {
+      const s = new Date(b.start_date + "T00:00:00").getTime();
+      const eRaw = endMap.get(b.id);
+      const e = eRaw ? new Date(eRaw + "T00:00:00").getTime() : s + 90 * 864e5;
+      return { id: b.id, code: b.code, name: dName.get(b.diploma_id) || b.code, status: b.status, start: s, end: Math.max(e, s + 7 * 864e5), startStr: b.start_date, endStr: eRaw || "" };
+    })
+    .sort((a, b) => a.start - b.start);
+  let tlMonths: { label: string; ts: number }[] = [];
+  let tlMin = 0, tlSpan = 1;
+  if (tlBatches.length) {
+    tlMin = Math.min(...tlBatches.map((b) => b.start));
+    const tlMax = Math.max(...tlBatches.map((b) => b.end));
+    const d0 = new Date(tlMin); d0.setDate(1); d0.setHours(0, 0, 0, 0);
+    const dEnd = new Date(tlMax); dEnd.setDate(1); dEnd.setMonth(dEnd.getMonth() + 1);
+    tlMin = d0.getTime(); tlSpan = Math.max(1, dEnd.getTime() - tlMin);
+    const cur = new Date(d0);
+    while (cur.getTime() < dEnd.getTime() && tlMonths.length < 24) {
+      tlMonths.push({ label: new Intl.DateTimeFormat("ar-EG", { month: "short", timeZone: "Africa/Cairo" }).format(cur), ts: cur.getTime() });
+      cur.setMonth(cur.getMonth() + 1);
+    }
+  }
+  const tlColor = (st: string) => st === "full" ? "var(--amber)" : st === "closed" ? "#C9CDD6" : "var(--green)";
+
   return (
-    <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+    <div>
       <div className="page-h"><div><h1>{tr("dash")}</h1><p>{tr("dashDesc")}</p></div></div>
       <PeriodFilter />
 
@@ -509,19 +535,59 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
        </div>
       </div>
 
-      {/* ===== ملخص المسار + دونات الدبلومات ===== */}
+      {/* ===== الجدول الزمني للباتشات (كاليندر) ===== */}
+      {tlBatches.length > 0 && (
+        <>
+          <div className="sh6"><span className="tick" /><h2>{tr("batchTimeline")}</h2>
+            <span className="side" style={{ display: "flex", gap: 12, color: "var(--muted-d)" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 9, height: 9, borderRadius: 2, background: "var(--green)" }} />{tr("availableLabel")}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 9, height: 9, borderRadius: 2, background: "var(--amber)" }} />{tr("fullLabel")}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 9, height: 9, borderRadius: 2, background: "#C9CDD6" }} />{tr("batchEnded")}</span>
+            </span>
+          </div>
+          <div className="card6">
+            <div className="tl">
+              <div className="tl-months">
+                {tlMonths.map((m, i) => (
+                  <div key={i} className="tl-mo" style={{ left: ((m.ts - tlMin) / tlSpan) * 100 + "%" }}><span>{m.label}</span></div>
+                ))}
+              </div>
+              <div className="tl-rows">
+                {tlBatches.map((b) => {
+                  const left = ((b.start - tlMin) / tlSpan) * 100;
+                  const width = Math.max(4, ((b.end - b.start) / tlSpan) * 100);
+                  const enr = batchCountMap.get(b.id) || 0;
+                  return (
+                    <div key={b.id} className="tl-row">
+                      <div className="tl-lane">
+                        {tlMonths.map((m, i) => <span key={i} className="tl-grid" style={{ left: ((m.ts - tlMin) / tlSpan) * 100 + "%" }} />)}
+                        <div className="tl-bar" style={{ left: left + "%", width: width + "%", background: tlColor(b.status) }} title={`${b.name} · ${b.startStr}${b.endStr ? " — " + b.endStr : ""}`}>
+                          <span className="tl-code">{b.code}</span>
+                          <span className="tl-name">{b.name}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       <div className="grid6 g2-6" style={{ marginTop: 16 }}>
         <div className="card" style={{ padding: 18 }}>
           <div className="card-h"><h3>{tr("pipelineSummary")}</h3><span className="chip">{total}</span></div>
-          <div className="funnel">
+          <div className="vfunnel">
             {STAGES.map((s) => {
               const v = byStage[s.key] || 0;
               const max = Math.max(...STAGES.map((x) => byStage[x.key] || 0), 1);
-              const pct = Math.max(14, Math.round((v / max) * 100));
+              const h = Math.max(6, Math.round((v / max) * 100));
               return (
-                <div key={s.key} className="fn">
-                  <span className="fl">{tr(s.labelKey)}</span>
-                  <div className="fb" style={{ width: pct + "%", background: s.color }}>{v}</div>
+                <div key={s.key} className="vfn">
+                  <span className="vfn-v num">{v}</span>
+                  <div className="vfn-col"><i style={{ height: h + "%", background: s.color }} /></div>
+                  <span className="vfn-l">{tr(s.labelKey)}</span>
                 </div>
               );
             })}
@@ -539,23 +605,21 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
         </div>
       </div>
 
-      {/* ===== نسبة التحويل (راديال) ===== */}
+      {/* ===== التحويل (راديال) + التخصصات الهندسية ===== */}
       <div className="grid6 g2-6" style={{ marginTop: 16, alignItems: "start" }}>
-        <div className="card6" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 180, flexShrink: 0 }}>
-            <ApexRadial pct={conv} label={tr("convRate")} />
-          </div>
-          <div>
-            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("convRate")}</div>
-            <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "var(--fd)", color: "var(--ink)", lineHeight: 1, marginTop: 8 }}>{enrolled}</div>
-            <div style={{ fontSize: 11.5, color: "var(--muted-d)", fontWeight: 600, marginTop: 4 }}>{tr("enrolledOfTotal").replace("{e}", String(enrolled)).replace("{t}", String(total))}</div>
+        <div className="card" style={{ padding: 18 }}>
+          <div className="card-h"><h3>{tr("convRate")}</h3></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4 }}>
+            <div style={{ width: 170, flexShrink: 0 }}>
+              <ApexRadial pct={conv} label={tr("convRate")} />
+            </div>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 800, fontFamily: "var(--fd)", color: "var(--ink)", lineHeight: 1 }}>{enrolled}</div>
+              <div style={{ fontSize: 11.5, color: "var(--muted-d)", fontWeight: 600, marginTop: 5 }}>{tr("enrolledOfTotal").replace("{e}", String(enrolled)).replace("{t}", String(total))}</div>
+            </div>
           </div>
         </div>
-        <div />
-      </div>
 
-      {/* ===== التخصصات الهندسية + العملاء حسب الباتش ===== */}
-      <div className="grid2" style={{ marginTop: 16 }}>
         <div className="card" style={{ padding: 18 }}>
           <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h3>{tr("specDist")}</h3><span className="chip">{spRows.length}</span>
@@ -567,31 +631,33 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
             ))}
           </div>
         </div>
+      </div>
 
+      {/* ===== العملاء حسب الباتش + آخر النشاطات ===== */}
+      <div className="grid6 g2-6" style={{ marginTop: 16, alignItems: "start" }}>
         <div className="card" style={{ padding: 18 }}>
           <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h3>{tr("byBatch")}</h3><span className="chip">{batchesByDiploma.length}</span>
           </div>
           <BatchesByDiploma groups={batchesByDiploma} />
         </div>
-      </div>
 
-      {/* ===== آخر النشاطات ===== */}
-      <div className="card" style={{ padding: 18, marginTop: 16 }}>
-        <div className="card-h"><h3>{tr("recentAct")}</h3></div>
-        <div style={{ marginTop: 8 }}>
-          {logItems.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noActivity")}</div>}
-          {logItems.map((l, idx) => (
-            <div key={idx} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
-              <span style={{ marginTop: 5, width: 7, height: 7, borderRadius: "50%", background: "#18A957", flexShrink: 0 }} />
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 13, color: "var(--ink)" }}>{l.action}{l.detail ? ` — ${l.detail}` : ""}</div>
-                <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
-                  {l.customer_id ? (cName.get(l.customer_id) || "") + " · " : ""}{pName.get(l.actor_id) || ""}
+        <div className="card" style={{ padding: 18 }}>
+          <div className="card-h"><h3>{tr("recentAct")}</h3></div>
+          <div style={{ marginTop: 8 }}>
+            {logItems.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noActivity")}</div>}
+            {logItems.map((l, idx) => (
+              <div key={idx} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
+                <span style={{ marginTop: 5, width: 7, height: 7, borderRadius: "50%", background: "#18A957", flexShrink: 0 }} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, color: "var(--ink)" }}>{l.action}{l.detail ? ` — ${l.detail}` : ""}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
+                    {l.customer_id ? (cName.get(l.customer_id) || "") + " · " : ""}{pName.get(l.actor_id) || ""}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
@@ -604,6 +670,22 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
             <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} style={{ marginInlineStart: "auto", color: "var(--muted)" }}><path d="M6 9l6 6 6-6" /></svg>
           </summary>
           <div style={{ padding: "0 16px 16px" }}>
+            {(() => {
+              const maxR = Math.max(...refundGroups.map((g) => g.egp), 1);
+              return (
+                <div style={{ margin: "4px 0 14px" }}>
+                  {refundGroups.slice(0, 8).map((g, i) => (
+                    <div key={i} className="rbar2">
+                      <div className="rbar2-top">
+                        <span className="rbar2-l">{g.diploma}{g.batch ? " · " + g.batch : ""}</span>
+                        <span className="rbar2-v num" dir="ltr">{g.egp > 0 ? new Intl.NumberFormat("en").format(Math.round(g.egp)) : "—"}</span>
+                      </div>
+                      <div className="rbar2-track"><i style={{ width: Math.max(3, Math.round((g.egp / maxR) * 100)) + "%" }} /></div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             <div className="tbl-wrap">
               <table style={{ minWidth: 480 }}>
                 <thead><tr>
