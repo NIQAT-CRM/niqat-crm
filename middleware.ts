@@ -29,7 +29,10 @@ export async function middleware(request: NextRequest) {
   );
   const { data: { user } } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
-  if (!user && path !== "/login") return NextResponse.redirect(new URL("/login", request.url));
+  // صفحات عامة لا تتطلّب تسجيل دخول (تدفّق الدعوة/استعادة الباسورد)
+  const PUBLIC = ["/login", "/accept-invite", "/reset-password", "/forgot-password"];
+  const isPublic = PUBLIC.includes(path);
+  if (!user && !isPublic) return NextResponse.redirect(new URL("/login", request.url));
   if (user && path === "/login") return NextResponse.redirect(new URL("/", request.url));
   return response;
 }
