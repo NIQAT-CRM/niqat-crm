@@ -10,14 +10,28 @@ const PERM_KEYS = [
   "can_message", "can_export", "can_see_daily_sales",
 ] as const;
 
+// صلاحيات حسّاسة: الأدمن بس هو اللي يقدر يمنحها (تمنع تصعيد الصلاحيات)
+const ELEVATED_PERMS = ["can_see_finance", "can_manage_users", "can_manage_settings", "can_grant_access"] as const;
+const VALID_TEAMS = ["admin", "sales", "support"];
+
+// سياسة كلمة سر قوية موحّدة (١٢ حرف + تعقيد) — نفس شروط صفحة الدعوة
+function passwordError(pw: string): string | null {
+  if (pw.length < 12) return "كلمة السر لازم 12 حرف على الأقل";
+  if (!/[a-z]/.test(pw) || !/[A-Z]/.test(pw)) return "كلمة السر لازم تشمل حرف كبير وحرف صغير";
+  if (!/[0-9]/.test(pw)) return "كلمة السر لازم تشمل رقم";
+  if (!/[^A-Za-z0-9]/.test(pw)) return "كلمة السر لازم تشمل رمز (مثل !@#$)";
+  return null;
+}
+
 export async function POST(req: Request) {
   // 1) لازم يكون مسجّل دخول وعنده صلاحية إدارة المستخدمين
   const supabase = createServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "غير مسجّل دخول" }, { status: 401 });
 
-  const { data: me } = await supabase.from("profiles").select("can_manage_users").eq("id", user.id).maybeSingle();
+  const { data: me } = await supabase.from("profiles").select("can_manage_users, team").eq("id", user.id).maybeSingle();
   if (!me?.can_manage_users) return NextResponse.json({ error: "مالكش صلاحية إضافة أعضاء" }, { status: 403 });
+  const iAmAdmin = me.team === "admin";
 
   // 2) مفتاح الـ Service Role لازم يكون متضاف في البيئة
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -34,6 +48,17 @@ export async function POST(req: Request) {
   const team = String(body.team || "").trim();
   const perms = (body.perms || {}) as Record<string, boolean>;
   if (!email) return NextResponse.json({ error: "الإيميل مطلوب" }, { status: 400 });
+
+  // تحقق من قيمة الفريق (منع قيم خارج الـ enum)
+  if (!VALID_TEAMS.includes(team)) return NextResponse.json({ error: "قيمة الفريق غير صحيحة" }, { status: 400 });
+
+  // منع تصعيد الصلاحيات: غير الأدمن مايقدرش ينشئ أدمن أو يمنح صلاحيات حسّاسة
+  if (!iAmAdmin) {
+    if (team === "admin") return NextResponse.json({ error: "الأدمن بس هو اللي يقدر ينشئ حساب أدمن." }, { status: 403 });
+    for (const k of ELEVATED_PERMS) {
+      if (perms[k]) return NextResponse.json({ error: "الأدمن بس هو اللي يقدر يمنح الصلاحيات الحسّاسة (الماليات/إدارة المستخدمين/الإعدادات/منح الأكسس)." }, { status: 403 });
+    }
+  }
 
   // 4) إرسال دعوة بالإيميل (المستخدم بيحط باسورده بنفسه من لينك الدعوة)
   const admin = createAdmin(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
@@ -81,12 +106,12 @@ async function guard() {
   const supabase = createServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { err: NextResponse.json({ error: "غير مسجّل دخول" }, { status: 401 }) };
-  const { data: me } = await supabase.from("profiles").select("can_manage_users").eq("id", user.id).maybeSingle();
+  const { data: me } = await supabase.from("profiles").select("can_manage_users, team").eq("id", user.id).maybeSingle();
   if (!me?.can_manage_users) return { err: NextResponse.json({ error: "مالكش صلاحية" }, { status: 403 }) };
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) return { err: NextResponse.json({ error: "مفتاح SUPABASE_SERVICE_ROLE_KEY مش متضاف في Vercel." }, { status: 500 }) };
-  return { meId: user.id, admin: createAdmin(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } }) };
+  return { meId: user.id, iAmAdmin: me.team === "admin", admin: createAdmin(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } }) };
 }
 
 export async function PATCH(req: Request) {
@@ -94,6 +119,13 @@ export async function PATCH(req: Request) {
   const body = await req.json().catch(() => null);
   if (!body?.id) return NextResponse.json({ error: "بيانات غير صحيحة" }, { status: 400 });
   const id = String(body.id);
+
+  // منع تصعيد الصلاحيات: غير الأدمن مايقدرش يعدّل حساب أدمن (خصوصاً باسورد/إيميل)
+  const { data: target } = await g.admin!.from("profiles").select("team").eq("id", id).maybeSingle();
+  if (target?.team === "admin" && !g.iAmAdmin && id !== g.meId) {
+    return NextResponse.json({ error: "الأدمن بس هو اللي يقدر يعدّل حساب أدمن تاني." }, { status: 403 });
+  }
+
   const upd: Record<string, any> = {};
   if (typeof body.full_name === "string") upd.full_name = body.full_name.trim();
   if (typeof body.phone === "string") upd.phone = body.phone.trim();
@@ -106,7 +138,8 @@ export async function PATCH(req: Request) {
     if (error) return NextResponse.json({ error: "تعذّر تغيير الإيميل: " + error.message }, { status: 400 });
   }
   if (typeof body.password === "string" && body.password) {
-    if (body.password.length < 6) return NextResponse.json({ error: "كلمة السر لازم 6 حروف على الأقل" }, { status: 400 });
+    const pErr = passwordError(body.password);
+    if (pErr) return NextResponse.json({ error: pErr }, { status: 400 });
     const { error } = await g.admin!.auth.admin.updateUserById(id, { password: body.password });
     if (error) return NextResponse.json({ error: "تعذّر تغيير كلمة السر: " + error.message }, { status: 400 });
   }
@@ -118,6 +151,13 @@ export async function DELETE(req: Request) {
   const body = await req.json().catch(() => null);
   if (!body?.id) return NextResponse.json({ error: "بيانات غير صحيحة" }, { status: 400 });
   if (body.id === g.meId) return NextResponse.json({ error: "مينفعش تحذف نفسك" }, { status: 400 });
+
+  // منع تصعيد الصلاحيات: غير الأدمن مايقدرش يحذف حساب أدمن
+  const { data: target } = await g.admin!.from("profiles").select("team").eq("id", String(body.id)).maybeSingle();
+  if (target?.team === "admin" && !g.iAmAdmin) {
+    return NextResponse.json({ error: "الأدمن بس هو اللي يقدر يحذف حساب أدمن." }, { status: 403 });
+  }
+
   const { error } = await g.admin!.auth.admin.deleteUser(String(body.id));
   if (error) return NextResponse.json({ error: "تعذّر الحذف: " + error.message }, { status: 400 });
   return NextResponse.json({ ok: true });
