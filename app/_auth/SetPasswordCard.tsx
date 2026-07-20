@@ -25,26 +25,18 @@ export default function SetPasswordCard({ mode }: { mode: Mode }) {
 
     (async () => {
       try {
-        // روابط الدعوة/الاستعادة ممكن تيجي بـ ?code= (PKCE) أو #access_token (hash)
-        const url = new URL(window.location.href);
-        const code = url.searchParams.get("code");
-        if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) { setLinkError(error.message); return; }
-        }
-        // لو hash فيه توكن، العميل بيلتقطه تلقائياً — ننتظر الجلسة
+        // نعتمد فقط على التحقق من الجلسة اللي ملف الـ callback في السيرفر عملها
         const { data: { session } } = await supabase.auth.getSession();
-        if (session) { setReady(true); return; }
-        // آخر محاولة: نستنى حدث تسجيل الدخول من التقاط الـ hash
-        const { data: sub } = supabase.auth.onAuthStateChange((_e: any, s: any) => {
-          if (s) { setReady(true); sub?.subscription?.unsubscribe?.(); }
-        });
-        // بعد ثانيتين لو لسه مفيش جلسة → اللينك غالباً منتهي
-        setTimeout(async () => {
-          const { data: { session: s2 } } = await supabase.auth.getSession();
-          if (!s2) setLinkError("expired");
-        }, 2500);
-      } catch (e: any) { setLinkError(e?.message || "error"); }
+        
+        if (session) { 
+          setReady(true); 
+        } else {
+          // لو مفيش جلسة، يبقى اللينك مش سليم أو المستخدم مادخلش صح
+          setLinkError("expired");
+        }
+      } catch (e: any) { 
+        setLinkError(e?.message || "error"); 
+      }
     })();
   }, []);
 
@@ -80,7 +72,6 @@ export default function SetPasswordCard({ mode }: { mode: Mode }) {
     const { error } = await supabaseRef.current.auth.updateUser({ password: pw });
     setLoading(false);
     if (error) {
-      // Supabase بيفرض سياسة القوة هنا — نعرض رسالته أو تلميح مبسّط
       setErr(/weak|leaked|pwned|short|characters|strength/i.test(error.message) ? T.weakHint : error.message);
       return;
     }
