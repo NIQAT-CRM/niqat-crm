@@ -38,7 +38,10 @@ export async function POST(req: Request) {
   // 4) إرسال دعوة بالإيميل (المستخدم بيحط باسورده بنفسه من لينك الدعوة)
   const admin = createAdmin(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const origin = new URL(req.url).origin;
-  const redirectTo = `${origin}/accept-invite`;
+  
+  // 🔴 هنا التعديل: التوجيه لمسار الـ Callback في الباك إند الأول
+  const redirectTo = `${origin}/auth/callback?next=/accept-invite`;
+  
   const { data: invited, error: iErr } = await admin.auth.admin.inviteUserByEmail(email, {
     data: { full_name: fullName },
     redirectTo,
