@@ -9,6 +9,7 @@ import ThemeToggle from "./ThemeToggle";
 import Toaster from "./Toaster";
 import DailyGreeting from "./DailyGreeting";
 import SidebarRail from "./SidebarRail";
+import InternalChat from "./InternalChat";
 // import AnimatedMain from "./AnimatedMain";
 import { LangProvider } from "@/lib/i18n/client";
 import { getLang, tFor } from "@/lib/i18n";
@@ -36,7 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users, can_grant_access")
+    .select("full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users, can_grant_access, chat_sound")
     .eq("id", user.id).maybeSingle();
 
   const tomorrow = new Date(); tomorrow.setHours(0, 0, 0, 0); tomorrow.setDate(tomorrow.getDate() + 1);
@@ -119,6 +120,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           canUsers={!!profile?.can_manage_users}
           canSettings={!!profile?.can_manage_settings}
           canGrant={!!profile?.can_grant_access}
+          isAdmin={(profile?.team || "").toLowerCase() === "admin"}
           dueCount={dueCount}
           handoffCount={handoffCount}
           refundCount={refundCount}
@@ -157,6 +159,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </div>
     <Toaster />
     <DailyGreeting />
+    <InternalChat me={{ id: user.id, name, team: (profile?.team || "").toLowerCase(), sound: profile?.chat_sound !== false }} />
     </div>
     </LangProvider>
   );
