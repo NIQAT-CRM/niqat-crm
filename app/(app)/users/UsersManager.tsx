@@ -38,6 +38,7 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
   const router = useRouter();
   const supabase = createClient();
   const [rows, setRows] = useState<Profile[]>(profiles);
+  const [openTeams, setOpenTeams] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState<string | null>(null);
 
   // إضافة عضو
@@ -188,13 +189,20 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
   const grp = (title: string, team: string) => {
     const list = rows.filter((u) => u.team === team);
     if (!list.length) return null;
+    const isOpen = !!openTeams[team];
     return (
-      <div key={team} className="card" style={{ padding: "18px 18px 4px", marginBottom: 16 }}>
-        <div className="sec-t" style={{ marginTop: 0 }}>
-          {title}
+      <div key={team} className="card" style={{ padding: 0, marginBottom: 16, overflow: "hidden" }}>
+        <button
+          onClick={() => setOpenTeams((s) => ({ ...s, [team]: !s[team] }))}
+          style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "16px 18px", background: "none", border: "none", cursor: "pointer", textAlign: "start" }}>
+          <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2.4}
+            style={{ color: "var(--muted)", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform .15s", flexShrink: 0 }}>
+            <path d="m9 6 6 6-6 6" />
+          </svg>
+          <span style={{ fontSize: 14.5, fontWeight: 800, color: "var(--ink)" }}>{title}</span>
           <span className="uteam" style={{ background: "var(--brand-soft)", color: "var(--brand-d)" }}>{list.length}</span>
-        </div>
-        {list.map(card)}
+        </button>
+        {isOpen && <div style={{ padding: "0 18px 4px" }}>{list.map(card)}</div>}
       </div>
     );
   };
