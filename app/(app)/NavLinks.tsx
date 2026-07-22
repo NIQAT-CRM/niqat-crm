@@ -8,6 +8,7 @@ type Perms = {
   canUsers?: boolean;
   canSettings?: boolean;
   canGrant?: boolean;
+  canAi?: boolean;
   isAdmin?: boolean;
   dueCount?: number;
   handoffCount?: number;
@@ -29,6 +30,7 @@ const I: Record<string, string> = {
   settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7 7 0 0 0 0-2l2-1.5-2-3.5-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.8 2.5a7 7 0 0 0-1.7 1l-2.4-1-2 3.5L4.6 11a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 1.7 1l.8 2.5h5l.8-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.5z"/></svg>',
   cog: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h13M3 12h18M3 18h9"/><circle cx="18" cy="6" r="2.2"/><circle cx="15" cy="18" r="2.2"/></svg>',
   chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-8.9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5.1a8.38 8.38 0 0 1-.9-3.9 8.5 8.5 0 0 1 8.4-8.9 8.5 8.5 0 0 1 8.6 8.4z"/></svg>',
+  ai: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>',
 };
 
 type Item = { href: string; key: string; tk: string; badge?: number };
@@ -48,6 +50,7 @@ export default function NavLinks(p: Perms) {
   ];
 
   const teams: Item[] = [{ href: "/support", key: "support", tk: "support" }];
+  if (p.canAi) teams.push({ href: "/insights", key: "ai", tk: "insightsNav" });
   if (p.canGrant) teams.push({ href: "/onboarding", key: "onb", tk: "onboarding", badge: p.handoffCount });
   teams.push({ href: "/refunds", key: "refund", tk: "refunds", badge: p.refundCount });
   teams.push({ href: "/archive", key: "archive", tk: "archive" });

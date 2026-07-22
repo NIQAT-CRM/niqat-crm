@@ -29,6 +29,14 @@ const PRESET: Record<string, string[]> = {
   admin: PERMS.map((p) => p[0]),
   ops: ["can_edit_customers", "can_view_reports", "can_manage_batches", "can_message"],
 };
+// أوبشنز الذكاء الاصطناعي — كل واحد صلاحية مستقلة لكل مستخدم (تبدأ كلها مقفولة)
+const AI_OPTIONS: [string, string][] = [
+  ["top_diplomas", "aiOptTopDiplomas"],
+  ["peak_hours", "aiOptPeakHours"],
+  ["batches_filling", "aiOptBatchesFilling"],
+  ["stale_leads", "aiOptStaleLeads"],
+  ["collection_trend", "aiOptCollectionTrend"],
+];
 const AV = ["#F08A24", "#0FA3A3", "#2F6BFF", "#7B61FF", "#18A957", "#E0483B", "#E6A700"];
 const avc = (id: string) => { let h = 0; for (const ch of id || "") h += ch.charCodeAt(0); return AV[h % AV.length]; };
 const ini = (n: string) => { const p = (n || "?").trim().split(/\s+/); return (p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2)); };
@@ -111,9 +119,31 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
     } else toast(tr("saved2"));
   }
 
+  // تفعيل/قفل الذكاء الاصطناعي الرئيسي (بيشتغل للأدمن كمان)
+  async function toggleAi(p: Profile) {
+    const cur = !!p.can_use_ai; const key = p.id + "canai";
+    setBusy(key);
+    setRows((rs) => rs.map((r) => (r.id === p.id ? { ...r, can_use_ai: !cur } : r)));
+    const { error } = await supabase.from("profiles").update({ can_use_ai: !cur }).eq("id", p.id);
+    setBusy(null);
+    if (error) { setRows((rs) => rs.map((r) => (r.id === p.id ? { ...r, can_use_ai: cur } : r))); toast(tr("updateFailedShort")); }
+    else toast(tr("saved2"));
+  }
+  // تفعيل/قفل أوبشن واحد من الذكاء الاصطناعي (متخزّن في ai_options JSONB)
+  async function toggleAiOption(p: Profile, optKey: string) {
+    const curOpts = (p.ai_options && typeof p.ai_options === "object") ? p.ai_options : {};
+    const next = { ...curOpts, [optKey]: !curOpts[optKey] };
+    const key = p.id + "aiopt" + optKey;
+    setBusy(key);
+    setRows((rs) => rs.map((r) => (r.id === p.id ? { ...r, ai_options: next } : r)));
+    const { error } = await supabase.from("profiles").update({ ai_options: next }).eq("id", p.id);
+    setBusy(null);
+    if (error) { setRows((rs) => rs.map((r) => (r.id === p.id ? { ...r, ai_options: curOpts } : r))); toast(tr("updateFailedShort")); }
+    else toast(tr("saved2"));
+  }
+
   function pickTeam(team: string) {
-    setF((s) => ({ ...s, team }));
-    const o: Record<string, boolean> = {}; (PRESET[team] || []).forEach((k) => (o[k] = true)); setPerms(o);
+    setF((s) => ({ ...s, team }));    const o: Record<string, boolean> = {}; (PRESET[team] || []).forEach((k) => (o[k] = true)); setPerms(o);
   }
 
   async function addMember() {
@@ -183,6 +213,29 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
           </div>
         ))
       )}
+
+      {/* قسم الذكاء الاصطناعي — لكل المستخدمين (بما فيهم الأدمن) */}
+      <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
+        <div className="permrow" style={{ opacity: busy === u.id + "canai" ? 0.5 : 1 }}>
+          <span style={{ fontWeight: 800, color: "var(--ai, #7B61FF)" }}>✨ {tr("aiMaster")}</span>
+          <div className={"sw" + (u.can_use_ai ? " on" : "")} onClick={() => busy !== u.id + "canai" && toggleAi(u)}><i /></div>
+        </div>
+        {u.can_use_ai && (
+          <div style={{ marginTop: 4, paddingInlineStart: 12, borderInlineStart: "2px solid var(--line)" }}>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", margin: "6px 0" }}>{tr("aiOptionsHint")}</div>
+            {AI_OPTIONS.map(([ok, lbl]) => {
+              const on = !!(u.ai_options && u.ai_options[ok]);
+              const bid = u.id + "aiopt" + ok;
+              return (
+                <div key={ok} className="permrow" style={{ opacity: busy === bid ? 0.5 : 1 }}>
+                  <span>{tr(lbl)}</span>
+                  <div className={"sw" + (on ? " on" : "")} onClick={() => busy !== bid && toggleAiOption(u, ok)}><i /></div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 

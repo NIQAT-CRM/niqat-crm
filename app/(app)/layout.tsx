@@ -37,8 +37,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users, can_grant_access, chat_sound")
+    .select("full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users, can_grant_access, can_use_ai, chat_sound")
     .eq("id", user.id).maybeSingle();
+
+  // بوابة الذكاء الاصطناعي: مفعّل للمستخدم + مفعّل عام في ai_settings
+  const { data: aiSet } = await supabase.from("ai_settings").select("insights_enabled").maybeSingle();
+  const canAi = !!profile?.can_use_ai && !!aiSet?.insights_enabled;
 
   const tomorrow = new Date(); tomorrow.setHours(0, 0, 0, 0); tomorrow.setDate(tomorrow.getDate() + 1);
   const [dueRes, handoffRes] = await Promise.all([
@@ -120,6 +124,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           canUsers={!!profile?.can_manage_users}
           canSettings={!!profile?.can_manage_settings}
           canGrant={!!profile?.can_grant_access}
+          canAi={canAi}
           isAdmin={(profile?.team || "").toLowerCase() === "admin"}
           dueCount={dueCount}
           handoffCount={handoffCount}
