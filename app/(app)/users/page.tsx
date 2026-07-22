@@ -5,7 +5,7 @@ import UsersManager from "./UsersManager";
 
 export const dynamic = "force-dynamic";
 
-const COLS = "id,full_name,team,phone,can_edit_customers,can_see_finance,can_view_reports,can_manage_tickets,can_manage_batches,can_grant_access,can_message,can_export,can_manage_settings,can_manage_users,can_see_daily_sales";
+const COLS = "id,full_name,team,phone,can_edit_customers,can_see_finance,can_view_reports,can_manage_tickets,can_manage_batches,can_grant_access,can_message,can_export,can_manage_settings,can_manage_users,can_see_daily_sales,can_use_ai,ai_options";
 
 export default async function Users() {
   const supabase = createClient();
