@@ -94,6 +94,12 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState<"" | "owner" | "stage" | "follow">("");
   const [waNums, setWaNums] = useState<string[] | null>(null);
+  const [waChannel, setWaChannel] = useState<"sales" | "support">("sales");
+  const [waTpls, setWaTpls] = useState<{ name: string; vars: number }[]>([]);
+  const [waTpl, setWaTpl] = useState("");
+  const [waTplErr, setWaTplErr] = useState("");
+  const [waSending, setWaSending] = useState(false);
+  const [waResult, setWaResult] = useState("");
   const [fuDate, setFuDate] = useState("");
   const [fuNote, setFuNote] = useState("");
   const [confirmBox, setConfirmBox] = useState<{ msg: string; label: string; danger: boolean; run: () => void } | null>(null);
@@ -140,8 +146,31 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
     try {
       const nums = await bulkGetPhones(ids());
       setWaNums(nums);
+      setWaResult(""); setWaTpl("");
+      // نجيب قوالب WATI المعتمدة
+      try {
+        const res = await fetch("/api/wa/templates");
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) { setWaTpls(data.templates || []); setWaTplErr(""); }
+        else setWaTplErr(data.error || "تعذّر جلب القوالب");
+      } catch (e: any) { setWaTplErr(e?.message || "تعذّر جلب القوالب"); }
     } catch { toast(tr("bulkGenericError")); }
     setBusy(false);
+  }
+
+  async function doBulkSend() {
+    if (!waTpl) { toast(tr("enterTplName")); return; }
+    setWaSending(true); setWaResult("");
+    try {
+      const res = await fetch("/api/wa/bulk", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customer_ids: ids(), channel: waChannel, template_name: waTpl }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setWaResult("err:" + (data.error || tr("bulkGenericError"))); }
+      else { setWaResult(`ok:${data.sent}:${data.failed}:${data.total}`); }
+    } catch (e: any) { setWaResult("err:" + (e?.message || "")); }
+    setWaSending(false);
   }
 
   async function doExport() {
@@ -243,22 +272,52 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
         {canManageBatches && <button style={{ ...btn, background: "var(--red)", color: "#fff", borderColor: "var(--red)" }} disabled={busy} onClick={doDelete}>🗑️ {tr("bulkDelete")}</button>}
       </div>
 
-      {/* مودال أرقام الواتساب */}
+      {/* مودال الإرسال الجماعي عبر WATI */}
       {waNums && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(15,27,48,.45)", zIndex: 60, display: "grid", placeItems: "center", padding: 16 }} onClick={() => setWaNums(null)}>
-          <div className="card" style={{ padding: 20, width: "min(460px,100%)" }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)", marginBottom: 12 }}>💬 {tr("bulkWhatsapp")} — {waNums.length}</div>
-            {templates.length > 0 && (
-              <div className="fld"><label>{tr("chooseTpl")}</label>
-                <select className="inp">{templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
-            )}
-            <div className="fld"><label>{tr("numbers")}</label>
-              <textarea className="inp num" dir="ltr" rows={5} readOnly value={waNums.join("\n")} /></div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn ghost" onClick={() => { if (navigator.clipboard) navigator.clipboard.writeText(waNums.join("\n")); toast(tr("copied")); }}>{tr("copyNums")}</button>
-              <button className="btn" onClick={() => setWaNums(null)}>{tr("done")}</button>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,27,48,.45)", zIndex: 60, display: "grid", placeItems: "center", padding: 16 }} onClick={() => !waSending && setWaNums(null)}>
+          <div className="card" style={{ padding: 20, width: "min(480px,100%)" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)", marginBottom: 14 }}>💬 {tr("bulkWhatsapp")} — {waNums.length}</div>
+
+            {/* اختيار الرقم المُرسِل */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 700 }}>{tr("senderNo")}:</span>
+              {(["sales", "support"] as const).map((c) => (
+                <button key={c} type="button" onClick={() => setWaChannel(c)} className="opt-chip"
+                  style={waChannel === c ? { background: "var(--brand)", color: "#fff", borderColor: "var(--brand)" } : undefined}>
+                  {tr(c === "sales" ? "senderSales" : "senderSupport")}
+                </button>
+              ))}
             </div>
-            <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10 }}>{tr("watiHint")}</p>
+
+            {/* اختيار قالب WATI */}
+            {waTplErr ? (
+              <div style={{ fontSize: 12.5, color: "var(--red)", marginBottom: 12 }}>{waTplErr}</div>
+            ) : (
+              <div className="fld"><label>{tr("chooseTpl")}</label>
+                <select className="inp" dir="ltr" value={waTpl} onChange={(e) => setWaTpl(e.target.value)} disabled={waSending}>
+                  <option value="">{waTpls.length ? tr("chooseTpl") : tr("loadingTpls")}</option>
+                  {waTpls.map((t) => <option key={t.name} value={t.name}>{t.name}{t.vars > 0 ? ` (${t.vars})` : ""}</option>)}
+                </select>
+              </div>
+            )}
+
+            {waResult && (
+              <div style={{ fontSize: 12.5, fontWeight: 700, borderRadius: 8, padding: "8px 12px", margin: "4px 0 12px",
+                background: waResult.startsWith("ok") ? "rgba(24,169,87,.1)" : "rgba(229,72,77,.1)",
+                color: waResult.startsWith("ok") ? "var(--green)" : "var(--red)" }}>
+                {waResult.startsWith("ok")
+                  ? tr("bulkWaResult").replace("{sent}", waResult.split(":")[1]).replace("{failed}", waResult.split(":")[2])
+                  : waResult.replace(/^err:/, "")}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn" style={{ flex: 1, justifyContent: "center" }} disabled={waSending || !waTpl} onClick={doBulkSend}>
+                {waSending ? tr("bulkWaSending") : tr("bulkWaSend").replace("{n}", String(waNums.length))}
+              </button>
+              <button className="btn ghost" disabled={waSending} onClick={() => setWaNums(null)}>{tr("done")}</button>
+            </div>
+            <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10 }}>{tr("bulkWaNote")}</p>
           </div>
         </div>
       )}
