@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import BatchesByDiploma from "./BatchesByDiploma";
-import { CountUp, BarRow, Kpi, LineIcon, ApexCombo } from "./Charts";
+import { CountUp, BarRow, Kpi, LineIcon, ApexCombo, PipelineViz } from "./Charts";
 import PeriodFilter from "./PeriodFilter";
 import SeeAllModal from "./SeeAllModal";
 
@@ -455,7 +455,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
       <div className="grid6 g2-6">
         <div>
           <div className="sh6"><span className="tick" /><h2>{tr("alertsT")}</h2>{actionCount > 0 && <span className="meta">{actionCount} {tr("itemsWord")}</span>}</div>
-          <div className="card6 actions6" style={{ minHeight: 300 }}>
+          <div className="card6 actions6" style={{ height: 470, overflowY: "auto" }}>
             {actionCount === 0 ? (
               <div style={{ fontSize: 13.5, color: "var(--muted)", textAlign: "center", padding: 20 }}>{tr("noAlerts")} 🎉</div>
             ) : (
@@ -473,21 +473,8 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
 
         <div>
           <div className="sh6"><span className="tick" /><h2>{tr("pipelineSummary")}</h2><span className="meta">{total}</span></div>
-          <div className="card6" style={{ minHeight: 300, justifyContent: "center" }}>
-            <div className="vfunnel">
-              {STAGES.map((s) => {
-                const v = byStage[s.key] || 0;
-                const max = Math.max(...STAGES.map((x) => byStage[x.key] || 0), 1);
-                const h = Math.max(6, Math.round((v / max) * 100));
-                return (
-                  <div key={s.key} className="vfn">
-                    <span className="vfn-v num">{v}</span>
-                    <div className="vfn-col"><i style={{ height: h + "%", background: s.color }} /></div>
-                    <span className="vfn-l">{tr(s.labelKey)}</span>
-                  </div>
-                );
-              })}
-            </div>
+          <div className="card6" style={{ height: 470, overflowY: "auto", padding: "22px 18px" }}>
+            <PipelineViz stages={STAGES.map((s) => ({ label: tr(s.labelKey), value: byStage[s.key] || 0, color: s.color }))} />
           </div>
         </div>
       </div>

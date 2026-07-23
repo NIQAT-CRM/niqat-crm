@@ -445,3 +445,52 @@ export function ApexStageBar({ labels, data, colors }: { labels: string[]; data:
   };
   return <div key={c.tick}><ReactApex options={options} series={[{ name: "", data }]} type="bar" height={210} /></div>;
 }
+
+// ===== ملخص المسار: دونات احترافي + تحليل نسب =====
+export function PipelineViz({ stages }: { stages: { label: string; value: number; color: string }[] }) {
+  const total = stages.reduce((s, d) => s + d.value, 0) || 1;
+  const size = 190, thickness = 26;
+  const r = (size - thickness) / 2, cx = size / 2, cy = size / 2, circ = 2 * Math.PI * r;
+  let offset = 0;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 60); return () => clearTimeout(t); }, []);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 22, width: "100%" }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
+        <g transform={`rotate(-90 ${cx} ${cy})`}>
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--muted-soft)" strokeWidth={thickness} opacity={0.4} />
+          {stages.map((d, i) => {
+            const len = (d.value / total) * circ;
+            const seg = (
+              <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={d.color} strokeWidth={thickness}
+                strokeDasharray={`${mounted ? len : 0} ${circ}`} strokeDashoffset={-offset}
+                style={{ transition: "stroke-dasharray 1s cubic-bezier(.22,1,.36,1)" }} />
+            );
+            offset += len;
+            return seg;
+          })}
+        </g>
+        <text x={cx} y={cy - 4} textAnchor="middle" style={{ fontSize: 30, fontWeight: 800, fill: "var(--ink)" }} className="num">{total.toLocaleString("en")}</text>
+        <text x={cx} y={cy + 18} textAnchor="middle" style={{ fontSize: 11, fill: "var(--muted)", letterSpacing: ".5px" }}>TOTAL</text>
+      </svg>
+      <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+        {stages.map((d, i) => {
+          const pct = Math.round((d.value / total) * 1000) / 10;
+          return (
+            <div key={i}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5 }}>
+                <span style={{ width: 11, height: 11, borderRadius: 3, background: d.color, flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>{d.label}</span>
+                <span className="num" style={{ fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{d.value.toLocaleString("en")}</span>
+                <span className="num" style={{ fontSize: 11.5, color: "var(--muted)", minWidth: 46, textAlign: "end" }}>{pct}%</span>
+              </div>
+              <div style={{ height: 6, background: "var(--muted-soft)", borderRadius: 20, overflow: "hidden" }}>
+                <div style={{ width: (mounted ? Math.max(pct, d.value > 0 ? 2 : 0) : 0) + "%", height: "100%", background: d.color, borderRadius: 20, transition: "width 1s cubic-bezier(.22,1,.36,1)" }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
