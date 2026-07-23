@@ -95,13 +95,13 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
   const [menu, setMenu] = useState<"" | "owner" | "stage" | "follow">("");
   const [waNums, setWaNums] = useState<string[] | null>(null);
   const [waChannel, setWaChannel] = useState<"sales" | "support">("sales");
-  const [waTpls, setWaTpls] = useState<{ name: string; vars: number }[]>([]);
+  const [waTpls, setWaTpls] = useState<{ name: string; vars: number; params: string[] }[]>([]);
   const [waTpl, setWaTpl] = useState("");
   const [waTplErr, setWaTplErr] = useState("");
   const [waSending, setWaSending] = useState(false);
   const [waResult, setWaResult] = useState("");
-  const [waVarMap, setWaVarMap] = useState<Record<number, string>>({});
-  const [waCustom, setWaCustom] = useState<Record<number, string>>({});
+  const [waVarMap, setWaVarMap] = useState<Record<string, string>>({});
+  const [waCustom, setWaCustom] = useState<Record<string, string>>({});
   const [fuDate, setFuDate] = useState("");
   const [fuNote, setFuNote] = useState("");
   const [confirmBox, setConfirmBox] = useState<{ msg: string; label: string; danger: boolean; run: () => void } | null>(null);
@@ -160,17 +160,17 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
     setBusy(false);
   }
 
-  const waSelVars = waTpls.find((t) => t.name === waTpl)?.vars || 0;
+  const waSelParams = waTpls.find((t) => t.name === waTpl)?.params || [];
   useEffect(() => {
-    if (waSelVars > 0) { const m: Record<number, string> = {}; for (let i = 1; i <= waSelVars; i++) m[i] = i === 1 ? "name" : "custom"; setWaVarMap(m); }
-    else setWaVarMap({});
-    setWaCustom({});
-  }, [waTpl, waSelVars]);
+    const m: Record<string, string> = {};
+    waSelParams.forEach((p, idx) => { m[p] = idx === 0 ? "name" : "custom"; });
+    setWaVarMap(m); setWaCustom({});
+  }, [waTpl]);
 
   async function doBulkSend() {
     if (!waTpl) { toast(tr("enterTplName")); return; }
     setWaSending(true); setWaResult("");
-    const var_map = Array.from({ length: waSelVars }, (_, k) => k + 1).map((i) => ({ field: waVarMap[i] || "name", custom: waCustom[i] || "" }));
+    const var_map = waSelParams.map((p) => ({ name: p, field: waVarMap[p] || "name", custom: waCustom[p] || "" }));
     try {
       const res = await fetch("/api/wa/bulk", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -311,19 +311,19 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
               </div>
             )}
 
-            {waSelVars > 0 && (
+            {waSelParams.length > 0 && (
               <div style={{ marginBottom: 12, padding: 10, border: "1px solid var(--line)", borderRadius: 8, background: "var(--muted-soft)" }}>
                 <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 8, fontWeight: 700 }}>{tr("tplVarsHint")}</div>
-                {Array.from({ length: waSelVars }, (_, k) => k + 1).map((i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <span className="num" style={{ fontSize: 12, color: "var(--brand-d)", fontWeight: 800, minWidth: 34 }}>{`{{${i}}}`}</span>
-                    <select className="inp" value={waVarMap[i] || "name"} onChange={(e) => setWaVarMap((m) => ({ ...m, [i]: e.target.value }))} style={{ height: 32, flex: 1 }}>
+                {waSelParams.map((p) => (
+                  <div key={p} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span className="num" style={{ fontSize: 12, color: "var(--brand-d)", fontWeight: 800, minWidth: 44 }}>{`{{${p}}}`}</span>
+                    <select className="inp" value={waVarMap[p] || "name"} onChange={(e) => setWaVarMap((m) => ({ ...m, [p]: e.target.value }))} style={{ height: 32, flex: 1 }}>
                       <option value="name">{tr("varName")}</option>
                       <option value="phone">{tr("varPhone")}</option>
                       <option value="custom">{tr("varCustom")}</option>
                     </select>
-                    {waVarMap[i] === "custom" && (
-                      <input className="inp" value={waCustom[i] || ""} onChange={(e) => setWaCustom((c) => ({ ...c, [i]: e.target.value }))} placeholder={tr("varCustom")} style={{ height: 32, flex: 1 }} />
+                    {waVarMap[p] === "custom" && (
+                      <input className="inp" value={waCustom[p] || ""} onChange={(e) => setWaCustom((c) => ({ ...c, [p]: e.target.value }))} placeholder={tr("varCustom")} style={{ height: 32, flex: 1 }} />
                     )}
                   </div>
                 ))}

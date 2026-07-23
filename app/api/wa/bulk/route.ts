@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     if (v?.field === "name") value = t.name;
     else if (v?.field === "phone") value = t.num;
     else if (v?.field === "custom") value = v.custom || "";
-    return { name: String(idx + 1), value };
+    return { name: v?.name || String(idx + 1), value };
   });
 
   let sent = 0, failed = 0;

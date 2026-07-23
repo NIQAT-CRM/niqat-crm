@@ -4,7 +4,7 @@ import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 
 type Tpl = { id: string; name: string; body: string };
-type WatiTpl = { name: string; body: string; vars: number; status: string };
+type WatiTpl = { name: string; body: string; vars: number; params: string[]; status: string };
 type Ctx = { name: string; phone1: string; diploma: string; batch: string; remaining: string };
 
 function fill(text: string, c: Ctx) {
@@ -31,19 +31,19 @@ export default function WhatsAppPanel({
   const [tplErr, setTplErr] = useState("");
   const [loadingTpls, setLoadingTpls] = useState(true);
   const [result, setResult] = useState<string>("");
-  const [varMap, setVarMap] = useState<Record<number, string>>({});
-  const [customVals, setCustomVals] = useState<Record<number, string>>({});
+  const [varMap, setVarMap] = useState<Record<string, string>>({});
+  const [customVals, setCustomVals] = useState<Record<string, string>>({});
 
-  const selVars = watiTpls.find((t) => t.name === tplName)?.vars || 0;
+  const selParams = watiTpls.find((t) => t.name === tplName)?.params || [];
   useEffect(() => {
-    if (selVars > 0) { const m: Record<number, string> = {}; for (let i = 1; i <= selVars; i++) m[i] = i === 1 ? "name" : "custom"; setVarMap(m); }
-    else setVarMap({});
-    setCustomVals({});
-  }, [tplName, selVars]);
+    const m: Record<string, string> = {};
+    selParams.forEach((p, idx) => { m[p] = idx === 0 ? "name" : "custom"; });
+    setVarMap(m); setCustomVals({});
+  }, [tplName]);
 
-  function resolveField(i: number): string {
-    const f = varMap[i] || "name";
-    if (f === "custom") return customVals[i] || "";
+  function resolveField(p: string): string {
+    const f = varMap[p] || "name";
+    if (f === "custom") return customVals[p] || "";
     if (f === "name") return ctx.name || "";
     if (f === "phone") return ctx.phone1 || "";
     if (f === "diploma") return ctx.diploma || "";
@@ -88,8 +88,7 @@ export default function WhatsAppPanel({
   const sendSession = (tpl: Tpl) => api({ mode: "session", text: fill(tpl.body, ctx) });
   const sendTemplate = () => {
     if (!tplName.trim()) return toast(tr("enterTplName"));
-    const parameters = [];
-    for (let i = 1; i <= selVars; i++) parameters.push({ name: String(i), value: resolveField(i) });
+    const parameters = selParams.map((p) => ({ name: p, value: resolveField(p) }));
     api({ mode: "template", template_name: tplName.trim(), parameters });
   };
 
@@ -153,13 +152,13 @@ export default function WhatsAppPanel({
             <button className="btn" disabled={busy || !tplName} onClick={sendTemplate} style={{ height: 36, flexShrink: 0 }}>{tr("sendTemplateBtn")}</button>
           </div>
         )}
-        {selVars > 0 && (
+        {selParams.length > 0 && (
           <div style={{ marginTop: 10, padding: 10, border: "1px solid var(--line)", borderRadius: 8, background: "var(--muted-soft)" }}>
             <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 8, fontWeight: 700 }}>{tr("tplVarsHint")}</div>
-            {Array.from({ length: selVars }, (_, k) => k + 1).map((i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                <span className="num" style={{ fontSize: 12, color: "var(--brand-d)", fontWeight: 800, minWidth: 34 }}>{`{{${i}}}`}</span>
-                <select className="inp" value={varMap[i] || "name"} onChange={(e) => setVarMap((m) => ({ ...m, [i]: e.target.value }))} style={{ height: 32, flex: customVals && varMap[i] === "custom" ? "0 0 130px" : 1 }}>
+            {selParams.map((p) => (
+              <div key={p} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <span className="num" style={{ fontSize: 12, color: "var(--brand-d)", fontWeight: 800, minWidth: 44 }}>{`{{${p}}}`}</span>
+                <select className="inp" value={varMap[p] || "name"} onChange={(e) => setVarMap((m) => ({ ...m, [p]: e.target.value }))} style={{ height: 32, flex: 1 }}>
                   <option value="name">{tr("varName")}</option>
                   <option value="phone">{tr("varPhone")}</option>
                   <option value="diploma">{tr("varDiploma")}</option>
@@ -167,8 +166,8 @@ export default function WhatsAppPanel({
                   <option value="remaining">{tr("varRemaining")}</option>
                   <option value="custom">{tr("varCustom")}</option>
                 </select>
-                {varMap[i] === "custom" && (
-                  <input className="inp" value={customVals[i] || ""} onChange={(e) => setCustomVals((c) => ({ ...c, [i]: e.target.value }))} placeholder={tr("varCustom")} style={{ height: 32, flex: 1 }} />
+                {varMap[p] === "custom" && (
+                  <input className="inp" value={customVals[p] || ""} onChange={(e) => setCustomVals((c) => ({ ...c, [p]: e.target.value }))} placeholder={tr("varCustom")} style={{ height: 32, flex: 1 }} />
                 )}
               </div>
             ))}
