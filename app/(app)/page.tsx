@@ -517,8 +517,8 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
       <div className="card6">
         {logItems.length === 0 ? <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noActivity")}</div> : (
           <>
-            <div>{logItems.slice(0, 20).map((l, i) => logRow(l, i))}</div>
-            {logItems.length > 20 && (
+            <div>{logItems.slice(0, 10).map((l, i) => logRow(l, i))}</div>
+            {logItems.length > 10 && (
               <SeeAllModal title={tr("recentAct")} label={tr("viewAll")} count={logItems.length}>
                 <div>{logItems.map((l, i) => logRow(l, i))}</div>
               </SeeAllModal>
