@@ -20,7 +20,7 @@ export async function GET() {
   const { data: row } = await admin.from("app_settings").select("value").eq("key", "wati").maybeSingle();
   const wati: any = row?.value || {};
   const endpoint = String(wati.endpoint || "").replace(/\/+$/, "");
-  const token = wati.token;
+  const token = String(wati.token || "").replace(/^\s*bearer\s+/i, "").trim();
   if (!endpoint || !token) return NextResponse.json({ error: "إعدادات WATI ناقصة — ظبّطها من الإعدادات" }, { status: 400 });
 
   try {

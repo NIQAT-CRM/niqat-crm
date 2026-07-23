@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const { data: row } = await admin.from("app_settings").select("value").eq("key", "wati").maybeSingle();
   const wati: any = row?.value || {};
   const endpoint = String(wati.endpoint || "").replace(/\/+$/, "");
-  const token = wati.token;
+  const token = String(wati.token || "").replace(/^\s*bearer\s+/i, "").trim();
   const sender = channel === "support" ? (wati.sender_support || wati.sender) : (wati.sender_sales || wati.sender);
   if (!endpoint || !token) return NextResponse.json({ error: "إعدادات WATI ناقصة (endpoint/token) — ظبّطها من الإعدادات" }, { status: 400 });
   if (!sender) return NextResponse.json({ error: "رقم المُرسِل مش متظبط للقناة دي — ظبّطه من الإعدادات" }, { status: 400 });
@@ -53,13 +53,13 @@ export async function POST(req: Request) {
       broadcast_name: broadcast_name || template_name,
       parameters: Array.isArray(parameters) ? parameters : [],
       // تحديد الرقم المُرسِل (حساب واحد بأكتر من رقم) — بنبعت الاسمين احتياطاً
-      channelNumber: sender,
-      channelPhoneNumber: sender,
+      channelNumber: normNum(sender),
+      channelPhoneNumber: normNum(sender),
     };
   } else {
     if (!text) return NextResponse.json({ error: "نص الرسالة مفقود" }, { status: 400 });
     apiUrl = `${endpoint}/api/v1/sendSessionMessage/${rcpt}?messageText=${encodeURIComponent(text)}`;
-    payload = { channelNumber: sender, channelPhoneNumber: sender };
+    payload = { channelNumber: normNum(sender), channelPhoneNumber: normNum(sender) };
   }
 
   let watiRes: any = null;
