@@ -7,23 +7,11 @@ type Tpl = { id: string; name: string; body: string };
 type WatiTpl = { name: string; body: string; vars: number; params: string[]; status: string };
 type Ctx = { name: string; phone1: string; diploma: string; batch: string; remaining: string };
 
-function fill(text: string, c: Ctx) {
-  return text
-    .replace(/\{name\}/g, c.name || "")
-    .replace(/\{diploma\}/g, c.diploma || "")
-    .replace(/\{batch\}/g, c.batch || "")
-    .replace(/\{remaining\}/g, c.remaining || "");
-}
-function waLink(phone: string, text: string) {
-  const num = (phone || "").replace(/[^\d]/g, "").replace(/^0/, "20");
-  return `https://wa.me/${num}${text ? "?text=" + encodeURIComponent(text) : ""}`;
-}
 
 export default function WhatsAppPanel({
   customerId, meId, ctx, templates,
 }: { customerId: string; meId: string; ctx: Ctx; templates: Tpl[] }) {
   const tr = useT();
-  const [preview, setPreview] = useState<string>("");
   const [channel, setChannel] = useState<"sales" | "support">("sales");
   const [busy, setBusy] = useState(false);
   const [watiTpls, setWatiTpls] = useState<WatiTpl[]>([]);
@@ -85,7 +73,6 @@ export default function WhatsAppPanel({
     } finally { setBusy(false); }
   }
 
-  const sendSession = (tpl: Tpl) => api({ mode: "session", text: fill(tpl.body, ctx) });
   const sendTemplate = () => {
     if (!tplName.trim()) return toast(tr("enterTplName"));
     const parameters = selParams.map((p) => ({ name: p, value: resolveField(p) }));
@@ -116,28 +103,8 @@ export default function WhatsAppPanel({
         ))}
       </div>
 
-      {/* قوالب النظام (نص حر — session، بيشتغل خلال 24 ساعة من آخر رسالة من العميل) */}
-      <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 6 }}>{tr("waSessionNote")}</div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 10 }}>
-        {templates.length === 0 && <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("noTemplates")}</span>}
-        {templates.map((t) => (
-          <button key={t.id} className="btn ghost" disabled={busy} style={{ height: 32, padding: "0 12px", fontSize: 12.5 }}
-            onMouseEnter={() => setPreview(fill(t.body, ctx))} onMouseLeave={() => setPreview("")}
-            onClick={() => sendSession(t)}>
-            {t.name}
-          </button>
-        ))}
-        <a className="btn wa" style={{ height: 32, padding: "0 12px", fontSize: 12.5 }}
-          href={waLink(ctx.phone1, "")} target="_blank" rel="noreferrer">{tr("openBlankChat")}</a>
-      </div>
-      {preview && (
-        <div style={{ fontSize: 12.5, color: "var(--muted)", background: "rgba(24,169,87,.07)", border: "1px solid var(--line)", borderRadius: 8, padding: 10, whiteSpace: "pre-wrap", marginBottom: 10 }}>
-          {preview}
-        </div>
-      )}
-
       {/* قالب WATI معتمد (بيشتغل أي وقت) — اختَر من قوالب حسابك */}
-      <div style={{ borderTop: "1px dashed var(--line)", paddingTop: 12 }}>
+      <div style={{ paddingTop: 4 }}>
         <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 6 }}>{tr("waTemplateNote")}</div>
         {tplErr ? (
           <div style={{ fontSize: 12, color: "var(--red)" }}>{tplErr}</div>

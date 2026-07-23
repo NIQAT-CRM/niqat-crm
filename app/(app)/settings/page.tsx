@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import WatiCard from "./WatiCard";
-import TemplatesManager from "./TemplatesManager";
 import OptionsList from "./OptionsList";
 import AffiliatesManager from "../affiliates/AffiliatesManager";
 
@@ -23,10 +22,9 @@ export default async function Settings() {
   }
 
   // كله بالتوازي للأداء
-  const [watiRow, affRow, tplRes, access, spec, dip, accred, proj, uni, lib] = await Promise.all([
+  const [watiRow, affRow, access, spec, dip, accred, proj, uni, lib] = await Promise.all([
     supabase.from("app_settings").select("value").eq("key", "wati").maybeSingle(),
     supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
-    supabase.from("wa_templates").select("id,name,body").order("created_at"),
     safeList(supabase, "access_options", "label"),
     safeList(supabase, "specialties", "name_ar"),
     safeList(supabase, "diplomas", "name_ar"),
@@ -44,8 +42,7 @@ export default async function Settings() {
     sender_support: wRaw.sender_support || "",
   };
   const affiliates = Array.isArray(affRow.data?.value) ? (affRow.data!.value as any[]) : [];
-  const templates = tplRes.error ? [] : (tplRes.data || []);
-  const tablesMissing = accred.missing || proj.missing || uni.missing || tplRes.error;
+  const tablesMissing = accred.missing || proj.missing || uni.missing;
 
   return (
     <div className="settings-page">
@@ -57,12 +54,9 @@ export default async function Settings() {
         </div>
       )}
 
-      <div className="settings-top">
-        <div className="settings-anim"><WatiCard initial={wati} /></div>
-        <div className="settings-anim" style={{ animationDelay: ".05s" }}><TemplatesManager initial={templates as any} /></div>
-      </div>
+      <div className="settings-anim" style={{ marginBottom: 18 }}><WatiCard initial={wati} /></div>
 
-      <div className="card settings-anim" style={{ padding: 18, marginBottom: 18, animationDelay: ".1s" }}>
+      <div className="card settings-anim" style={{ padding: 18, marginBottom: 18, animationDelay: ".05s" }}>
         <div className="card-h" style={{ padding: 0, border: "none" }}><h3>{tr("manageAff")}</h3></div>
         <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "2px 0 12px" }}>
           {tr("affiliatesManagerHint")}
@@ -70,7 +64,7 @@ export default async function Settings() {
         <AffiliatesManager initial={affiliates} />
       </div>
 
-      <div className="settings-cols">
+      <div className="settings-cols" style={{ animationDelay: ".1s" }}>
         <OptionsList title={tr("manageDiplomas")} hint={tr("manageDiplomasHint")} table="diplomas" labelCol="name_ar" initial={dip.items} />
         <OptionsList title={tr("manageSpecialties")} hint={tr("manageSpecialtiesHint")} table="specialties" labelCol="name_ar" initial={spec.items} />
         <OptionsList title={tr("manageAccessOptions")} hint={tr("manageAccessOptionsHint")} table="access_options" labelCol="label" initial={access.items} />
