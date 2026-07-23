@@ -4,7 +4,7 @@ import { useT } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 
-type Wati = { endpoint: string; token: string; sender: string };
+type Wati = { endpoint: string; token: string; sender_sales: string; sender_support: string };
 
 export default function WatiCard({ initial }: { initial: Wati }) {
   const tr = useT();
@@ -31,8 +31,10 @@ export default function WatiCard({ initial }: { initial: Wati }) {
         <input className="inp" dir="ltr" value={w.endpoint} onChange={(e) => set("endpoint", e.target.value)} placeholder="https://live-server.wati.io/api/v1" /></div>
       <div className="fld"><label>API Token</label>
         <input className="inp" dir="ltr" type="password" value={w.token} onChange={(e) => set("token", e.target.value)} placeholder="••••••••" /></div>
-      <div className="fld"><label>{tr("senderNumber")}</label>
-        <input className="inp" dir="ltr" value={w.sender} onChange={(e) => set("sender", e.target.value)} placeholder="2010xxxxxxxx" /></div>
+      <div className="fld"><label>{tr("senderNumberSales")}</label>
+        <input className="inp" dir="ltr" value={w.sender_sales} onChange={(e) => set("sender_sales", e.target.value)} placeholder="2010xxxxxxxx" /></div>
+      <div className="fld"><label>{tr("senderNumberSupport")}</label>
+        <input className="inp" dir="ltr" value={w.sender_support} onChange={(e) => set("sender_support", e.target.value)} placeholder="2010xxxxxxxx" /></div>
       <button onClick={save} disabled={busy} className="btn">{busy ? "..." : tr("save")}</button>
     </div>
   );

@@ -36,7 +36,13 @@ export default async function Settings() {
     safeList(supabase, "libraries", "name"),
   ]);
 
-  const wati = (watiRow.data?.value as any) || { endpoint: "https://live-server.wati.io/api/v1", token: "", sender: "" };
+  const wRaw = (watiRow.data?.value as any) || {};
+  const wati = {
+    endpoint: wRaw.endpoint || "https://live-server.wati.io/api/v1",
+    token: wRaw.token || "",
+    sender_sales: wRaw.sender_sales || wRaw.sender || "",
+    sender_support: wRaw.sender_support || "",
+  };
   const affiliates = Array.isArray(affRow.data?.value) ? (affRow.data!.value as any[]) : [];
   const templates = tplRes.error ? [] : (tplRes.data || []);
   const tablesMissing = accred.missing || proj.missing || uni.missing || tplRes.error;
