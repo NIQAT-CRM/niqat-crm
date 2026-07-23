@@ -212,12 +212,15 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
       {u.team === "admin" ? (
         <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("adminAllPermsLabel")}</div>
       ) : (
-        PERMS.map(([k, lbl]) => (
-          <div key={k} className="permrow" style={{ opacity: busy === u.id + k ? 0.5 : 1 }}>
-            <span>{tr(lbl)}</span>
-            <div className={"sw" + (u[k] ? " on" : "")} onClick={() => busy !== u.id + k && toggle(u, k)}><i /></div>
-          </div>
-        ))
+        <div className="permgrid">
+          {PERMS.map(([k, lbl]) => (
+            <div key={k} className={"permcard" + (u[k] ? " on" : "")} onClick={() => busy !== u.id + k && toggle(u, k)}
+              style={{ opacity: busy === u.id + k ? 0.5 : 1, cursor: "pointer" }}>
+              <span>{tr(lbl)}</span>
+              <div className={"sw" + (u[k] ? " on" : "")}><i /></div>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* قسم الذكاء الاصطناعي — لكل المستخدمين (بما فيهم الأدمن) */}
@@ -238,16 +241,19 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
             {aiListOpen[u.id] && (
               <div style={{ marginTop: 4 }}>
                 <div style={{ fontSize: 11.5, color: "var(--muted)", margin: "6px 0" }}>{tr("aiOptionsHint")}</div>
-                {AI_OPTIONS.map(([ok, lbl]) => {
-                  const on = !!(u.ai_options && u.ai_options[ok]);
-                  const bid = u.id + "aiopt" + ok;
-                  return (
-                    <div key={ok} className="permrow" style={{ opacity: busy === bid ? 0.5 : 1 }}>
-                      <span>{tr(lbl)}</span>
-                      <div className={"sw" + (on ? " on" : "")} onClick={() => busy !== bid && toggleAiOption(u, ok)}><i /></div>
-                    </div>
-                  );
-                })}
+                <div className="permgrid">
+                  {AI_OPTIONS.map(([ok, lbl]) => {
+                    const on = !!(u.ai_options && u.ai_options[ok]);
+                    const bid = u.id + "aiopt" + ok;
+                    return (
+                      <div key={ok} className={"permcard" + (on ? " on" : "")} onClick={() => busy !== bid && toggleAiOption(u, ok)}
+                        style={{ opacity: busy === bid ? 0.5 : 1, cursor: "pointer" }}>
+                        <span>{tr(lbl)}</span>
+                        <div className={"sw" + (on ? " on" : "")}><i /></div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -309,11 +315,11 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
             {tr("inviteNote")}
           </div>
           <div className="sec-t">{tr("permissions")}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 24, rowGap: 10, marginBottom: 12 }}>
+          <div className="permgrid" style={{ marginBottom: 12 }}>
             {PERMS.map(([k, lbl]) => (
-              <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                <span style={{ fontSize: 14, color: "var(--ink)" }}>{tr(lbl)}</span>
-                <div className={"sw" + (perms[k] ? " on" : "")} onClick={() => setPerms((p) => ({ ...p, [k]: !p[k] }))}><i /></div>
+              <div key={k} className={"permcard" + (perms[k] ? " on" : "")} onClick={() => setPerms((p) => ({ ...p, [k]: !p[k] }))} style={{ cursor: "pointer" }}>
+                <span>{tr(lbl)}</span>
+                <div className={"sw" + (perms[k] ? " on" : "")}><i /></div>
               </div>
             ))}
           </div>
@@ -335,12 +341,14 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
                 {newAiOpen && (
                   <div style={{ marginTop: 4 }}>
                     <div style={{ fontSize: 11.5, color: "var(--muted)", margin: "6px 0" }}>{tr("aiOptionsHint")}</div>
-                    {AI_OPTIONS.map(([ok, lbl]) => (
-                      <div key={ok} className="permrow">
-                        <span>{tr(lbl)}</span>
-                        <div className={"sw" + (newAiOpts[ok] ? " on" : "")} onClick={() => setNewAiOpts((p) => ({ ...p, [ok]: !p[ok] }))}><i /></div>
-                      </div>
-                    ))}
+                    <div className="permgrid">
+                      {AI_OPTIONS.map(([ok, lbl]) => (
+                        <div key={ok} className={"permcard" + (newAiOpts[ok] ? " on" : "")} onClick={() => setNewAiOpts((p) => ({ ...p, [ok]: !p[ok] }))} style={{ cursor: "pointer" }}>
+                          <span>{tr(lbl)}</span>
+                          <div className={"sw" + (newAiOpts[ok] ? " on" : "")}><i /></div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
