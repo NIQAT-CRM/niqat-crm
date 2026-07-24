@@ -8,6 +8,7 @@ import { CountUp, Donut, BarRow, AreaChart, MiniSpark, ApexArea, ApexStageBar, A
 import PeriodFilter from "../PeriodFilter";
 import ExportButton from "../ExportButton";
 import AffiliateReport from "./AffiliateReport";
+import InsightsSection, { type InsightsData } from "./InsightsSection";
 
 type StageRow = { key: string; label: string; color: string; n: number };
 type AffRow = { code: string; name: string; discount: number | null; customers: number; enrolled: number; interested: number; refunded: number };
@@ -75,9 +76,10 @@ function Lead({ rank, name, sub, value, valueColor }: { rank: number; name: stri
 export default function ReportsView({
   canFinance, agreed, collected, overdueN, collectedUsd, agreedUsd, refundReport = null,
   stageRows, totalCust, affRows, salesRows, supportRows, monthly, byDiploma, byService = [],
-  batchOpts, diplomaOpts, affiliates, resetAt = "",
+  batchOpts, diplomaOpts, affiliates, resetAt = "", insights,
 }: {
   canFinance: boolean;
+  insights: InsightsData;
   agreed: number; collected: number; overdueN: number; collectedUsd: number; agreedUsd: number;
   refundReport?: any;
   stageRows: StageRow[]; totalCust: number; affRows: AffRow[];
@@ -396,6 +398,9 @@ export default function ReportsView({
           <AffiliateReport affRows={affRows} batches={batchOpts} diplomas={diplomaOpts} affiliates={affiliates} canFinance={canFinance} />
         </div>
       )}
+
+      {/* ===== الرؤى (تحت التقارير، ظاهرة دايماً لأي حد عنده صلاحية التقارير) ===== */}
+      <InsightsSection insights={insights} canFinance={canFinance} />
     </div>
   );
 }

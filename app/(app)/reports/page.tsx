@@ -40,6 +40,22 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
   }
   const canFinance = !!prof.can_see_finance;
 
+  // ==== الرؤى (Insights) — بنفس صلاحية التقارير؛ المالي محجوب داخل الدوال بـ can_finance() ====
+  const [insTopRes, insPeakRes, insBatchRes, insStaleRes, insTrendRes] = await Promise.all([
+    supabase.rpc("ins_top_diplomas", { p_days: 30 }),
+    supabase.rpc("ins_peak_hours", { p_days: 30 }),
+    supabase.rpc("ins_batches_filling"),
+    supabase.rpc("ins_stale_leads", { p_days_idle: 7 }),
+    supabase.rpc("ins_collection_trend", { p_days: 30 }),
+  ]);
+  const insights = {
+    topDip: ((insTopRes.data as any[]) || [])[0] || null,
+    peak: (insPeakRes.data as any) || null,
+    batches: (insBatchRes.data as any[]) || [],
+    stale: (insStaleRes.data as any) || { count: 0, list: [] },
+    trend: (insTrendRes.data as any) || null,
+  };
+
   const period = searchParams?.period || "all";
   const range = periodRange(period);
   const rpcArgs = range ? { p_from: range.from, p_to: range.to } : undefined;
@@ -227,6 +243,7 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
       salesRows={salesRows} supportRows={supportRows} monthly={monthly} byDiploma={byDiploma} byService={byService}
       batchOpts={batchOpts} diplomaOpts={diplomaOpts} affiliates={affiliatesList}
       resetAt={resetAt}
+      insights={insights}
     />
   );
 }

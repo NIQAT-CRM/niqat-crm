@@ -49,8 +49,8 @@ export default function NavLinks(p: Perms) {
     { href: "/universities", key: "uni2", tk: "universities" },
   ];
 
+  // الرؤى بقت جزء من صفحة التقارير (نفس صلاحية can_view_reports) — مبقاش بند مستقل
   const teams: Item[] = [{ href: "/support", key: "support", tk: "support" }];
-  if (p.canAi) teams.push({ href: "/insights", key: "ai", tk: "insightsNav" });
   if (p.canGrant) teams.push({ href: "/onboarding", key: "onb", tk: "onboarding", badge: p.handoffCount });
   teams.push({ href: "/refunds", key: "refund", tk: "refunds", badge: p.refundCount });
   teams.push({ href: "/archive", key: "archive", tk: "archive" });
