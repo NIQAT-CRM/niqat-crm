@@ -106,6 +106,14 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
   const [fuNote, setFuNote] = useState("");
   const [confirmBox, setConfirmBox] = useState<{ msg: string; label: string; danger: boolean; run: () => void } | null>(null);
 
+  // كل الـ hooks لازم تكون قبل أي return شرطي (إصلاح React #310)
+  const waSelParamsEff = waTpls.find((t) => t.name === waTpl)?.params || [];
+  useEffect(() => {
+    const m: Record<string, string> = {};
+    waSelParamsEff.forEach((p, idx) => { m[p] = idx === 0 ? "name" : "custom"; });
+    setWaVarMap(m); setWaCustom({});
+  }, [waTpl]);
+
   if (count === 0) return null;
   const ids = () => Array.from(sel);
 
@@ -161,11 +169,6 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
   }
 
   const waSelParams = waTpls.find((t) => t.name === waTpl)?.params || [];
-  useEffect(() => {
-    const m: Record<string, string> = {};
-    waSelParams.forEach((p, idx) => { m[p] = idx === 0 ? "name" : "custom"; });
-    setWaVarMap(m); setWaCustom({});
-  }, [waTpl]);
 
   async function doBulkSend() {
     if (!waTpl) { toast(tr("enterTplName")); return; }
