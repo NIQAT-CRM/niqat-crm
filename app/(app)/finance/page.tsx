@@ -39,17 +39,19 @@ export default async function Finance() {
     );
   }
 
-  const [{ data: enrs }, { data: fin }, { data: insts }, { data: custs }, { data: dips }] =
+  const [{ data: enrs }, { data: fin }, { data: insts }, { data: custs }, { data: dips }, { data: bts }] =
     await Promise.all([
-      supabase.from("enrollments").select("id,customer_id,diploma_id"),
+      supabase.from("enrollments").select("id,customer_id,diploma_id,batch_id"),
       supabase.from("enrollment_finance").select("enrollment_id,agreed_amount,currency"),
       supabase.from("installments").select("id,enrollment_id,amount,currency,due_date,paid_at,status"),
       supabase.from("customers").select("id,name"),
       supabase.from("diplomas").select("id,name_ar"),
+      supabase.from("batches").select("id,code"),
     ]);
 
   const cName = new Map((custs || []).map((c) => [c.id, c.name]));
   const dName = new Map((dips || []).map((d) => [d.id, d.name_ar]));
+  const bCode = new Map((bts || []).map((b: any) => [b.id, b.code]));
   const enrMap = new Map((enrs || []).map((e) => [e.id, e]));
 
   let agreed = 0;
@@ -81,7 +83,7 @@ export default async function Finance() {
         id: i.id as string,
         customerId: (e?.customer_id as string) || "",
         customerName: cName.get(e?.customer_id || "") || "—",
-        diploma: dName.get(e?.diploma_id || "") || "—",
+        diploma: dName.get(e?.diploma_id || "") || bCode.get(e?.batch_id || "") || "—",
         amount: Number(i.amount) || 0,
         currency: (i.currency as string) || "EGP",
         due: i.due_date ? String(i.due_date).slice(0, 10) : "",

@@ -189,7 +189,7 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
     if (custIds.length) { const { data: c } = await supabase.from("customers").select("id,name").in("id", custIds); (c || []).forEach((x: any) => custName.set(x.id, x.name || "")); }
     const bCode = new Map(((batchRes.data as any[]) || []).map((b: any) => [b.id, b.code]));
     const svcLabel = (r: any) => {
-      if (r.enrollment_id) { const e = enrMap.get(r.enrollment_id); const dn = e ? dName.get(e.diploma_id) : ""; const bc = e && e.batch_id ? bCode.get(e.batch_id) : ""; return (dn || "—") + (bc ? " · " + bc : ""); }
+      if (r.enrollment_id) { const e = enrMap.get(r.enrollment_id); const dn = e ? dName.get(e.diploma_id) : ""; const bc = e && e.batch_id ? bCode.get(e.batch_id) : ""; return dn ? (dn + (bc ? " · " + bc : "")) : (bc || "—"); }
       if (r.addon_id) return addonMap.get(r.addon_id) || "—";
       return "—";
     };
