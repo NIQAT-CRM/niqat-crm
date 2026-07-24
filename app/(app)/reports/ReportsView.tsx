@@ -200,7 +200,7 @@ export default function ReportsView({
           )}
 
           {/* توزيع المراحل (بالطول) + كل الدبلومات */}
-          <div className="grid6 g2-6" style={{ alignItems: "start" }}>
+          <div className="grid6 g3-6" style={{ alignItems: "start" }}>
             <div className="card" style={{ padding: 18 }}>
               <SecHead icon="bars" tint="#7B61FF" title={tr("stageDistribution")} count={totalCust} />
               <div className="vfunnel">
