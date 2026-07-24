@@ -41,12 +41,22 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
   const canFinance = !!prof.can_see_finance;
 
   // ==== الرؤى (Insights) — بنفس صلاحية التقارير؛ المالي محجوب داخل الدوال بـ can_finance() ====
-  const [insTopRes, insPeakRes, insBatchRes, insStaleRes, insTrendRes] = await Promise.all([
+  const [insTopRes, insPeakRes, insBatchRes, insStaleRes, insTrendRes,
+         insSrcRes, insUnassignedRes, insStaleTkRes, insPendingRes, insSpecRes,
+         insOverdueRes, insExpectedRes, insRefundsRes] = await Promise.all([
     supabase.rpc("ins_top_diplomas", { p_days: 30 }),
     supabase.rpc("ins_peak_hours", { p_days: 30 }),
     supabase.rpc("ins_batches_filling"),
     supabase.rpc("ins_stale_leads", { p_days_idle: 7 }),
     supabase.rpc("ins_collection_trend", { p_days: 30 }),
+    supabase.rpc("ins_top_source"),
+    supabase.rpc("ins_unassigned_leads"),
+    supabase.rpc("ins_stale_tickets", { p_days: 3 }),
+    supabase.rpc("ins_pending_handoffs", { p_days: 2 }),
+    supabase.rpc("ins_specialty_dist"),
+    supabase.rpc("ins_overdue_installments"),
+    supabase.rpc("ins_expected_week"),
+    supabase.rpc("ins_refunds_month"),
   ]);
   const insights = {
     topDip: ((insTopRes.data as any[]) || [])[0] || null,
@@ -54,6 +64,14 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
     batches: (insBatchRes.data as any[]) || [],
     stale: (insStaleRes.data as any) || { count: 0, list: [] },
     trend: (insTrendRes.data as any) || null,
+    topSource: (insSrcRes.data as any) || null,
+    unassigned: (insUnassignedRes.data as any) || { count: 0, list: [] },
+    staleTickets: (insStaleTkRes.data as any) || { count: 0, list: [] },
+    pendingHandoffs: (insPendingRes.data as any) || { count: 0, list: [] },
+    specialtyDist: (insSpecRes.data as any[]) || [],
+    overdue: (insOverdueRes.data as any) || null,
+    expectedWeek: (insExpectedRes.data as any) || null,
+    refundsMonth: (insRefundsRes.data as any) || null,
   };
 
   const period = searchParams?.period || "all";
