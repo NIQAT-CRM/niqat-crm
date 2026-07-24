@@ -60,7 +60,7 @@ export default async function InsightsPage() {
   let peakPct = 0;
   if (peak?.distribution) {
     const dist = Array.isArray(peak.distribution) ? peak.distribution : Object.values(peak.distribution);
-    const tot = (dist as number[]).reduce((a, b) => a + (Number(b) || 0), 0);
+    const tot = (dist as any[]).reduce((a, b) => a + (Number(b?.count ?? b) || 0), 0);
     if (tot > 0) peakPct = Math.round(((peak.peak_count || 0) / tot) * 100);
   }
 
@@ -109,7 +109,7 @@ export default async function InsightsPage() {
               {trend.change_pct != null
                 ? <span style={{ color: Number(trend.change_pct) >= 0 ? "var(--green)" : "var(--red)", fontWeight: 700 }} className="num" dir="ltr">{Number(trend.change_pct) >= 0 ? "▲ +" : "▼ "}{trend.change_pct}%</span>
                 : <span>{t("insNoPrevPeriod")}</span>}
-              {trend.top_day && <span> · {t("insTopDay")}: {trend.top_day}</span>}
+              {trend.top_day && <span> · {t("insTopDay")}: {trend.top_day.date}</span>}
             </div>
           </div>
         )}
@@ -152,7 +152,7 @@ export default async function InsightsPage() {
             <span className="tag" style={{ background: "var(--green-soft)", color: "var(--green)" }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M22 7l-8.5 8.5-5-5L2 17" /></svg></span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="t num" dir="ltr">{t("insCollectionUp").replace("{pct}", String(trend.change_pct))}</div>
-              {trend.top_day && <div className="d">{t("insTopDay")}: {trend.top_day}</div>}
+              {trend.top_day && <div className="d">{t("insTopDay")}: {trend.top_day.date}</div>}
             </div>
             <Link href="/reports" className="ai-act">{t("insReport")}</Link>
           </div>
