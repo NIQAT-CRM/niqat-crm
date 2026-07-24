@@ -54,6 +54,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     adRes,
     { data: accredRows },
     { data: projRows },
+    { data: svcTypeRows },
+    { data: svcItemRows },
   ] = await Promise.all([
     supabase.from("profiles").select("can_see_finance,can_message,can_manage_batches,can_edit_customers").eq("id", user?.id || "").maybeSingle(),
     supabase.from("customers").select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,onhold_reason,created_at,terms_signed,terms_signed_at,handed_off").eq("id", params.id).maybeSingle(),
@@ -75,6 +77,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     supabase.from("customer_addons").select("id,type,name,amount,free,note,paid,shot_url,refunded").eq("customer_id", params.id).order("created_at"),
     supabase.from("batches").select("code").eq("kind", "accreditation").order("code"),
     supabase.from("batches").select("code").eq("kind", "project").order("code"),
+    supabase.from("service_types").select("slug,name,sort").eq("active", true).order("sort"),
+    supabase.from("batches").select("code,kind").neq("kind", "diploma").order("code"),
   ]);
 
   const canFinance = !!meProf?.can_see_finance;
@@ -164,6 +168,9 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   if (adRes.error) addonsMissing = true; else addons = await Promise.all((adRes.data || []).map(async (a: any) => ({ id: a.id, type: a.type, name: a.name, amount: Number(a.amount) || 0, free: !!a.free, note: a.note || "", paid: !!a.paid, refunded: !!a.refunded, shot_url: a.shot_url ? await receiptSignedUrl(supabase, a.shot_url) : "" })));
   const accredList = (accredRows || []).map((x: any) => x.code);
   const projList = (projRows || []).map((x: any) => x.code);
+  const serviceTypes = ((svcTypeRows as any[]) || []).map((t) => ({ slug: t.slug, name: t.name }));
+  const serviceItemsByType: Record<string, string[]> = {};
+  ((svcItemRows as any[]) || []).forEach((b) => { (serviceItemsByType[b.kind] = serviceItemsByType[b.kind] || []).push(b.code); });
 
   // ===== خدمات الريفند: دبلومات (بالمدفوع فعلاً) + إضافات مدفوعة =====
   let refundServices: any[] = [];
@@ -228,6 +235,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
             user={user} c={c} specs={specs || []}
             enrolls={enrolls} dipOpts={dipOpts} batchOpts={batchOpts} addons={addons}
             accredList={accredList} projList={projList} libNames={(libOpts || []).map((l: any) => l.name)}
+            serviceTypes={serviceTypes} serviceItemsByType={serviceItemsByType}
             handoff={handoff} accessItems={accessItems} accOpts={accOpts || []} libOpts={(libOpts || []).map((l: any) => ({ id: l.id, name: l.name }))}
             fuOpen={fuOpen} fuHistory={(fuAll || []).filter((x: any) => x.done).slice(0, 5)}
             finEnrollments={finEnrollments}

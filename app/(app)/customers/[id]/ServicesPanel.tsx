@@ -16,14 +16,16 @@ const SV_TYPES = [
   { key: "project", labelKey: "svTypeProject", color: "#0FA3A3", icon: "📋" },
   { key: "library", labelKey: "svTypeLibrary", color: "#E6A700", icon: "📚" },
 ];
-const stMeta = (k: string) => SV_TYPES.find((t) => t.key === k) || SV_TYPES[0];
+const stMeta = (k: string) => SV_TYPES.find((t) => t.key === k) || { key: k, labelKey: "serviceWord", color: "#2F6BFF", icon: "🔧" };
 
 export default function ServicesPanel({
-  customerId, meId, enrolls, dipOpts, batchOpts, addons, accreditations, projects, libraries, canFinance,
+  customerId, meId, enrolls, dipOpts, batchOpts, addons, accreditations, projects, libraries, canFinance, serviceTypes = [], serviceItemsByType = {},
 }: {
   customerId: string; meId: string; enrolls: Enr[];
   dipOpts: Opt[]; batchOpts: Opt[]; addons: Addon[];
   accreditations: string[]; projects: string[]; libraries: string[]; canFinance: boolean;
+  serviceTypes?: { slug: string; name: string }[];
+  serviceItemsByType?: Record<string, string[]>;
 }) {
   const tr = useT();
   const router = useRouter();
@@ -48,7 +50,14 @@ export default function ServicesPanel({
   const [moveGift, setMoveGift] = useState(false);
   const [moveFile, setMoveFile] = useState<File | null>(null);
 
-  const svNames = svType === "diploma" ? dipOpts : svType === "accred" ? accreditations.map((n) => ({ v: n, label: n })) : svType === "project" ? projects.map((n) => ({ v: n, label: n })) : libraries.map((n) => ({ v: n, label: n }));
+  const typeOpts = [
+    { key: "diploma", label: tr("svTypeDiploma"), icon: "📜" },
+    ...serviceTypes.map((t) => ({ key: t.slug, label: t.name, icon: "🔧" })),
+    { key: "library", label: tr("svTypeLibrary"), icon: "📚" },
+  ];
+  const svNames = svType === "diploma" ? dipOpts
+    : svType === "library" ? libraries.map((n) => ({ v: n, label: n }))
+    : (serviceItemsByType[svType] || []).map((n) => ({ v: n, label: n }));
   const batchLabel = (id: string) => batchOpts.find((b) => b.v === id)?.label || "—";
 
   // بند 5: ملء المبلغ تلقائياً من سعر الباتش بالعملة المختارة (قابل للتعديل)
@@ -176,7 +185,7 @@ export default function ServicesPanel({
           <div className="frow">
             <div className="fld"><label>{tr("serviceType")}</label>
               <select className="inp" value={svType} onChange={(e) => { setSvType(e.target.value); setSvName(""); setSvDip(""); }}>
-                {SV_TYPES.map((t) => <option key={t.key} value={t.key}>{t.icon} {tr(t.labelKey)}</option>)}
+                {typeOpts.map((t) => <option key={t.key} value={t.key}>{t.icon} {t.label}</option>)}
               </select></div>
             <div className="fld"><label>{svType === "diploma" ? tr("theDiploma") : tr("theItem")}</label>
               {svType === "diploma" ? (

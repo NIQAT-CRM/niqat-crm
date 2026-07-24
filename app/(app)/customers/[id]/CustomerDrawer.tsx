@@ -55,7 +55,7 @@ function QuickNote({ customerId, meId }: { customerId: string; meId: string }) {
 
 export default function CustomerDrawer(props: {
   user: any; c: any; specs: any[];
-  enrolls: any[]; dipOpts: any[]; batchOpts: any[]; addons: any[];
+  enrolls: any[]; dipOpts: any[]; batchOpts: any[]; serviceTypes?: any[]; serviceItemsByType?: any; addons: any[];
   accredList: string[]; projList: string[]; libNames: string[];
   handoff: any; accessItems: any[]; accOpts: any[]; libOpts: any[];
   fuOpen: any; fuHistory: any[];
@@ -173,7 +173,8 @@ export default function CustomerDrawer(props: {
           <ServicesPanel customerId={props.c.id} meId={props.user?.id || ""}
             enrolls={props.enrolls} dipOpts={props.dipOpts} batchOpts={props.batchOpts}
             addons={props.addons} accreditations={props.accredList}
-            projects={props.projList} libraries={props.libNames} canFinance={props.canFinance} />
+            projects={props.projList} libraries={props.libNames} canFinance={props.canFinance}
+            serviceTypes={props.serviceTypes || []} serviceItemsByType={props.serviceItemsByType || {}} />
         </div>
 
         <div id="panel-access">
