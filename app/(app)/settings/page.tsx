@@ -4,6 +4,7 @@ import WatiCard from "./WatiCard";
 import OptionsList from "./OptionsList";
 import SettingsTabs from "./SettingsTabs";
 import DefaultsCard from "./DefaultsCard";
+import CompanyCard from "./CompanyCard";
 import ServiceTypesManager from "./ServiceTypesManager";
 import AffiliatesManager from "../affiliates/AffiliatesManager";
 
@@ -25,9 +26,10 @@ export default async function Settings() {
   }
 
   // كله بالتوازي للأداء
-  const [watiRow, defRow, stRow, affRow, access, spec, dip, accred, proj, uni, lib, src] = await Promise.all([
+  const [watiRow, defRow, coRow, stRow, affRow, access, spec, dip, accred, proj, uni, lib, src] = await Promise.all([
     supabase.from("app_settings").select("value").eq("key", "wati").maybeSingle(),
     supabase.from("app_settings").select("value").eq("key", "defaults").maybeSingle(),
+    supabase.from("app_settings").select("value").eq("key", "company").maybeSingle(),
     supabase.from("service_types").select("id,slug,name,activation_label,sort").order("sort"),
     supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
     safeList(supabase, "access_options", "label"),
@@ -66,6 +68,7 @@ export default async function Settings() {
           <>
             <div className="settings-anim" style={{ marginBottom: 18 }}><WatiCard initial={wati} /></div>
             <DefaultsCard initial={(defRow.data?.value as any) || {}} />
+            <CompanyCard initial={(coRow.data?.value as any) || {}} />
           </>
         }
         catalog={
