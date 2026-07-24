@@ -5,9 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { getSegmentPhones } from "./segmentPhones";
 
-type Opt = { v: string; label: string; dip?: string };
+type Opt = { v: string; label: string; dip?: string; kind?: string };
 type Tpl = { id: string; name: string; body: string };
-type Filters = { q?: string; stage?: string; owner?: string; company?: string; dip?: string; spec?: string; batch?: string; pay?: string };
+type Filters = { q?: string; stage?: string; owner?: string; company?: string; dip?: string; spec?: string; batch?: string; svc?: string; svctype?: string; pay?: string };
 
 // فلتر متعدد الاختيار (checkboxes) — يخزّن القيم كـ CSV في الـ URL
 function MultiSel({ label, paramKey, opts }: { label: string; paramKey: string; opts: Opt[] }) {
@@ -62,10 +62,10 @@ function MultiSel({ label, paramKey, opts }: { label: string; paramKey: string; 
 }
 
 export default function CustomersTools({
-  stages, owners, diplomas, specialties, batches, companies, canFinance, canMessage,
+  stages, owners, diplomas, specialties, batches, services = [], companies, canFinance, canMessage,
   filters, templates, sortBy, sortDir, sortOpts,
 }: {
-  stages: Opt[]; owners: Opt[]; diplomas: Opt[]; specialties: Opt[]; batches: Opt[]; companies: Opt[];
+  stages: Opt[]; owners: Opt[]; diplomas: Opt[]; specialties: Opt[]; batches: Opt[]; services?: Opt[]; companies: Opt[];
   canFinance: boolean; canMessage: boolean; filters: Filters; templates: Tpl[];
   sortBy?: string; sortDir?: boolean; sortOpts?: Opt[];
 }) {
@@ -108,6 +108,8 @@ export default function CustomersTools({
   // فلترة الباتشات حسب الدبلومة/الدبلومات المختارة في الفلتر
   const selDips = (sp.get("dip") || "").split(",").map((x) => x.trim()).filter(Boolean);
   const visibleBatches = selDips.length ? batches.filter((b) => b.dip && selDips.includes(b.dip)) : batches;
+  const selSvcType = (sp.get("svctype") || "").split(",").map((x) => x.trim()).filter(Boolean);
+  const visibleServices = selSvcType.length ? services.filter((s) => s.kind && selSvcType.includes(s.kind)) : services;
 
   return (
     <>
@@ -116,6 +118,8 @@ export default function CustomersTools({
         <MultiSel label={tr("filterDip")} paramKey="dip" opts={diplomas} />
         {specialties.length > 0 && <MultiSel label={tr("filterSpec")} paramKey="spec" opts={specialties} />}
         <MultiSel label={tr("filterBatch")} paramKey="batch" opts={visibleBatches} />
+        {services.length > 0 && <MultiSel label={tr("filterServiceType")} paramKey="svctype" opts={[{ v: "accreditation", label: tr("tabAccreditations") }, { v: "project", label: tr("tabProjects") }]} />}
+        {services.length > 0 && <MultiSel label={tr("filterService")} paramKey="svc" opts={visibleServices} />}
         {owners.length > 0 && <MultiSel label={tr("filterOwner")} paramKey="owner" opts={owners} />}
         {companies.length > 0 && <MultiSel label={tr("filterCompany")} paramKey="company" opts={companies} />}
         {canFinance && <MultiSel label={tr("filterPay")} paramKey="pay" opts={[

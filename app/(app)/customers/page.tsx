@@ -17,7 +17,7 @@ const STAGES: Record<string, { labelKey: string; color: string }> = {
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-type SP = { q?: string; stage?: string; owner?: string; dip?: string; spec?: string; batch?: string; company?: string; pay?: string; page?: string };
+type SP = { q?: string; stage?: string; owner?: string; dip?: string; spec?: string; batch?: string; svc?: string; svctype?: string; company?: string; pay?: string; page?: string };
 
 const LIST_LIMIT = 50;
 
@@ -33,6 +33,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const companyVals = arr(f.company);
   const dipVals = arr(f.dip);
   const batchVals = arr(f.batch);
+  const svcVals = arr(f.svc);
   const payVals = arr(f.pay);
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -109,6 +110,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   }
   if (dipVals.length) restrictSets.push(await enrollCustomerIds("diploma_id", dipVals));
   if (batchVals.length) restrictSets.push(await enrollCustomerIds("batch_id", batchVals));
+  if (svcVals.length) restrictSets.push(await enrollCustomerIds("batch_id", svcVals));
 
   // فلاتر أعمدة العميل (بحث/مرحلة/تخصص/مسؤول/شركة) — تُطبّق في الفرعين
   const applyCols = (sub: any) => {
@@ -236,7 +238,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
 
   // بناء رابط مع الحفاظ على الفلاتر الحالية (مع تعديل مفاتيح محددة)
   const qs = (over: Partial<SP>) => {
-    const base: Record<string, string | undefined> = { q, stage: f.stage, owner: f.owner, company: f.company, dip: f.dip, batch: f.batch, pay: f.pay, page: f.page, ...over };
+    const base: Record<string, string | undefined> = { q, stage: f.stage, owner: f.owner, company: f.company, dip: f.dip, batch: f.batch, svc: f.svc, svctype: f.svctype, pay: f.pay, page: f.page, ...over };
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(base)) if (v) p.set(k, String(v));
     const s = p.toString();
@@ -260,7 +262,9 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const companies = Array.from(new Set(customers.map((c) => c.company).filter(Boolean))).map((c) => ({ v: c as string, label: c as string }));
   const dipOpts = ((dipRes.data as any[]) || []).map((d) => ({ v: d.id, label: d.name_ar }));
   const spOpts = ((spRes.data as any[]) || []).map((s) => ({ v: s.id, label: s.name_ar }));
-  const btOpts = ((btRes.data as any[]) || []).map((b) => ({ v: b.id, label: (b.kind && b.kind !== "diploma") ? (b.code + " (" + tr("serviceWord") + ")") : b.code, dip: b.diploma_id || "" }));
+  const allBt = (btRes.data as any[]) || [];
+  const btOpts = allBt.filter((b) => (b.kind || "diploma") === "diploma").map((b) => ({ v: b.id, label: b.code, dip: b.diploma_id || "" }));
+  const svcOpts = allBt.filter((b) => b.kind && b.kind !== "diploma").map((b) => ({ v: b.id, label: b.code, kind: b.kind }));
 
   // قوالب الإرسال الجماعي
   const { data: tplRows } = await supabase.from("wa_templates").select("id,name,body").order("created_at");
@@ -294,9 +298,9 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         </div>
       </div>
 
-      <CustomersTools stages={STAGE_OPTS} owners={owners} diplomas={dipOpts} specialties={spOpts} batches={btOpts}
+      <CustomersTools stages={STAGE_OPTS} owners={owners} diplomas={dipOpts} specialties={spOpts} batches={btOpts} services={svcOpts}
         companies={companies} canFinance={canFinance} canMessage={canMessage}
-        filters={{ q, stage: f.stage, owner: f.owner, company: f.company, dip: f.dip, spec: f.spec, batch: f.batch, pay: f.pay }}
+        filters={{ q, stage: f.stage, owner: f.owner, company: f.company, dip: f.dip, spec: f.spec, batch: f.batch, svc: f.svc, svctype: f.svctype, pay: f.pay }}
         templates={(tplRows as any) || []} />
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "4px 0 14px" }}>
@@ -305,7 +309,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         {canFinance && chip(tr("overdueWord"), "pay", "over", payVals.includes("over") || payVals.includes("overdue"))}
       </div>
 
-      <BulkSelectProvider filter={{ q, stage: f.stage, owner: f.owner, dip: f.dip, spec: f.spec, batch: f.batch, company: f.company, pay: f.pay }}>
+      <BulkSelectProvider filter={{ q, stage: f.stage, owner: f.owner, dip: f.dip, spec: f.spec, batch: f.batch, svc: f.svc, company: f.company, pay: f.pay }}>
         <BulkBar
           owners={owners.map((o) => ({ id: o.v, name: o.label }))}
           stages={STAGE_OPTS.map((s) => ({ key: s.v, label: s.label }))}

@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export type CustFilterSP = {
   q?: string; stage?: string; owner?: string; dip?: string;
-  spec?: string; batch?: string; company?: string; pay?: string;
+  spec?: string; batch?: string; svc?: string; company?: string; pay?: string;
 };
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -16,6 +16,7 @@ export async function filteredCustomerIds(sp: CustFilterSP): Promise<string[]> {
   const companyVals = arr(sp.company);
   const dipVals = arr(sp.dip);
   const batchVals = arr(sp.batch);
+  const svcVals = arr(sp.svc);
   const payVals = arr(sp.pay);
 
   const supabase = createClient();
@@ -79,6 +80,7 @@ export async function filteredCustomerIds(sp: CustFilterSP): Promise<string[]> {
   }
   if (dipVals.length) restrictSets.push(await enrollCustomerIds("diploma_id", dipVals));
   if (batchVals.length) restrictSets.push(await enrollCustomerIds("batch_id", batchVals));
+  if (svcVals.length) restrictSets.push(await enrollCustomerIds("batch_id", svcVals));
 
   const applyCols = (sub: any) => {
     if (q) sub = sub.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
