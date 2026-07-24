@@ -25,7 +25,7 @@ export default function ServicesPanel({
   dipOpts: Opt[]; batchOpts: Opt[]; addons: Addon[];
   accreditations: string[]; projects: string[]; libraries: string[]; canFinance: boolean;
   serviceTypes?: { slug: string; name: string }[];
-  serviceItemsByType?: Record<string, string[]>;
+  serviceItemsByType?: Record<string, { code: string; price_egp: number; price_usd: number }[]>;
 }) {
   const tr = useT();
   const router = useRouter();
@@ -57,7 +57,7 @@ export default function ServicesPanel({
   ];
   const svNames = svType === "diploma" ? dipOpts
     : svType === "library" ? libraries.map((n) => ({ v: n, label: n }))
-    : (serviceItemsByType[svType] || []).map((n) => ({ v: n, label: n }));
+    : (serviceItemsByType[svType] || []).map((n) => ({ v: n.code, label: n.code }));
   const batchLabel = (id: string) => batchOpts.find((b) => b.v === id)?.label || "—";
 
   // بند 5: ملء المبلغ تلقائياً من سعر الباتش بالعملة المختارة (قابل للتعديل)
@@ -68,6 +68,15 @@ export default function ServicesPanel({
     const p = svCurrency === "USD" ? Number(b.price_usd) : Number(b.price_egp);
     if (p > 0) setSvAmount(String(p));
   }, [svBatch, svCurrency]);
+
+  // ملء المبلغ تلقائياً من سعر عنصر الخدمة المختار
+  useEffect(() => {
+    if (svType === "diploma" || svType === "library" || !svName) return;
+    const it = (serviceItemsByType[svType] || []).find((x) => x.code === svName);
+    if (!it) return;
+    const p = svCurrency === "USD" ? Number(it.price_usd) : Number(it.price_egp);
+    if (p > 0) setSvAmount(String(p));
+  }, [svName, svType, svCurrency]);
 
   async function logAudit(action: string, detail: string) {
     await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action, detail });

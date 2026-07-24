@@ -78,7 +78,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     supabase.from("batches").select("code").eq("kind", "accreditation").order("code"),
     supabase.from("batches").select("code").eq("kind", "project").order("code"),
     supabase.from("service_types").select("slug,name,sort").eq("active", true).order("sort"),
-    supabase.from("batches").select("code,kind").neq("kind", "diploma").order("code"),
+    supabase.from("batches").select("code,kind,price_egp,price_usd").neq("kind", "diploma").order("code"),
   ]);
 
   const canFinance = !!meProf?.can_see_finance;
@@ -169,8 +169,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const accredList = (accredRows || []).map((x: any) => x.code);
   const projList = (projRows || []).map((x: any) => x.code);
   const serviceTypes = ((svcTypeRows as any[]) || []).map((t) => ({ slug: t.slug, name: t.name }));
-  const serviceItemsByType: Record<string, string[]> = {};
-  ((svcItemRows as any[]) || []).forEach((b) => { (serviceItemsByType[b.kind] = serviceItemsByType[b.kind] || []).push(b.code); });
+  const serviceItemsByType: Record<string, { code: string; price_egp: number; price_usd: number }[]> = {};
+  ((svcItemRows as any[]) || []).forEach((b) => { (serviceItemsByType[b.kind] = serviceItemsByType[b.kind] || []).push({ code: b.code, price_egp: Number(b.price_egp) || 0, price_usd: Number(b.price_usd) || 0 }); });
 
   // ===== خدمات الريفند: دبلومات (بالمدفوع فعلاً) + إضافات مدفوعة =====
   let refundServices: any[] = [];
