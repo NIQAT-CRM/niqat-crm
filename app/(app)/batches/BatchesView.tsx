@@ -18,11 +18,12 @@ function statusMeta(tr: (k: string) => string, status: string) {
   return { l: tr("batchEnded"), c: "#94A2BB" };
 }
 
-export default function BatchesView({ batches, canManage, diplomaOpts, diplomas = [] }: {
+export default function BatchesView({ batches, canManage, diplomaOpts, diplomas = [], serviceTypes = [] }: {
   batches: B[]; canManage: boolean; diplomaOpts: Opt[]; diplomas?: { id: string; name: string }[];
+  serviceTypes?: { slug: string; name: string }[];
 }) {
   const tr = useT();
-  const [tab, setTab] = useState<"diploma" | "accreditation" | "project">("diploma");
+  const [tab, setTab] = useState<string>("diploma");
   const [dip, setDip] = useState("");
   const [status, setStatus] = useState("");
   const [q, setQ] = useState("");
@@ -44,7 +45,7 @@ export default function BatchesView({ batches, canManage, diplomaOpts, diplomas 
     <div>
       {/* تبويبات: باتشات الدبلومات / الاعتمادات / المشاريع */}
       <div style={{ display: "flex", gap: 6, marginBottom: 16, borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
-        {([["diploma", tr("tabDiplomaBatches")], ["accreditation", tr("tabAccreditations")], ["project", tr("tabProjects")]] as const).map(([k, lbl]) => (
+        {([["diploma", tr("tabDiplomaBatches")], ...serviceTypes.map((t) => [t.slug, t.name] as [string, string])]).map(([k, lbl]) => (
           <button key={k} type="button" onClick={() => { setTab(k as any); setDip(""); }}
             style={{
               padding: "10px 16px", fontSize: 13.5, fontWeight: 700, background: "none", position: "relative",

@@ -140,11 +140,12 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const offset = (page - 1) * LIST_LIMIT;
 
   // البيانات المساعدة (صغيرة)
-  const [profRes, dipRes, spRes, btRes] = await Promise.all([
+  const [profRes, dipRes, spRes, btRes, stRes] = await Promise.all([
     supabase.from("profiles").select("id,full_name"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
     supabase.from("specialties").select("id,name_ar").order("name_ar"),
     supabase.from("batches").select("id,code,diploma_id,kind").order("start_date", { ascending: false }),
+    supabase.from("service_types").select("slug,name,sort").eq("active", true).order("sort"),
   ]);
 
   let customers: any[] = [];
@@ -265,6 +266,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const allBt = (btRes.data as any[]) || [];
   const btOpts = allBt.filter((b) => (b.kind || "diploma") === "diploma").map((b) => ({ v: b.id, label: b.code, dip: b.diploma_id || "" }));
   const svcOpts = allBt.filter((b) => b.kind && b.kind !== "diploma").map((b) => ({ v: b.id, label: b.code, kind: b.kind }));
+  const svcTypeOpts = ((stRes.data as any[]) || []).map((t) => ({ v: t.slug, label: t.name }));
 
   // قوالب الإرسال الجماعي
   const { data: tplRows } = await supabase.from("wa_templates").select("id,name,body").order("created_at");
@@ -298,7 +300,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         </div>
       </div>
 
-      <CustomersTools stages={STAGE_OPTS} owners={owners} diplomas={dipOpts} specialties={spOpts} batches={btOpts} services={svcOpts}
+      <CustomersTools stages={STAGE_OPTS} owners={owners} diplomas={dipOpts} specialties={spOpts} batches={btOpts} services={svcOpts} serviceTypes={svcTypeOpts}
         companies={companies} canFinance={canFinance} canMessage={canMessage}
         filters={{ q, stage: f.stage, owner: f.owner, company: f.company, dip: f.dip, spec: f.spec, batch: f.batch, svc: f.svc, svctype: f.svctype, pay: f.pay }}
         templates={(tplRows as any) || []} />

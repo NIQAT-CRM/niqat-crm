@@ -51,14 +51,14 @@ function Head({ icon, tint, title }: { icon: string; tint: string; title: string
 }
 
 export default function NewCustomerForm({
-  specialties, diplomas, batches, services = [], meId, affiliates = [],
-}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[] }) {
+  specialties, diplomas, batches, services = [], meId, affiliates = [], serviceTypes = [],
+}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[]; serviceTypes?: { slug: string; name: string; activation_label: string }[] }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [subMode, setSubMode] = useState<"diploma" | "service">("diploma");
   const [serviceId, setServiceId] = useState("");
-  const [serviceKind, setServiceKind] = useState<"accreditation" | "project">("accreditation");
+  const [serviceKind, setServiceKind] = useState<string>(serviceTypes[0]?.slug || "accreditation");
   const [f, setF] = useState({
     name: "", phone1: "", phone2: "", email: "", company: "", affiliate_code: "",
     specialty_id: "", stage: "interested", residency: "", grad_year: "", source: "",
@@ -332,9 +332,8 @@ export default function NewCustomerForm({
 
   // تحويل خدمة (اعتماد/مشروع) للدعم مباشرة بالمسمّى الصح
   async function directServiceHandoff(cid: string) {
-    const label = serviceKind === "accreditation"
-      ? `${tr("accExtractAccred")} ${svcName}`
-      : `${tr("accRegOpenProject")} ${svcName}`;
+    const actLbl = serviceTypes.find((t) => t.slug === serviceKind)?.activation_label || tr("activatePrefix");
+    const label = `${actLbl} ${svcName}`;
     const { data: existingHo } = await supabase.from("handoffs").select("id").eq("customer_id", cid).limit(1).maybeSingle();
     let hoId = (existingHo as any)?.id as string | undefined;
     if (!hoId) {
@@ -540,11 +539,10 @@ export default function NewCustomerForm({
             ) : (
             <div className="frow">
               <div className="fld"><label>{tr("serviceType")}</label>
-                <select className="inp" value={serviceKind} onChange={(e) => { setServiceKind(e.target.value as any); setServiceId(""); }}>
-                  <option value="accreditation">{tr("tabAccreditations")}</option>
-                  <option value="project">{tr("tabProjects")}</option>
+                <select className="inp" value={serviceKind} onChange={(e) => { setServiceKind(e.target.value); setServiceId(""); }}>
+                  {serviceTypes.map((t) => <option key={t.slug} value={t.slug}>{t.name}</option>)}
                 </select></div>
-              <div className="fld"><label>{serviceKind === "accreditation" ? tr("tabAccreditations") : tr("tabProjects")}</label>
+              <div className="fld"><label>{serviceTypes.find((t) => t.slug === serviceKind)?.name || tr("serviceType")}</label>
                 <select className="inp" value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
                   <option value="">{tr("chooseService")}</option>
                   {services.filter((x) => (x as any).kind === serviceKind).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}

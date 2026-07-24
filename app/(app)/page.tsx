@@ -246,9 +246,13 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
     .filter((b: any) => b.kind && b.kind !== "diploma")
     .map((b: any) => ({ code: b.code, kind: b.kind as string, n: batchCountMap.get(b.id) || 0 }))
     .sort((a: any, b: any) => b.n - a.n);
-  const svcAccred = servicesList.filter((x) => x.kind === "accreditation");
-  const svcProject = servicesList.filter((x) => x.kind === "project");
   const svcTotal = servicesList.reduce((t, x) => t + x.n, 0);
+  const { data: dashSvcTypes } = await supabase.from("service_types").select("slug,name,sort").eq("active", true).order("sort");
+  const DTINT = ["#F08A24", "#2F6BFF", "#18A957", "#9B5DE5", "#E5484D", "#0EA5B7"];
+  const svcGroups = ((dashSvcTypes as any[]) || []).map((t, i) => ({
+    title: t.name as string, tint: DTINT[i % DTINT.length],
+    list: servicesList.filter((x) => x.kind === t.slug),
+  }));
 
   // اتجاه شهري: عملاء جدد هذا الشهر مقابل الشهر الماضي (count بدون سقف)
   const nowD = new Date();
@@ -524,7 +528,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
       {/* ===== الخدمات (اعتمادات/مشاريع) — كروت ورسوم زي الدبلومات ===== */}
       <div className="sh6"><span className="tick" /><h2>{tr("servicesTitle")}</h2><span className="meta">{svcTotal}</span></div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 16, marginBottom: 18 }}>
-        {([[tr("tabAccreditations"), svcAccred, "#F08A24"], [tr("tabProjects"), svcProject, "#2F6BFF"]] as const).map(([title, list, tint]) => (
+        {svcGroups.map(({ title, list, tint }) => (
           <div key={title} className="card6">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{title}</h3>

@@ -62,10 +62,10 @@ function MultiSel({ label, paramKey, opts }: { label: string; paramKey: string; 
 }
 
 export default function CustomersTools({
-  stages, owners, diplomas, specialties, batches, services = [], companies, canFinance, canMessage,
+  stages, owners, diplomas, specialties, batches, services = [], serviceTypes = [], companies, canFinance, canMessage,
   filters, templates, sortBy, sortDir, sortOpts,
 }: {
-  stages: Opt[]; owners: Opt[]; diplomas: Opt[]; specialties: Opt[]; batches: Opt[]; services?: Opt[]; companies: Opt[];
+  stages: Opt[]; owners: Opt[]; diplomas: Opt[]; specialties: Opt[]; batches: Opt[]; services?: Opt[]; serviceTypes?: { v: string; label: string }[]; companies: Opt[];
   canFinance: boolean; canMessage: boolean; filters: Filters; templates: Tpl[];
   sortBy?: string; sortDir?: boolean; sortOpts?: Opt[];
 }) {
@@ -118,7 +118,7 @@ export default function CustomersTools({
         <MultiSel label={tr("filterDip")} paramKey="dip" opts={diplomas} />
         {specialties.length > 0 && <MultiSel label={tr("filterSpec")} paramKey="spec" opts={specialties} />}
         <MultiSel label={tr("filterBatch")} paramKey="batch" opts={visibleBatches} />
-        {services.length > 0 && <MultiSel label={tr("filterServiceType")} paramKey="svctype" opts={[{ v: "accreditation", label: tr("tabAccreditations") }, { v: "project", label: tr("tabProjects") }]} />}
+        {serviceTypes.length > 0 && <MultiSel label={tr("filterServiceType")} paramKey="svctype" opts={serviceTypes} />}
         {services.length > 0 && <MultiSel label={tr("filterService")} paramKey="svc" opts={visibleServices} />}
         {owners.length > 0 && <MultiSel label={tr("filterOwner")} paramKey="owner" opts={owners} />}
         {companies.length > 0 && <MultiSel label={tr("filterCompany")} paramKey="company" opts={companies} />}

@@ -13,11 +13,13 @@ export default async function Batches() {
     bFull,
     bd,
     { data: allDips },
+    { data: svcTypes },
   ] = await Promise.all([
     supabase.from("profiles").select("can_manage_batches").eq("id", user?.id || "").maybeSingle(),
     supabase.from("batches").select("id,code,status,start_date,end_date,capacity,notes,price,currency,price_egp,price_usd,kind").order("created_at", { ascending: false }),
     supabase.from("batches").select("id,diploma_id"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
+    supabase.from("service_types").select("slug,name,sort").eq("active", true).order("sort"),
   ]);
   const canManage = !!meB?.can_manage_batches;
 
@@ -77,7 +79,8 @@ export default async function Batches() {
         </div>
       </div>
       <BatchesView batches={viewData} canManage={canManage} diplomaOpts={diplomaOpts}
-        diplomas={(allDips || []).map((d: any) => ({ id: d.id, name: d.name_ar }))} />
+        diplomas={(allDips || []).map((d: any) => ({ id: d.id, name: d.name_ar }))}
+        serviceTypes={((svcTypes as any[]) || []).map((t) => ({ slug: t.slug, name: t.name }))} />
     </div>
   );
 }
