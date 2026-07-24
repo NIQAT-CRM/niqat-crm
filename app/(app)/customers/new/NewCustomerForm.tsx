@@ -51,8 +51,8 @@ function Head({ icon, tint, title }: { icon: string; tint: string; title: string
 }
 
 export default function NewCustomerForm({
-  specialties, diplomas, batches, services = [], meId, affiliates = [], serviceTypes = [],
-}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[]; serviceTypes?: { slug: string; name: string; activation_label: string }[] }) {
+  specialties, diplomas, batches, services = [], meId, affiliates = [], serviceTypes = [], sources = [],
+}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[]; serviceTypes?: { slug: string; name: string; activation_label: string }[]; sources?: string[] }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
@@ -484,7 +484,10 @@ export default function NewCustomerForm({
             </div>
             <div className="frow">{I(tr("residence"), "residency")}{I(tr("gradYear"), "grad_year", true)}</div>
             <div className="frow">
-              {I(tr("source"), "source")}
+              <div className="fld"><label>{tr("source")}</label>
+                <input className="inp" list="src-list" value={f.source} onChange={(e) => set("source", e.target.value)} placeholder={tr("sourcePlaceholder")} />
+                <datalist id="src-list">{sources.map((x) => <option key={x} value={x} />)}</datalist>
+              </div>
               <div className="fld"><label>{tr("followUpDate")}</label>
                 <input className="inp num" type="datetime-local" dir="ltr" value={f.follow} onChange={(e) => set("follow", e.target.value)} /></div>
             </div>
