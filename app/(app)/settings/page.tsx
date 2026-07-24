@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import WatiCard from "./WatiCard";
 import OptionsList from "./OptionsList";
+import ServiceTypesManager from "./ServiceTypesManager";
 import AffiliatesManager from "../affiliates/AffiliatesManager";
 
 export const dynamic = "force-dynamic";
@@ -22,8 +23,9 @@ export default async function Settings() {
   }
 
   // كله بالتوازي للأداء
-  const [watiRow, affRow, access, spec, dip, accred, proj, uni, lib] = await Promise.all([
+  const [watiRow, stRow, affRow, access, spec, dip, accred, proj, uni, lib] = await Promise.all([
     supabase.from("app_settings").select("value").eq("key", "wati").maybeSingle(),
+    supabase.from("service_types").select("id,slug,name,activation_label,sort").order("sort"),
     supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
     safeList(supabase, "access_options", "label"),
     safeList(supabase, "specialties", "name_ar"),
@@ -55,6 +57,8 @@ export default async function Settings() {
       )}
 
       <div className="settings-anim" style={{ marginBottom: 18 }}><WatiCard initial={wati} /></div>
+
+      <ServiceTypesManager initial={(stRow.data as any[]) || []} />
 
       <div className="sec-t" style={{ marginTop: 8, marginBottom: 4 }}>{tr("manageLists")}</div>
       <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>{tr("manageListsHint")} {tr("servicesInBatchesHint")}</p>
