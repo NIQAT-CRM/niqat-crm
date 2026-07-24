@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import WatiCard from "./WatiCard";
 import OptionsList from "./OptionsList";
+import SettingsTabs from "./SettingsTabs";
 import ServiceTypesManager from "./ServiceTypesManager";
 import AffiliatesManager from "../affiliates/AffiliatesManager";
 
@@ -23,7 +24,7 @@ export default async function Settings() {
   }
 
   // كله بالتوازي للأداء
-  const [watiRow, stRow, affRow, access, spec, dip, accred, proj, uni, lib] = await Promise.all([
+  const [watiRow, stRow, affRow, access, spec, dip, accred, proj, uni, lib, src] = await Promise.all([
     supabase.from("app_settings").select("value").eq("key", "wati").maybeSingle(),
     supabase.from("service_types").select("id,slug,name,activation_label,sort").order("sort"),
     supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
@@ -33,6 +34,7 @@ export default async function Settings() {
     safeList(supabase, "accreditations", "name"),
     safeList(supabase, "projects", "name"),
     safeList(supabase, "universities", "name"),
+    safeList(supabase, "sources", "name"),
     safeList(supabase, "libraries", "name"),
   ]);
 
@@ -44,6 +46,7 @@ export default async function Settings() {
     sender_support: wRaw.sender_support || "",
   };
   const affiliates = Array.isArray(affRow.data?.value) ? (affRow.data!.value as any[]) : [];
+  const srcItems = src.items;
   const tablesMissing = accred.missing || proj.missing || uni.missing;
 
   return (
@@ -56,25 +59,34 @@ export default async function Settings() {
         </div>
       )}
 
-      <div className="settings-anim" style={{ marginBottom: 18 }}><WatiCard initial={wati} /></div>
-
-      <ServiceTypesManager initial={(stRow.data as any[]) || []} />
-
-      <div className="sec-t" style={{ marginTop: 8, marginBottom: 4 }}>{tr("manageLists")}</div>
-      <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>{tr("manageListsHint")} {tr("servicesInBatchesHint")}</p>
-
-      <div className="settings-grid">
-        <OptionsList title={tr("manageDiplomas")} hint={tr("manageDiplomasHint")} table="diplomas" labelCol="name_ar" initial={dip.items} />
-        <OptionsList title={tr("manageSpecialties")} hint={tr("manageSpecialtiesHint")} table="specialties" labelCol="name_ar" initial={spec.items} />
-        <OptionsList title={tr("manageAccessOptions")} hint={tr("manageAccessOptionsHint")} table="access_options" labelCol="label" initial={access.items} />
-        <OptionsList title={tr("manageUniversities")} hint={tr("manageUniversitiesHint")} table="universities" labelCol="name" initial={uni.items} />
-      </div>
-
-      <div className="sec-t" style={{ marginTop: 22, marginBottom: 4 }}>{tr("manageAff")}</div>
-      <div className="card settings-anim" style={{ padding: 18 }}>
-        <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>{tr("affiliatesManagerHint")}</p>
-        <AffiliatesManager initial={affiliates} />
-      </div>
+      <SettingsTabs
+        integrations={
+          <div className="settings-anim"><WatiCard initial={wati} /></div>
+        }
+        catalog={
+          <>
+            <ServiceTypesManager initial={(stRow.data as any[]) || []} />
+            <div className="sec-t" style={{ marginTop: 8, marginBottom: 4 }}>{tr("manageLists")}</div>
+            <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>{tr("manageListsHint")} {tr("servicesInBatchesHint")}</p>
+            <div className="settings-grid">
+              <OptionsList title={tr("manageDiplomas")} hint={tr("manageDiplomasHint")} table="diplomas" labelCol="name_ar" initial={dip.items} />
+              <OptionsList title={tr("manageSpecialties")} hint={tr("manageSpecialtiesHint")} table="specialties" labelCol="name_ar" initial={spec.items} />
+              <OptionsList title={tr("manageAccessOptions")} hint={tr("manageAccessOptionsHint")} table="access_options" labelCol="label" initial={access.items} />
+              <OptionsList title={tr("manageSources")} hint={tr("manageSourcesHint")} table="sources" labelCol="name" initial={srcItems} />
+              <OptionsList title={tr("manageUniversities")} hint={tr("manageUniversitiesHint")} table="universities" labelCol="name" initial={uni.items} />
+            </div>
+          </>
+        }
+        team={
+          <>
+            <div className="sec-t" style={{ marginTop: 4, marginBottom: 4 }}>{tr("manageAff")}</div>
+            <div className="card settings-anim" style={{ padding: 18 }}>
+              <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>{tr("affiliatesManagerHint")}</p>
+              <AffiliatesManager initial={affiliates} />
+            </div>
+          </>
+        }
+      />
     </div>
   );
 }
