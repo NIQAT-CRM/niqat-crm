@@ -53,7 +53,6 @@ export default function ServicesPanel({
   const typeOpts = [
     { key: "diploma", label: tr("svTypeDiploma"), icon: "📜" },
     ...serviceTypes.map((t) => ({ key: t.slug, label: t.name, icon: "🔧" })),
-    { key: "library", label: tr("svTypeLibrary"), icon: "📚" },
   ];
   const svNames = svType === "diploma" ? dipOpts
     : svType === "library" ? libraries.map((n) => ({ v: n, label: n }))
