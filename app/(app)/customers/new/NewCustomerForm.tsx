@@ -58,6 +58,7 @@ export default function NewCustomerForm({
   const supabase = createClient();
   const [subMode, setSubMode] = useState<"diploma" | "service">("diploma");
   const [serviceId, setServiceId] = useState("");
+  const [serviceKind, setServiceKind] = useState<"accreditation" | "project">("accreditation");
   const [f, setF] = useState({
     name: "", phone1: "", phone2: "", email: "", company: "", affiliate_code: "",
     specialty_id: "", stage: "interested", residency: "", grad_year: "", source: "",
@@ -138,7 +139,7 @@ export default function NewCustomerForm({
   const svcName = services.find((x) => x.id === serviceId)?.name || tr("serviceWord");
   // بند 2: قسم الاشتراك يظهر لما المرحلة (عرض سعر/تفاوض/مسجّل) أو بزر يدوي
   const stageOpensSub = f.stage === "enrolled";
-  const showSub = stageOpensSub || showSubManual;
+  const showSub = true;
   // الاسم: لو إنجليزي خليه CAPITAL تلقائيًا (العربي زي ما هو)
   // الاسم إنجليزي فقط: يشيل أي حروف مش لاتينية (بما فيها العربي) ويحوّل كابيتال أوتوماتيك
   const setName = (v: string) => set("name", v.replace(/[^A-Za-z\s.'-]/g, "").toUpperCase());
@@ -309,6 +310,11 @@ export default function NewCustomerForm({
       (net > 0 && ((payMode === "cash" && cashPaidNow) || (payMode === "installment" && firstCoversAll)))
     );
 
+    if (paidInFull && subMode === "service") {
+      // خدمة: تحويل مباشر للدعم باسم استخراج الاعتماد / التسجيل وفتح المشروع — من غير مودال مكتبة
+      await directServiceHandoff(cid);
+      return;
+    }
     if (paidInFull) {
       // العميل اتسجّل بالفعل فوق. نفتح مودال التفعيل. لو اتقفل من غير تأكيد → يفضل بدون handoff.
       const dipName = subMode === "diploma" ? (diplomas.find((d) => d.id === f.diploma_id)?.name || tr("theDiploma")) : svcName;
@@ -321,6 +327,28 @@ export default function NewCustomerForm({
     }
 
     toast(tr("customerRegistered"));
+    router.push(`/customers/${cid}`); router.refresh();
+  }
+
+  // تحويل خدمة (اعتماد/مشروع) للدعم مباشرة بالمسمّى الصح
+  async function directServiceHandoff(cid: string) {
+    const label = serviceKind === "accreditation"
+      ? `${tr("accExtractAccred")} ${svcName}`
+      : `${tr("accRegOpenProject")} ${svcName}`;
+    const { data: existingHo } = await supabase.from("handoffs").select("id").eq("customer_id", cid).limit(1).maybeSingle();
+    let hoId = (existingHo as any)?.id as string | undefined;
+    if (!hoId) {
+      const { data: h, error } = await supabase.from("handoffs").insert({ customer_id: cid, created_by: meId || null, note: "", status: "pending" }).select("id").single();
+      if (error || !h) { toast(tr("createHandoffFailed") + (error?.message || "")); router.push(`/customers/${cid}`); return; }
+      hoId = (h as any).id;
+    } else {
+      await supabase.from("handoffs").update({ status: "pending" }).eq("id", hoId);
+    }
+    const { data: cur } = await supabase.from("handoff_items").select("label").eq("handoff_id", hoId);
+    const already = new Set(((cur as any[]) || []).map((x) => x.label));
+    if (!already.has(label)) await supabase.from("handoff_items").insert({ handoff_id: hoId, label, done: false });
+    await supabase.from("audit_log").insert({ customer_id: cid, actor_id: meId || null, action: "handoff_requested", detail: label });
+    toast(tr("sentToActivation"));
     router.push(`/customers/${cid}`); router.refresh();
   }
 
@@ -510,16 +538,18 @@ export default function NewCustomerForm({
                 </select></div>
             </div>
             ) : (
-            <div className="fld"><label>{tr("chooseService")}</label>
-              <select className="inp" value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
-                <option value="">{tr("chooseService")}</option>
-                <optgroup label={tr("tabAccreditations")}>
-                  {services.filter((x) => (x as any).kind === "accreditation").map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-                </optgroup>
-                <optgroup label={tr("tabProjects")}>
-                  {services.filter((x) => (x as any).kind === "project").map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-                </optgroup>
-              </select></div>
+            <div className="frow">
+              <div className="fld"><label>{tr("serviceType")}</label>
+                <select className="inp" value={serviceKind} onChange={(e) => { setServiceKind(e.target.value as any); setServiceId(""); }}>
+                  <option value="accreditation">{tr("tabAccreditations")}</option>
+                  <option value="project">{tr("tabProjects")}</option>
+                </select></div>
+              <div className="fld"><label>{serviceKind === "accreditation" ? tr("tabAccreditations") : tr("tabProjects")}</label>
+                <select className="inp" value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
+                  <option value="">{tr("chooseService")}</option>
+                  {services.filter((x) => (x as any).kind === serviceKind).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                </select></div>
+            </div>
             )}
 
             <label className="chkrow"><input type="checkbox" checked={f.free} onChange={(e) => set("free", e.target.checked)} /> {tr("giftFree")}</label>
