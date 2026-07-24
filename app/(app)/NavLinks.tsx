@@ -56,10 +56,9 @@ export default function NavLinks(p: Perms) {
   teams.push({ href: "/archive", key: "archive", tk: "archive" });
   if (p.canReports) teams.push({ href: "/reports", key: "report", tk: "reports" });
 
+  // المستخدمون + سجل الشات بقوا تبويبات جوّه الإعدادات — مبقاش فيه صفحات منفصلة
   const admin: Item[] = [];
-  if (p.canUsers) admin.push({ href: "/users", key: "settings", tk: "users" });
-  if (p.canSettings) admin.push({ href: "/settings", key: "cog", tk: "settings" });
-  if (p.isAdmin) admin.push({ href: "/admin/chat-log", key: "chat", tk: "chatLogNav" });
+  if (p.canSettings || p.canUsers || p.isAdmin) admin.push({ href: "/settings", key: "cog", tk: "settings" });
 
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
