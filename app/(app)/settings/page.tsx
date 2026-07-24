@@ -54,21 +54,12 @@ export default async function Settings() {
         </div>
       )}
 
-      <div className="settings-top">
-        <div className="settings-anim"><WatiCard initial={wati} /></div>
-        <div className="card settings-anim" style={{ padding: 18, animationDelay: ".05s" }}>
-          <div className="card-h" style={{ padding: 0, border: "none" }}><h3>{tr("manageAff")}</h3></div>
-          <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "2px 0 14px" }}>
-            {tr("affiliatesManagerHint")}
-          </p>
-          <AffiliatesManager initial={affiliates} />
-        </div>
-      </div>
+      <div className="settings-anim" style={{ marginBottom: 18 }}><WatiCard initial={wati} /></div>
 
-      <div className="sec-t" style={{ marginTop: 22, marginBottom: 4 }}>{tr("manageLists")}</div>
+      <div className="sec-t" style={{ marginTop: 8, marginBottom: 4 }}>{tr("manageLists")}</div>
       <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>{tr("manageListsHint")}</p>
 
-      <div className="settings-cols">
+      <div className="settings-grid">
         <OptionsList title={tr("manageDiplomas")} hint={tr("manageDiplomasHint")} table="diplomas" labelCol="name_ar" initial={dip.items} />
         <OptionsList title={tr("manageSpecialties")} hint={tr("manageSpecialtiesHint")} table="specialties" labelCol="name_ar" initial={spec.items} />
         <OptionsList title={tr("manageAccessOptions")} hint={tr("manageAccessOptionsHint")} table="access_options" labelCol="label" initial={access.items} />
@@ -76,6 +67,12 @@ export default async function Settings() {
         <OptionsList title={tr("manageProjects")} hint={tr("manageProjectsHint")} table="projects" labelCol="name" initial={proj.items} />
         <OptionsList title={tr("manageLibraries")} hint={tr("manageLibrariesHint")} table="libraries" labelCol="name" initial={lib.items} />
         <OptionsList title={tr("manageUniversities")} hint={tr("manageUniversitiesHint")} table="universities" labelCol="name" initial={uni.items} />
+      </div>
+
+      <div className="sec-t" style={{ marginTop: 22, marginBottom: 4 }}>{tr("manageAff")}</div>
+      <div className="card settings-anim" style={{ padding: 18 }}>
+        <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>{tr("affiliatesManagerHint")}</p>
+        <AffiliatesManager initial={affiliates} />
       </div>
     </div>
   );
