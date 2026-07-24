@@ -51,8 +51,8 @@ function Head({ icon, tint, title }: { icon: string; tint: string; title: string
 }
 
 export default function NewCustomerForm({
-  specialties, diplomas, batches, services = [], meId, affiliates = [], serviceTypes = [], sources = [],
-}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[]; serviceTypes?: { slug: string; name: string; activation_label: string }[]; sources?: string[] }) {
+  specialties, diplomas, batches, services = [], meId, affiliates = [], serviceTypes = [], sources = [], defaultInst = { count: 3, gap: 1 },
+}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[]; serviceTypes?: { slug: string; name: string; activation_label: string }[]; sources?: string[]; defaultInst?: { count: number; gap: number } }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
@@ -71,8 +71,8 @@ export default function NewCustomerForm({
   const [saving, setSaving] = useState(false);
   const [payFile, setPayFile] = useState<File | null>(null);
   const [payMode, setPayMode] = useState<"cash" | "installment">("cash");
-  const [instCount, setInstCount] = useState("3");
-  const [instGap, setInstGap] = useState("1");
+  const [instCount, setInstCount] = useState(String(defaultInst.count || 3));
+  const [instGap, setInstGap] = useState(String(defaultInst.gap || 1));
   const [payFirstNow, setPayFirstNow] = useState(false);
   const [cashPaidNow, setCashPaidNow] = useState(false); // كاش: هل اتدفع فعلاً دلوقتي؟ (افتراضي لأ)
   const [dup, setDup] = useState<{ id: string; name: string } | null>(null);

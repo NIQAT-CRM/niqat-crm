@@ -12,13 +12,14 @@ export default async function NewCustomerPage() {
   if (!meProf?.can_edit_customers) {
     return (<div className="page-h"><div><h1>{tr("addCust")}</h1><p>{tr("noEditCustomersPerm")}</p></div></div>);
   }
-  const [{ data: specs }, { data: dips }, { data: bts }, { data: affRow }, { data: svcTypes }, { data: srcs }] = await Promise.all([
+  const [{ data: specs }, { data: dips }, { data: bts }, { data: affRow }, { data: svcTypes }, { data: srcs }, { data: defRow }] = await Promise.all([
     supabase.from("specialties").select("id,name_ar").order("name_ar"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
     supabase.from("batches").select("id,code,price,currency,price_egp,price_usd,diploma_id,status,kind").order("start_date", { ascending: false }),
     supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
     supabase.from("service_types").select("slug,name,activation_label,sort").eq("active", true).order("sort"),
     supabase.from("sources").select("name").order("name"),
+    supabase.from("app_settings").select("value").eq("key", "defaults").maybeSingle(),
   ]);
   const affiliates = Array.isArray(affRow?.value) ? (affRow!.value as any[]) : [];
   const openB = (bts || []).filter((b) => { const s = (b as any).status; return !s || s === "open"; });
@@ -35,6 +36,7 @@ export default async function NewCustomerPage() {
         affiliates={affiliates as any}
         serviceTypes={((svcTypes as any[]) || []).map((t) => ({ slug: t.slug, name: t.name, activation_label: t.activation_label }))}
         sources={((srcs as any[]) || []).map((x) => x.name)}
+        defaultInst={{ count: Number((defRow as any)?.value?.inst_count) || 3, gap: Number((defRow as any)?.value?.inst_gap) || 1 }}
       />
     </div>
   );
