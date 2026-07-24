@@ -24,9 +24,6 @@ export default function WatiCard({ initial }: { initial: Wati }) {
   return (
     <div className="card" style={{ padding: 18, marginBottom: 18 }}>
       <div className="card-h"><h3>{tr("watiTitle")}</h3></div>
-      <div className="banner" style={{ margin: "10px 0 16px" }}>
-        🔒 {tr("watiHint")}
-      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 12, alignItems: "end" }}>
         <div className="fld" style={{ marginBottom: 0 }}><label>Endpoint</label>
           <input className="inp" dir="ltr" value={w.endpoint} onChange={(e) => set("endpoint", e.target.value)} placeholder="https://live-server.wati.io/api/v1" /></div>
