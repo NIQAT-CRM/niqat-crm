@@ -73,8 +73,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     supabase.from("follow_ups").select("id,due_at,note,done").eq("customer_id", params.id).order("due_at", { ascending: false }),
     supabase.from("wa_templates").select("id,name,body").order("created_at"),
     supabase.from("customer_addons").select("id,type,name,amount,free,note,paid,shot_url,refunded").eq("customer_id", params.id).order("created_at"),
-    supabase.from("accreditations").select("name").order("name"),
-    supabase.from("projects").select("name").order("name"),
+    supabase.from("batches").select("code").eq("kind", "accreditation").order("code"),
+    supabase.from("batches").select("code").eq("kind", "project").order("code"),
   ]);
 
   const canFinance = !!meProf?.can_see_finance;
@@ -162,8 +162,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
   let addons: any[] = []; let addonsMissing = false;
   if (adRes.error) addonsMissing = true; else addons = await Promise.all((adRes.data || []).map(async (a: any) => ({ id: a.id, type: a.type, name: a.name, amount: Number(a.amount) || 0, free: !!a.free, note: a.note || "", paid: !!a.paid, refunded: !!a.refunded, shot_url: a.shot_url ? await receiptSignedUrl(supabase, a.shot_url) : "" })));
-  const accredList = (accredRows || []).map((x: any) => x.name);
-  const projList = (projRows || []).map((x: any) => x.name);
+  const accredList = (accredRows || []).map((x: any) => x.code);
+  const projList = (projRows || []).map((x: any) => x.code);
 
   // ===== خدمات الريفند: دبلومات (بالمدفوع فعلاً) + إضافات مدفوعة =====
   let refundServices: any[] = [];
