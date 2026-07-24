@@ -77,6 +77,17 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
     .map(([id, n], i) => ({ label: dName.get(id) || "—", value: n, color: DC[i % DC.length] }))
     .sort((a, b) => b.value - a.value);
 
+  // ==== أكثر الخدمات (اعتمادات/مشاريع) اشتراكاً ====
+  const { data: svcBatches } = await supabase.from("batches").select("id,code").neq("kind", "diploma");
+  const svcIds = new Set((svcBatches || []).map((b: any) => b.id));
+  const svcCode = new Map((svcBatches || []).map((b: any) => [b.id, b.code]));
+  const { data: svcEnrRows } = await supabase.from("enrollments").select("batch_id").not("batch_id", "is", null);
+  const svcCount: Record<string, number> = {};
+  (svcEnrRows || []).forEach((e: any) => { if (svcIds.has(e.batch_id)) svcCount[e.batch_id] = (svcCount[e.batch_id] || 0) + 1; });
+  const byService = Object.entries(svcCount)
+    .map(([id, n], i) => ({ label: svcCode.get(id) || "—", value: n, color: DC[i % DC.length] }))
+    .sort((a, b) => b.value - a.value);
+
   // ==== الريفند لكل كود ====
   const refundIds = Array.from(new Set(((refundRes.data as any[]) || []).map((r) => r.customer_id)));
   const refundCodeCount: Record<string, number> = {};
@@ -213,7 +224,7 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
       agreed={Math.round(agreed)} collected={Math.round(collected)} overdueN={overdueN}
       agreedUsd={Math.round(agreedUsd)} collectedUsd={Math.round(collectedUsd)}
       stageRows={stageRows} totalCust={totalCust} affRows={affRows}
-      salesRows={salesRows} supportRows={supportRows} monthly={monthly} byDiploma={byDiploma}
+      salesRows={salesRows} supportRows={supportRows} monthly={monthly} byDiploma={byDiploma} byService={byService}
       batchOpts={batchOpts} diplomaOpts={diplomaOpts} affiliates={affiliatesList}
       resetAt={resetAt}
     />

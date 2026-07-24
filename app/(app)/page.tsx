@@ -53,7 +53,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
     supabase.from("profiles").select("can_see_daily_sales").eq("id", user?.id || "").maybeSingle(),
     supabase.from("specialties").select("id,name_ar"),
     supabase.from("diplomas").select("id,name_ar"),
-    supabase.from("batches").select("id,code,status,start_date,capacity,diploma_id").order("start_date"),
+    supabase.from("batches").select("id,code,status,start_date,capacity,diploma_id,kind").order("start_date"),
     supabase.from("tickets").select("*", { count: "exact", head: true }).in("status", ["open", "progress"]),
     supabase.from("follow_ups").select("customer_id,due_at,note").eq("done", false).lte("due_at", new Date().toISOString()),
     supabase.from("handoffs").select("customer_id").eq("status", "pending"),
@@ -240,6 +240,15 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
   const batchesByDiploma = Object.values(diploMap)
     .map((d) => ({ name: d.name, total: d.total, batches: Object.entries(d.batches).map(([code, n]) => ({ code, n })).sort((a, b) => b.n - a.n) }))
     .sort((a, b) => b.total - a.total);
+
+  // ===== الخدمات (اعتمادات/مشاريع) مع عدد المشتركين =====
+  const servicesList = batches
+    .filter((b: any) => b.kind && b.kind !== "diploma")
+    .map((b: any) => ({ code: b.code, kind: b.kind as string, n: batchCountMap.get(b.id) || 0 }))
+    .sort((a: any, b: any) => b.n - a.n);
+  const svcAccred = servicesList.filter((x) => x.kind === "accreditation");
+  const svcProject = servicesList.filter((x) => x.kind === "project");
+  const svcTotal = servicesList.reduce((t, x) => t + x.n, 0);
 
   // اتجاه شهري: عملاء جدد هذا الشهر مقابل الشهر الماضي (count بدون سقف)
   const nowD = new Date();
@@ -510,6 +519,36 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
             <BatchesByDiploma groups={batchesByDiploma} />
           </div>
         </div>
+      </div>
+
+      {/* ===== الخدمات (اعتمادات/مشاريع) — كروت ورسوم زي الدبلومات ===== */}
+      <div className="sh6"><span className="tick" /><h2>{tr("servicesTitle")}</h2><span className="meta">{svcTotal}</span></div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 16, marginBottom: 18 }}>
+        {([[tr("tabAccreditations"), svcAccred, "#F08A24"], [tr("tabProjects"), svcProject, "#2F6BFF"]] as const).map(([title, list, tint]) => (
+          <div key={title} className="card6">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 800, color: "var(--ink)" }}>{title}</h3>
+              <span className="num" style={{ fontSize: 13, fontWeight: 800, color: tint }}>{(list as any[]).reduce((t, x) => t + x.n, 0)}</span>
+            </div>
+            {(list as any[]).length === 0 ? (
+              <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("noServices")}</div>
+            ) : (() => { const mx = Math.max(...(list as any[]).map((d) => d.n), 1); return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {(list as any[]).map((d) => (
+                  <div key={d.code}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.code}</span>
+                      <b className="num" style={{ fontSize: 12.5, color: "var(--ink)", flexShrink: 0 }}>{d.n}</b>
+                    </div>
+                    <div style={{ height: 8, background: "var(--muted-soft)", borderRadius: 20, overflow: "hidden" }}>
+                      <div style={{ width: Math.max(3, Math.round((d.n / mx) * 100)) + "%", height: "100%", borderRadius: 20, background: tint, transition: "width .4s" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ); })()}
+          </div>
+        ))}
       </div>
 
       {/* ===== آخر النشاطات (20 + مودال) ===== */}

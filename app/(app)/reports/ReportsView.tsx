@@ -74,7 +74,7 @@ function Lead({ rank, name, sub, value, valueColor }: { rank: number; name: stri
 
 export default function ReportsView({
   canFinance, agreed, collected, overdueN, collectedUsd, agreedUsd, refundReport = null,
-  stageRows, totalCust, affRows, salesRows, supportRows, monthly, byDiploma,
+  stageRows, totalCust, affRows, salesRows, supportRows, monthly, byDiploma, byService = [],
   batchOpts, diplomaOpts, affiliates, resetAt = "",
 }: {
   canFinance: boolean;
@@ -83,6 +83,7 @@ export default function ReportsView({
   stageRows: StageRow[]; totalCust: number; affRows: AffRow[];
   salesRows: SalesRow[]; supportRows: SupportRow[]; monthly: Monthly[];
   byDiploma: { label: string; value: number; color: string }[];
+  byService?: { label: string; value: number; color: string }[];
   batchOpts: { v: string; label: string }[];
   diplomaOpts: { v: string; label: string }[];
   affiliates: { code: string; name: string; rate?: number; discount?: number }[];
@@ -223,6 +224,28 @@ export default function ReportsView({
               ) : (
                 <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 11 }}>
                   {(() => { const mx = Math.max(...byDiploma.map((d) => d.value), 1); return byDiploma.map((d) => (
+                    <div key={d.label}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <i style={{ width: 9, height: 9, borderRadius: 3, background: d.color, flexShrink: 0 }} />{d.label}
+                        </span>
+                        <b className="num" style={{ fontSize: 12.5, color: "var(--ink)", flexShrink: 0 }}>{d.value}</b>
+                      </div>
+                      <div style={{ height: 8, background: "var(--muted-soft)", borderRadius: 20, overflow: "hidden" }}>
+                        <div style={{ width: Math.max(3, Math.round((d.value / mx) * 100)) + "%", height: "100%", borderRadius: 20, background: d.color, transition: "width .4s" }} />
+                      </div>
+                    </div>
+                  )); })()}
+                </div>
+              )}
+            </div>
+            <div className="card" style={{ padding: 18 }}>
+              <SecHead icon="pie" tint="#2F6BFF" title={tr("topServices")} count={byService.length} />
+              {byService.length === 0 ? (
+                <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12 }}>{tr("noServices")}</div>
+              ) : (
+                <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 11 }}>
+                  {(() => { const mx = Math.max(...byService.map((d) => d.value), 1); return byService.map((d) => (
                     <div key={d.label}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
                         <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "inline-flex", alignItems: "center", gap: 6 }}>
