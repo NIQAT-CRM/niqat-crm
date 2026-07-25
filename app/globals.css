@@ -284,7 +284,7 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .content{display:flex;flex-direction:column}
 
 /* ===== Drawer ===== */
-.drawer-scrim{position:fixed;inset:0;background:rgba(15,27,48,.45);z-index:55}
+.drawer-scrim{position:fixed;inset:0;background:rgba(15,27,48,.45);z-index:55;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 .drawer-panel{position:fixed;top:0;inset-inline-end:0;height:100vh;width:min(560px,100%);
   background:var(--surface);z-index:60;display:flex;flex-direction:column;
   box-shadow:-14px 0 44px rgba(16,27,48,.20)}
