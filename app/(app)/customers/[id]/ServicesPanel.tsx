@@ -265,24 +265,26 @@ export default function ServicesPanel({
       {enrolls.length > 0 && (
         <div style={{ marginTop: 8 }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: "var(--muted)", marginBottom: 6 }}>{tr("diplomas")}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 8, alignItems: "start" }}>
           {enrolls.map((e) => {
             const m = stMeta("diploma");
+            const moving = moveFor === e.id;
             return (
-              <div key={e.id} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span className="chip" style={{ background: m.color + "1a", color: m.color }}>{m.icon} {tr(m.labelKey)}</span>
-                    <b style={{ color: "var(--ink)", fontSize: 13 }}>{e.diploma}</b>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ color: "var(--muted)", fontSize: 12 }}>{tr("batchColon")} <span className="num">{e.batch}</span></span>
-                    <button onClick={() => { if (moveFor === e.id) { resetMove(); } else { resetMove(); setMoveFor(e.id); setMoveTo(e.batchId); } }}
-                      style={{ color: "var(--brand)", fontWeight: 700, fontSize: 12, background: "none", border: "none", cursor: "pointer" }}>
-                      {tr("moveTransfer")}
-                    </button>
-                  </div>
+              <div key={e.id} style={{ gridColumn: moving ? "1 / -1" : "auto", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", background: "var(--surface)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
+                  <span style={{ width: 24, height: 24, borderRadius: 7, background: m.color + "1a", color: m.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{m.icon}</span>
+                  <span className="chip" style={{ background: m.color + "1a", color: m.color }}>{tr(m.labelKey)}</span>
+                  <span style={{ marginInlineStart: "auto", fontSize: 11, color: "var(--green)", display: "flex", alignItems: "center", gap: 3 }}>● {tr("active")}</span>
                 </div>
-                {moveFor === e.id && (
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", marginBottom: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.diploma}</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ color: "var(--muted)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tr("batchColon")} <span className="num">{e.batch}</span></span>
+                  <button onClick={() => { if (moveFor === e.id) { resetMove(); } else { resetMove(); setMoveFor(e.id); setMoveTo(e.batchId); } }}
+                    style={{ color: "var(--brand)", fontWeight: 700, fontSize: 12, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>
+                    {tr("moveTransfer")}
+                  </button>
+                </div>
+                {moving && (
                   <div style={{ marginTop: 10, padding: 12, border: "1px solid var(--line)", borderRadius: 10, background: "var(--muted-soft)", display: "flex", flexDirection: "column", gap: 10 }}>
                     <div>
                       <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 4 }}>{tr("targetBatch")}</label>
@@ -321,6 +323,7 @@ export default function ServicesPanel({
               </div>
             );
           })}
+          </div>
         </div>
       )}
 
@@ -328,19 +331,29 @@ export default function ServicesPanel({
       {addons.length > 0 && (
         <div style={{ marginTop: enrolls.length > 0 ? 12 : 8 }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: "var(--muted)", marginBottom: 6 }}>{tr("addonsLabel")}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 8, alignItems: "start" }}>
           {addons.map((a) => {
             const m = stMeta(a.type);
             return (
-              <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
-                <span className="chip" style={{ background: m.color + "1a", color: m.color }}>{m.icon} {tr(m.labelKey)}</span>
-                <span style={{ flex: 1, fontWeight: 700, color: "var(--ink)", fontSize: 13 }}>{a.name}{a.free && <span style={{ color: "var(--green)", fontSize: 11, marginInlineStart: 6 }}>🎁 {tr("free")}</span>}</span>
-                {canFinance && !a.free && <span className="num" dir="ltr" style={{ fontSize: 13, color: "var(--muted)" }}>{new Intl.NumberFormat("en").format(a.amount)} {tr("egpShort")}</span>}
-                {a.shot_url && <a href={a.shot_url} target="_blank" rel="noreferrer" title={tr("paymentProof")} style={{ color: "var(--blue)", fontSize: 12 }}>🧾</a>}
-                <div className={"sw" + (a.paid ? " on" : "")} onClick={() => togglePaid(a)} title={a.paid ? tr("paid") : tr("unpaid")}><i /></div>
-                <button onClick={() => delAddon(a)} style={{ color: "var(--red)", fontSize: 12, background: "none", border: "none", cursor: "pointer" }}>✕</button>
+              <div key={a.id} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", background: "var(--surface)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
+                  <span style={{ width: 24, height: 24, borderRadius: 7, background: m.color + "1a", color: m.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{m.icon}</span>
+                  <span className="chip" style={{ background: m.color + "1a", color: m.color }}>{tr(m.labelKey)}</span>
+                  <span style={{ marginInlineStart: "auto", fontSize: 11, color: a.paid ? "var(--green)" : "var(--amber, #E6A700)", display: "flex", alignItems: "center", gap: 3 }}>● {a.paid ? tr("paid") : tr("unpaid")}</span>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {a.name}{a.free && <span style={{ color: "var(--green)", fontSize: 11, marginInlineStart: 6 }}>🎁 {tr("free")}</span>}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {canFinance && !a.free && <span className="num" dir="ltr" style={{ fontSize: 12.5, color: "var(--muted)" }}>{new Intl.NumberFormat("en").format(a.amount)} {tr("egpShort")}</span>}
+                  {a.shot_url && <a href={a.shot_url} target="_blank" rel="noreferrer" title={tr("paymentProof")} style={{ color: "var(--blue)", fontSize: 13 }}>🧾</a>}
+                  <div className={"sw" + (a.paid ? " on" : "")} onClick={() => togglePaid(a)} title={a.paid ? tr("paid") : tr("unpaid")} style={{ marginInlineStart: "auto" }}><i /></div>
+                  <button onClick={() => delAddon(a)} title={tr("delete")} style={{ color: "var(--red)", fontSize: 13, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>✕</button>
+                </div>
               </div>
             );
           })}
+          </div>
         </div>
       )}
 
