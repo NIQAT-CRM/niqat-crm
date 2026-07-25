@@ -265,7 +265,7 @@ export default function ServicesPanel({
       {enrolls.length > 0 && (
         <div style={{ marginTop: 8 }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: "var(--muted)", marginBottom: 6 }}>{tr("diplomas")}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 8, alignItems: "start" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,300px))", gap: 8, alignItems: "start", justifyContent: "start" }}>
           {enrolls.map((e) => {
             const m = stMeta("diploma");
             const moving = moveFor === e.id;
@@ -331,7 +331,7 @@ export default function ServicesPanel({
       {addons.length > 0 && (
         <div style={{ marginTop: enrolls.length > 0 ? 12 : 8 }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: "var(--muted)", marginBottom: 6 }}>{tr("addonsLabel")}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 8, alignItems: "start" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,300px))", gap: 8, alignItems: "start", justifyContent: "start" }}>
           {addons.map((a) => {
             const m = stMeta(a.type);
             return (
