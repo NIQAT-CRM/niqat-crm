@@ -20,6 +20,7 @@ type Ctx = {
   selectAllFiltered: () => Promise<void>;
   loadingAll: boolean;
   count: number;
+  filter: CustFilterSP;
 };
 
 const SelCtx = createContext<Ctx | null>(null);
@@ -50,8 +51,8 @@ export function BulkSelectProvider({ filter, children }: { filter: CustFilterSP;
   }, [filter, tr]);
 
   const value = useMemo<Ctx>(() => ({
-    sel, toggle, isSel, clear, togglePage, pageAllSelected, selectAllFiltered, loadingAll, count: sel.size,
-  }), [sel, toggle, isSel, clear, togglePage, pageAllSelected, selectAllFiltered, loadingAll]);
+    sel, toggle, isSel, clear, togglePage, pageAllSelected, selectAllFiltered, loadingAll, count: sel.size, filter,
+  }), [sel, toggle, isSel, clear, togglePage, pageAllSelected, selectAllFiltered, loadingAll, filter]);
 
   return <SelCtx.Provider value={value}>{children}</SelCtx.Provider>;
 }
@@ -89,7 +90,7 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
   canExport: boolean;
   canMessage: boolean;
 }) {
-  const { sel, count, clear, selectAllFiltered, loadingAll } = useSel();
+  const { sel, count, clear, selectAllFiltered, loadingAll, filter } = useSel();
   const tr = useT();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -191,7 +192,13 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
     setBusy(true);
     try {
       const selIds = ids();
-      const r = await postExport({ type: "customers", ids: selIds }, "niqat-customers");
+      // لو محدّد الكل → نبعت الفلتر (طلب صغير، نفس مسار الزر العلوي الشغّال)
+      // غير كده (تحديد جزئي) → نبعت الـ IDs المحدّدة
+      const allSelected = selIds.length >= totalFiltered;
+      const payload = allSelected
+        ? { type: "customers", filter }
+        : { type: "customers", ids: selIds };
+      const r = await postExport(payload, "niqat-customers");
       if (r.ok) toast(tr("bulkExportOk").replace("{n}", String(selIds.length)));
       else toast(tr("exportFailed") + (r.error ? ` (${r.error})` : ""));
     } catch { toast(tr("bulkGenericError")); }
