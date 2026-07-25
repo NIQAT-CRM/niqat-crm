@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
+import { postExport } from "@/lib/export/download";
 
 type Opt = { id: string; code: string };
 type Aff = { name: string; code: string; discount: number };
@@ -47,39 +48,24 @@ export default function AffiliateExport({ batches, affiliates }: { batches: Opt[
         .select("customer_id,status").in("customer_id", custIds);
       const refundedSet = new Set((refunds || []).map((r: any) => r.customer_id));
 
-      // 5) تجميع حسب الافييليت
-      type Row = { code: string; name: string; disc: number; count: number; total: number; refunded: number; lines: string[] };
-      const groups = new Map<string, Row>();
+      // 5) صفوف مسطّحة (صف لكل عميل) — تصدّر XLSX مبراندَد من السيرفر
+      const batchCode = batches.find((b) => b.id === batchId)?.code || batchId;
+      const rows: (string | number)[][] = [];
       for (const c of (custs || []) as any[]) {
         const code = (c.affiliate_code || "").trim();
         if (!code) continue;
         const a = affName(code);
-        if (!groups.has(code)) groups.set(code, { code, name: a?.name || "—", disc: a?.discount || 0, count: 0, total: 0, refunded: 0, lines: [] });
-        const g = groups.get(code)!;
-        const isRef = refundedSet.has(c.id);
-        const paid = paidByCust.get(c.id) || 0;
-        if (isRef) { g.refunded++; g.lines.push(`${c.name},${paid},${tr("refundWord")}`); }
-        else { g.count++; g.total += paid; g.lines.push(`${c.name},${paid},${tr("activeWord")}`); }
+        const paid = Math.round(paidByCust.get(c.id) || 0);
+        const status = refundedSet.has(c.id) ? tr("refundWord") : tr("activeWord");
+        rows.push([a?.name || "—", code, (a?.discount || 0) + "%", c.name || "", paid, status]);
       }
-
-      // 6) CSV
-      const batchCode = batches.find((b) => b.id === batchId)?.code || batchId;
-      let csv = "\uFEFF"; // BOM للعربي في Excel
-      csv += `${tr("affiliateExportTitle")} — ${tr("batchWord")} ${batchCode}\n\n`;
-      for (const g of Array.from(groups.values())) {
-        csv += `${tr("affiliate")},${g.name} (${g.code}),${tr("discountRate")},${g.disc}%\n`;
-        csv += `${tr("activeCustomersCount")},${g.count},${tr("totalPaid")},${g.total},${tr("refundCount")},${g.refunded}\n`;
-        csv += `${tr("customerName")},${tr("paidWord")},${tr("status")}\n`;
-        csv += g.lines.join("\n") + "\n\n";
-      }
-      if (groups.size === 0) csv += tr("noAffiliateCustomers") + "\n";
-
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `affiliates-${batchCode}.csv`; a.click();
-      URL.revokeObjectURL(url);
-      toast(tr("exported"));
+      if (!rows.length) { toast(tr("noAffiliateCustomers")); setBusy(false); return; }
+      const headers = [tr("affiliate"), tr("code"), tr("discountRate"), tr("customerName"), tr("paidWord"), tr("status")];
+      const r = await postExport(
+        { type: "generic", title: `${tr("affiliateExportTitle")} — ${tr("batchWord")} ${batchCode}`, filename: `niqat-affiliates-${batchCode}`, headers, rows },
+        `niqat-affiliates-${batchCode}`
+      );
+      if (r.ok) toast(tr("exported")); else toast(tr("exportFailed") + (r.error ? ` (${r.error})` : ""));
     } catch {
       toast(tr("exportFailed"));
     }

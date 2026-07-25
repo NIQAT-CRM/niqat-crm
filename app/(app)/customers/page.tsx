@@ -290,7 +290,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
       <div className="page-h">
         <div><h1>{tr("customers")}</h1><p>{shownCount} {tr("customersPl")}{q ? <> · {tr("searchColon")} «{q}»</> : null}</p></div>
         <div style={{ display: "flex", gap: 8 }}>
-          {canExport && <ExportButton rows={exportRows} headers={exportHeaders} />}
+          {canExport && <ExportButton filter={{ q, stage: f.stage, owner: f.owner, dip: f.dip, spec: f.spec, batch: f.batch, svc: f.svc, company: f.company, pay: f.pay }} />}
           {canEditCustomers && (
             <Link className="btn" href="/customers/new">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>

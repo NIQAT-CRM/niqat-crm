@@ -3,8 +3,9 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect, t
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
+import { postExport } from "@/lib/export/download";
 import {
-  selectAllFilteredIds, bulkSetOwner, bulkSetStage, bulkSignTerms, bulkArchive, bulkExportRows,
+  selectAllFilteredIds, bulkSetOwner, bulkSetStage, bulkSignTerms, bulkArchive,
   bulkFollowUp, bulkDelete, bulkGetPhones,
 } from "./bulkActions";
 import type { CustFilterSP } from "@/lib/customerFilter";
@@ -189,16 +190,10 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
   async function doExport() {
     setBusy(true);
     try {
-      const rows = await bulkExportRows(ids());
-      const head = ["name", "phone1", "phone2", "email", "company", "stage"];
-      const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
-      const csv = "\uFEFF" + [head.join(","), ...rows.map((r: any) => head.map((h) => esc(r[h])).join(","))].join("\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `customers-${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click(); URL.revokeObjectURL(url);
-      toast(tr("bulkExportOk").replace("{n}", String(rows.length)));
+      const selIds = ids();
+      const r = await postExport({ type: "customers", ids: selIds }, "niqat-customers");
+      if (r.ok) toast(tr("bulkExportOk").replace("{n}", String(selIds.length)));
+      else toast(tr("exportFailed") + (r.error ? ` (${r.error})` : ""));
     } catch { toast(tr("bulkGenericError")); }
     setBusy(false);
   }
