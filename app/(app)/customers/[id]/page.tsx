@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import CustomerDrawer from "./CustomerDrawer";
 import CopyNumbers from "./CopyNumbers";
 import StagePicker from "./StagePicker";
+import { DrawerScrim, DrawerCloseButton } from "./DrawerClose";
 import { getLang, tFor } from "@/lib/i18n";
 import { receiptSignedUrl } from "@/lib/supabase/receipts";
 
@@ -222,7 +222,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
   return (
     <>
-      <Link href="/customers" className="drawer-scrim" aria-label={tr("close")} />
+      <DrawerScrim label={tr("close")} />
       <aside className="drawer-panel">
         <div className="dr-h">
           <div className="av">{ini(c.name)}</div>
@@ -271,9 +271,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
               )}
             </div>
           </div>
-          <Link href="/customers" className="dr-x" aria-label={tr("close")}>
-            <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2}><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </Link>
+          <DrawerCloseButton label={tr("close")} />
         </div>
         <div className="dr-b" style={{ display: "flex", flexDirection: "column" }}>
           <CustomerDrawer
