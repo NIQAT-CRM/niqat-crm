@@ -263,6 +263,12 @@ export default async function CustomerDetail({ params }: { params: { id: string 
                   {tr("createdLabel")} <span style={{ color: "var(--ink)", fontWeight: 700 }} className="num">{createdRel}</span>
                 </span>
               )}
+              {(c as any).source && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }} title={tr("source")}>
+                  <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z" /><circle cx="12" cy="9" r="2.5" /></svg>
+                  {tr("source")}: <span style={{ color: "var(--ink)", fontWeight: 700 }}>{(c as any).source}</span>
+                </span>
+              )}
             </div>
           </div>
           <Link href="/customers" className="dr-x" aria-label={tr("close")}>

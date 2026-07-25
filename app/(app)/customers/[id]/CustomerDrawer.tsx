@@ -18,37 +18,23 @@ import WhatsAppPanel from "./WhatsAppPanel";
 
 const fmtNum = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 
-// عنوان قسم هادي (ink + أيقونة ملوّنة في مربّع + عدّاد اختياري) — بدل sec-t البرتقالي
-function Sec({ emoji, bg, title, count, mt }: { emoji: string; bg: string; title: string; count?: number; mt?: boolean }) {
+const SEC_ICONS: Record<string, ReactNode> = {
+  user: <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
+  money: <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>,
+  ticket: <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2}><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-4z" /><path d="M15 6v12" /></svg>,
+  clock: <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>,
+  refund: <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2}><path d="M3 7v6h6" /><path d="M3.5 13a9 9 0 1 0 2.5-7.5L3 8" /></svg>,
+  archive: <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="4" rx="1" /><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4" /></svg>,
+  warning: <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2}><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><path d="M12 9v4M12 17h.01" /></svg>,
+};
+
+// عنوان قسم هادي (ink + أيقونة SVG ملوّنة في مربّع + عدّاد اختياري)
+function Sec({ icon, bg, color, title, count, mt }: { icon: string; bg: string; color: string; title: string; count?: number; mt?: boolean }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, margin: mt ? "20px 0 12px" : "0 0 12px", fontSize: 13, fontWeight: 800, color: "var(--ink)" }}>
-      <span style={{ width: 24, height: 24, borderRadius: 7, display: "grid", placeItems: "center", fontSize: 13, flexShrink: 0, background: bg }}>{emoji}</span>
+      <span style={{ width: 24, height: 24, borderRadius: 7, display: "grid", placeItems: "center", flexShrink: 0, background: bg, color }}>{SEC_ICONS[icon]}</span>
       {title}
       {typeof count === "number" && <span style={{ marginInlineStart: "auto", fontSize: 11, fontWeight: 700, color: "var(--muted)", background: "var(--muted-soft)", borderRadius: 20, padding: "1px 8px" }}>{count}</span>}
-    </div>
-  );
-}
-
-// بوكس «أضف ملاحظة سريعة» — بنفس منطق CustomerActivity (communications, channel=note)
-function QuickNote({ customerId, meId }: { customerId: string; meId: string }) {
-  const tr = useT();
-  const router = useRouter();
-  const supabase = createClient();
-  const [v, setV] = useState("");
-  const [busy, setBusy] = useState(false);
-  async function save() {
-    if (!v.trim()) return;
-    setBusy(true);
-    const { error } = await supabase.from("communications").insert({ customer_id: customerId, body: v.trim(), channel: "note", direction: "out", by_id: meId });
-    setBusy(false);
-    if (error) { toast(tr("addNoteFailed") + error.message); return; }
-    setV(""); toast(tr("noteSavedOk")); router.refresh();
-  }
-  return (
-    <div style={{ background: "var(--brand-soft)", border: "1px solid #f6d6b0", borderRadius: 11, padding: 12, marginBottom: 16 }}>
-      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--brand-d)", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>📝 {tr("quickNoteTitle")}</div>
-      <textarea className="inp" rows={2} value={v} onChange={(e) => setV(e.target.value)} placeholder={tr("quickNotePh")} />
-      <button onClick={save} disabled={busy} className="btn sm" style={{ width: "100%", marginTop: 8 }}>{busy ? "..." : tr("quickNoteSave")}</button>
     </div>
   );
 }
@@ -145,13 +131,13 @@ export default function CustomerDrawer(props: {
     <DrawerTabs
       tab={tab} onTab={setTab} quickBar={quickBar} showOps={showOps}
       basic={<div className="px-5 py-5">
-        <Sec emoji="👤" bg="var(--brand-soft)" title={tr("basicData")} />
+        <Sec icon="user" bg="var(--brand-soft)" color="var(--brand)" title={tr("basicData")} />
         <CustomerEdit ref={editRef} customer={props.c as any} specialties={props.specs || []} canEdit={props.canEdit} />
       </div>}
       sales={<>
         {props.canFinance && (
           <div id="panel-finsum">
-            <Sec emoji="💰" bg="rgba(24,169,87,.12)" title={tr("financeSummary")} />
+            <Sec icon="money" bg="rgba(24,169,87,.12)" color="var(--green)" title={tr("financeSummary")} />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 14 }}>
               <div style={{ background: "var(--muted-soft)", borderRadius: 10, padding: "11px 8px", textAlign: "center" }}>
                 <div style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700 }}>{tr("agreedAmount")}</div>
@@ -197,8 +183,6 @@ export default function CustomerDrawer(props: {
         {props.canFinance && <FinancePanel enrollments={props.finEnrollments} customerId={props.c.id} meId={props.user?.id || ""} batchOpts={props.batchOpts} addons={(props.addons || []).filter((a: any) => a.paid)} handedOff={!!(props.c as any).handed_off} />}
       </>}
       docs={<>
-        <QuickNote customerId={props.c.id} meId={props.user?.id || ""} />
-
         <div id="panel-whatsapp">
           {props.canMessage && <WhatsAppPanel customerId={props.c.id} meId={props.user?.id || ""} ctx={props.waCtx} templates={props.templates as any} />}
         </div>
@@ -207,7 +191,7 @@ export default function CustomerDrawer(props: {
 
         <div className="card" style={{ padding: 18, marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <Sec emoji="🎫" bg="rgba(47,107,255,.12)" title={tr("supportTickets")} count={(props.tickets || []).length} />
+            <Sec icon="ticket" bg="rgba(47,107,255,.12)" color="#2F6BFF" title={tr("supportTickets")} count={(props.tickets || []).length} />
             <a href={`/support/new?customer=${props.c.id}`} className="btn" style={{ height: 32, padding: "0 12px", fontSize: 13 }}>+ {tr("ticket")}</a>
           </div>
           {(!props.tickets || props.tickets.length === 0) ? (
@@ -230,7 +214,7 @@ export default function CustomerDrawer(props: {
         <DocsPanel customerId={props.c.id} initial={props.docs} tableMissing={props.docsMissing} />
 
         <div className="card" style={{ padding: 18 }}>
-          <Sec emoji="🕓" bg="var(--muted-soft)" title={tr("timeline")} />
+          <Sec icon="clock" bg="var(--muted-soft)" color="var(--muted)" title={tr("timeline")} />
           {(!props.auditRows || props.auditRows.length === 0) ? (
             <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noTimeline")}</div>
           ) : (props.auditRows || []).map((a: any, idx: number) => (
@@ -251,7 +235,7 @@ export default function CustomerDrawer(props: {
       ops={<div className="px-5 py-5">
         {props.canFinance && (
           <>
-            <Sec emoji="↩️" bg="rgba(47,107,255,.12)" title={tr("refundAccTitle")} />
+            <Sec icon="refund" bg="rgba(47,107,255,.12)" color="#2F6BFF" title={tr("refundAccTitle")} />
             <div className="card" style={{ padding: 14, marginBottom: 14 }}>
               <RefundPanel customerId={props.c.id} refunds={props.refunds} refundServices={props.refundServices} allServicesClosed={props.allServicesClosed} meId={props.user?.id || ""} tableMissing={props.refundTableMissing} accessItems={props.accessItems} />
             </div>
@@ -262,23 +246,23 @@ export default function CustomerDrawer(props: {
           <>
             {!(props.c as any).archived && (
               <>
-                <Sec emoji="🗄️" bg="var(--muted-soft)" title={tr("archiveCustomerBtn")} mt={props.canFinance} />
+                <Sec icon="archive" bg="var(--muted-soft)" color="var(--muted)" title={tr("archiveCustomerBtn")} mt={props.canFinance} />
                 <div className="card" style={{ padding: 14, marginBottom: 14 }}>
                   <button onClick={archiveCustomer} disabled={archiving} className="btn danger" style={{ width: "100%" }}>
-                    {archiving ? "..." : "🗄️ " + tr("archiveCustomerBtn")}
+                    {archiving ? "..." : tr("archiveCustomerBtn")}
                   </button>
                   <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.6, marginTop: 6 }}>{tr("archiveCustomerHint")}</div>
                 </div>
               </>
             )}
 
-            <Sec emoji="⚠️" bg="var(--red-soft)" title={tr("dangerZone")} mt />
+            <Sec icon="warning" bg="var(--red-soft)" color="var(--red)" title={tr("dangerZone")} mt />
             <div style={{ border: "1px solid #f3c9c4", background: "var(--red-soft)", borderRadius: 11, padding: 14 }}>
               <div style={{ fontSize: 12, fontWeight: 800, color: "var(--red)", marginBottom: 2 }}>{tr("deleteCustomerBtn")}</div>
               <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.6, marginTop: 2, marginBottom: 10 }}>{tr("deleteCustomerHint")}</div>
               <button onClick={deleteCustomer} disabled={deleting} className="btn"
                 style={{ width: "100%", background: "var(--red)", color: "#fff", borderColor: "var(--red)" }}>
-                {deleting ? "..." : "🗑️ " + tr("deleteCustomerBtn")}
+                {deleting ? "..." : tr("deleteCustomerBtn")}
               </button>
             </div>
           </>
