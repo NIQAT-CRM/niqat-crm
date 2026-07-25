@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import CustomerDrawer from "./CustomerDrawer";
 import CopyNumbers from "./CopyNumbers";
+import StagePicker from "./StagePicker";
 import { getLang, tFor } from "@/lib/i18n";
 import { receiptSignedUrl } from "@/lib/supabase/receipts";
 
@@ -58,7 +59,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     { data: svcItemRows },
   ] = await Promise.all([
     supabase.from("profiles").select("can_see_finance,can_message,can_manage_batches,can_edit_customers").eq("id", user?.id || "").maybeSingle(),
-    supabase.from("customers").select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,onhold_reason,created_at,terms_signed,terms_signed_at,handed_off").eq("id", params.id).maybeSingle(),
+    supabase.from("customers").select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,onhold_reason,created_at,terms_signed,terms_signed_at,handed_off,owner_id").eq("id", params.id).maybeSingle(),
     supabase.from("specialties").select("id,name_ar").order("name_ar"),
     supabase.from("enrollments").select("id,status,diploma_id,batch_id, diplomas(name_ar), batches(code)").eq("customer_id", params.id),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
@@ -195,7 +196,23 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   }
 
   const st = STAGE[c.stage as string] || STAGE.interested;
+  const stageOpts = Object.keys(STAGE).map((k) => ({ value: k, label: tr(STAGE[k].labelKey), color: STAGE[k].color }));
   const ini = (n: string) => { const p = (n || "?").trim().split(/\s+/); return p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2); };
+
+  // ملخّص المدير: المسؤول + آخر تواصل + المتابعة الجاية + عميل منذ
+  const ownerName = pMap.get((c as any).owner_id || "") || "";
+  const relDays = (d?: string | null) => {
+    if (!d) return null;
+    const then = new Date(d).getTime(); if (isNaN(then)) return null;
+    const days = Math.floor((Date.now() - then) / 86400000);
+    if (days <= 0) return tr("today");
+    if (days === 1) return tr("yesterday");
+    return `${days} ${tr("dayUnit")}`;
+  };
+  const lastContactRel = relDays((commRows && commRows[0]) ? (commRows[0] as any).at : null);
+  const nextFollow = fuOpen?.due_at ? String(fuOpen.due_at).slice(0, 10) : null;
+  const createdRel = relDays((c as any).created_at);
+
   // شيبس الهيدر: الدبلومة·الباتش (أول اشتراك) + المتبقّي (canFinance)
   const firstEnr = enrolls[0];
   const headerRemaining = (finEnrollments || []).reduce((s: number, e: any) => {
@@ -212,7 +229,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
           <div style={{ flex: 1, minWidth: 0 }}>
             <h2>{c.name}</h2>
             <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span className="stg" style={{ background: st.color + "1a", color: st.color }}>{tr(st.labelKey)}</span>
+              <StagePicker customerId={c.id} value={c.stage as string} stages={stageOpts} canEdit={canEdit} />
               {firstEnr && (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 20, background: "var(--muted-soft)", color: "var(--muted)" }}>
                   📜 {firstEnr.diploma} · <span className="num">{firstEnr.batch}</span>
@@ -224,6 +241,28 @@ export default async function CustomerDetail({ params }: { params: { id: string 
                 </span>
               )}
               <CopyNumbers phones={[c.phone1 as string, c.phone2 as string]} />
+            </div>
+
+            {/* شريط ملخّص المدير */}
+            <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", fontSize: 11.5, color: "var(--muted)" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }} title={tr("ownerLabel")}>
+                <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                <span style={{ color: ownerName ? "var(--ink)" : "#a5790a", fontWeight: 700 }}>{ownerName || tr("notAssigned")}</span>
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }} title={tr("lastContactLabel")}>
+                <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                {tr("lastContactLabel")}: <span style={{ color: "var(--ink)", fontWeight: 700 }} className="num">{lastContactRel || tr("noContactYet")}</span>
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }} title={tr("nextFollowLabel")}>
+                <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+                {tr("nextFollowLabel")}: <span style={{ color: nextFollow ? "var(--ink)" : "var(--muted)", fontWeight: 700 }} className="num">{nextFollow || tr("noFollowUp")}</span>
+              </span>
+              {createdRel && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }} title={tr("createdLabel")}>
+                  <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 8v8M8 12h8" /><circle cx="12" cy="12" r="9" /></svg>
+                  {tr("createdLabel")} <span style={{ color: "var(--ink)", fontWeight: 700 }} className="num">{createdRel}</span>
+                </span>
+              )}
             </div>
           </div>
           <Link href="/customers" className="dr-x" aria-label={tr("close")}>
