@@ -264,6 +264,8 @@ export default function ReportsView({
               )}
             </div>
           </div>
+          {/* ===== الرؤى (داخل تبويب الأداء فقط) ===== */}
+          <InsightsSection insights={insights} canFinance={canFinance} />
         </div>
       )}
 
@@ -398,9 +400,6 @@ export default function ReportsView({
           <AffiliateReport affRows={affRows} batches={batchOpts} diplomas={diplomaOpts} affiliates={affiliates} canFinance={canFinance} />
         </div>
       )}
-
-      {/* ===== الرؤى (تحت التقارير، ظاهرة دايماً لأي حد عنده صلاحية التقارير) ===== */}
-      <InsightsSection insights={insights} canFinance={canFinance} />
     </div>
   );
 }

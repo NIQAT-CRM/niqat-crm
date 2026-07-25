@@ -40,10 +40,12 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
   }
   const canFinance = !!prof.can_see_finance;
 
-  // ==== الرؤى (Insights) — بنفس صلاحية التقارير؛ المالي محجوب داخل الدوال بـ can_finance() ====
-  const [insTopRes, insPeakRes, insBatchRes, insStaleRes, insTrendRes,
-         insSrcRes, insUnassignedRes, insStaleTkRes, insPendingRes, insSpecRes,
-         insOverdueRes, insExpectedRes, insRefundsRes] = await Promise.all([
+  const period = searchParams?.period || "all";
+  const range = periodRange(period);
+  const rpcArgs = range ? { p_from: range.from, p_to: range.to } : undefined;
+
+  // ==== كل الاستعلامات المستقلة بالتوازي (رؤى + تقارير + مستقلة) — بيقلّل زمن فتح الصفحة ====
+  const insightsP = Promise.all([
     supabase.rpc("ins_top_diplomas", { p_days: 30 }),
     supabase.rpc("ins_peak_hours", { p_days: 30 }),
     supabase.rpc("ins_batches_filling"),
@@ -58,6 +60,26 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
     supabase.rpc("ins_expected_week"),
     supabase.rpc("ins_refunds_month"),
   ]);
+  const mainP = Promise.all([
+    supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
+    supabase.from("profiles").select("id,full_name,team"),
+    supabase.from("diplomas").select("id,name_ar"),
+    supabase.from("refunds").select("customer_id"),
+    supabase.from("batches").select("id,code").order("start_date", { ascending: false }),
+    supabase.from("tickets").select("assignee_id,status"),
+    supabase.rpc("dash_stage_counts", rpcArgs),
+    supabase.rpc("dash_enrollment_diploma"),
+    supabase.rpc("dash_affiliate_counts"),
+    supabase.rpc("dash_owner_customer_counts"),
+    supabase.from("batches").select("id,code").neq("kind", "diploma"),
+    supabase.from("enrollments").select("batch_id").not("batch_id", "is", null),
+    supabase.from("app_settings").select("value").eq("key", "reports_reset_at").maybeSingle(),
+  ]);
+  const [
+    [insTopRes, insPeakRes, insBatchRes, insStaleRes, insTrendRes, insSrcRes, insUnassignedRes, insStaleTkRes, insPendingRes, insSpecRes, insOverdueRes, insExpectedRes, insRefundsRes],
+    [affRes, profRes, dipRes, refundRes, batchRes, tkRes, scRes, edRes, acRes, occRes, svcBatchesRes, svcEnrRes, resetRowRes],
+  ] = await Promise.all([insightsP, mainP]);
+
   const insights = {
     topDip: ((insTopRes.data as any[]) || [])[0] || null,
     peak: (insPeakRes.data as any) || null,
@@ -73,23 +95,6 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
     expectedWeek: (insExpectedRes.data as any) || null,
     refundsMonth: (insRefundsRes.data as any) || null,
   };
-
-  const period = searchParams?.period || "all";
-  const range = periodRange(period);
-  const rpcArgs = range ? { p_from: range.from, p_to: range.to } : undefined;
-
-  const [affRes, profRes, dipRes, refundRes, batchRes, tkRes, scRes, edRes, acRes, occRes] = await Promise.all([
-    supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
-    supabase.from("profiles").select("id,full_name,team"),
-    supabase.from("diplomas").select("id,name_ar"),
-    supabase.from("refunds").select("customer_id"),
-    supabase.from("batches").select("id,code").order("start_date", { ascending: false }),
-    supabase.from("tickets").select("assignee_id,status"),
-    supabase.rpc("dash_stage_counts", rpcArgs),
-    supabase.rpc("dash_enrollment_diploma"),
-    supabase.rpc("dash_affiliate_counts"),
-    supabase.rpc("dash_owner_customer_counts"),
-  ]);
 
   const profiles = (profRes.data as any[]) || [];
   const diplomas = (dipRes.data as any[]) || [];
@@ -112,10 +117,10 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
     .sort((a, b) => b.value - a.value);
 
   // ==== أكثر الخدمات (اعتمادات/مشاريع) اشتراكاً ====
-  const { data: svcBatches } = await supabase.from("batches").select("id,code").neq("kind", "diploma");
+  const svcBatches = svcBatchesRes.data as any[] | null;
   const svcIds = new Set((svcBatches || []).map((b: any) => b.id));
   const svcCode = new Map((svcBatches || []).map((b: any) => [b.id, b.code]));
-  const { data: svcEnrRows } = await supabase.from("enrollments").select("batch_id").not("batch_id", "is", null);
+  const svcEnrRows = svcEnrRes.data as any[] | null;
   const svcCount: Record<string, number> = {};
   (svcEnrRows || []).forEach((e: any) => { if (svcIds.has(e.batch_id)) svcCount[e.batch_id] = (svcCount[e.batch_id] || 0) + 1; });
   const byService = Object.entries(svcCount)
@@ -131,7 +136,7 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
   }
 
   // تاريخ تصفير القياس (اختياري) — يبدأ القياس من عند بدء الشغل الفعلي
-  const { data: resetRow } = await supabase.from("app_settings").select("value").eq("key", "reports_reset_at").maybeSingle();
+  const resetRow = resetRowRes.data as any;
   const resetAt: string = typeof resetRow?.value === "string" ? resetRow.value : ((resetRow?.value as any)?.at || "");
 
   // ==== المالية مفصولة بالعملة (دالة fin_totals) + المحصّل لكل مندوب + المتأخرات ====
