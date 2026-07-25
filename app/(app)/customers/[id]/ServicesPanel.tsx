@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 import FileDrop from "@/lib/ui/FileDrop";
+import SearchSelect from "../../SearchSelect";
 
 type Opt = { v: string; label: string; price?: number; currency?: string; price_egp?: number; price_usd?: number };
 type Enr = { id: string; diploma: string; batch: string; diplomaId: string; batchId: string };
@@ -197,15 +198,17 @@ export default function ServicesPanel({
               </select></div>
             <div className="fld"><label>{svType === "diploma" ? tr("theDiploma") : tr("theItem")}</label>
               {svType === "diploma" ? (
-                <select className="inp" value={svDip} onChange={(e) => setSvDip(e.target.value)}>
-                  <option value="">{tr("selectDiploma")}</option>
-                  {dipOpts.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
-                </select>
+                <SearchSelect
+                  options={dipOpts.map((d) => ({ value: d.v, label: d.label }))}
+                  value={svDip} onChange={(v) => setSvDip(v)}
+                  placeholder={tr("selectDiploma")} emptyLabel={tr("selectDiploma")} searchPlaceholder={tr("searchDots")}
+                />
               ) : (
-                <select className="inp" value={svName} onChange={(e) => setSvName(e.target.value)}>
-                  <option value="">{tr("selectDash")}</option>
-                  {svNames.map((n) => <option key={n.v} value={n.v}>{n.label}</option>)}
-                </select>
+                <SearchSelect
+                  options={svNames.map((n) => ({ value: n.v, label: n.label }))}
+                  value={svName} onChange={(v) => setSvName(v)}
+                  placeholder={tr("selectDash")} emptyLabel={tr("selectDash")} searchPlaceholder={tr("searchDots")}
+                />
               )}
             </div>
           </div>
@@ -213,10 +216,11 @@ export default function ServicesPanel({
           {svType === "diploma" && (
             <div className="frow">
               <div className="fld"><label>{tr("theBatch")}</label>
-                <select className="inp" value={svBatch} onChange={(e) => setSvBatch(e.target.value)}>
-                  <option value="">{tr("noBatch")}</option>
-                  {batchOpts.map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
-                </select></div>
+                <SearchSelect
+                  options={batchOpts.map((b) => ({ value: b.v, label: b.label }))}
+                  value={svBatch} onChange={(v) => setSvBatch(v)}
+                  placeholder={tr("noBatch")} emptyLabel={tr("noBatch")} searchPlaceholder={tr("searchDots")}
+                /></div>
             </div>
           )}
 

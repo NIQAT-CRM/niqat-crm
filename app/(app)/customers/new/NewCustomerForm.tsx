@@ -6,6 +6,7 @@ import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 import { COUNTRIES, DEFAULT_DIAL, combineDialAndNumber, phoneKey } from "@/lib/phone";
 import FileDrop from "@/lib/ui/FileDrop";
+import SearchSelect from "../../SearchSelect";
 
 type Opt = { id: string; name: string };
 type BatchOpt = { id: string; name: string; price?: number; currency?: string; price_egp?: number; price_usd?: number; diploma_id?: string };
@@ -51,8 +52,8 @@ function Head({ icon, tint, title }: { icon: string; tint: string; title: string
 }
 
 export default function NewCustomerForm({
-  specialties, diplomas, batches, services = [], meId, affiliates = [], serviceTypes = [], sources = [], defaultInst = { count: 3, gap: 1 },
-}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[]; serviceTypes?: { slug: string; name: string; activation_label: string }[]; sources?: string[]; defaultInst?: { count: number; gap: number } }) {
+  specialties, diplomas, batches, services = [], meId, affiliates = [], serviceTypes = [], sources = [], defaultInst = { count: 3, gap: 1 }, frequentDiplomas = [],
+}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[]; serviceTypes?: { slug: string; name: string; activation_label: string }[]; sources?: string[]; defaultInst?: { count: number; gap: number }; frequentDiplomas?: string[] }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
@@ -524,20 +525,25 @@ export default function NewCustomerForm({
             {subMode === "diploma" ? (
             <div className="frow">
               <div className="fld"><label>{tr("theDiploma")}</label>
-                <select className="inp" value={f.diploma_id} onChange={(e) => {
-                  const dip = e.target.value;
-                  set("diploma_id", dip);
-                  const b = batches.find((x) => x.id === f.batch_id);
-                  if (b && b.diploma_id && b.diploma_id !== dip) set("batch_id", "");
-                }}>
-                  <option value="">{tr("noneDash")}</option>
-                  {diplomas.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select></div>
+                <SearchSelect
+                  options={diplomas.map((d) => ({ value: d.id, label: d.name }))}
+                  value={f.diploma_id}
+                  frequentValues={frequentDiplomas}
+                  frequentLabel={tr("mostUsed")}
+                  placeholder={tr("noneDash")} emptyLabel={tr("noneDash")} searchPlaceholder={tr("searchDots")}
+                  onChange={(dip) => {
+                    set("diploma_id", dip);
+                    const b = batches.find((x) => x.id === f.batch_id);
+                    if (b && b.diploma_id && b.diploma_id !== dip) set("batch_id", "");
+                  }}
+                /></div>
               <div className="fld"><label>{tr("theBatch")}</label>
-                <select className="inp" value={f.batch_id} onChange={(e) => set("batch_id", e.target.value)} disabled={!f.diploma_id}>
-                  <option value="">{f.diploma_id ? tr("noneDash") : tr("selectDiplomaFirst")}</option>
-                  {batches.filter((b) => !b.diploma_id || b.diploma_id === f.diploma_id).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select></div>
+                <SearchSelect
+                  options={batches.filter((b) => !b.diploma_id || b.diploma_id === f.diploma_id).map((b) => ({ value: b.id, label: b.name }))}
+                  value={f.batch_id} disabled={!f.diploma_id}
+                  placeholder={f.diploma_id ? tr("noneDash") : tr("selectDiplomaFirst")} emptyLabel={tr("noneDash")} searchPlaceholder={tr("searchDots")}
+                  onChange={(v) => set("batch_id", v)}
+                /></div>
             </div>
             ) : (
             <div className="frow">
@@ -546,10 +552,12 @@ export default function NewCustomerForm({
                   {serviceTypes.map((t) => <option key={t.slug} value={t.slug}>{t.name}</option>)}
                 </select></div>
               <div className="fld"><label>{serviceTypes.find((t) => t.slug === serviceKind)?.name || tr("serviceType")}</label>
-                <select className="inp" value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
-                  <option value="">{tr("chooseService")}</option>
-                  {services.filter((x) => (x as any).kind === serviceKind).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-                </select></div>
+                <SearchSelect
+                  options={services.filter((x) => (x as any).kind === serviceKind).map((x) => ({ value: x.id, label: x.name }))}
+                  value={serviceId}
+                  placeholder={tr("chooseService")} emptyLabel={tr("chooseService")} searchPlaceholder={tr("searchDots")}
+                  onChange={(v) => setServiceId(v)}
+                /></div>
             </div>
             )}
 
