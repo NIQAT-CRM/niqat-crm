@@ -6,8 +6,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const CH = 200;
-const STAGE_AR: Record<string, string> = {
-  contacted: "تم التواصل", interested: "مهتم", enrolled: "مسجّل / دفع", onhold: "مؤجّل",
+const STAGE_EN: Record<string, string> = {
+  contacted: "Contacted", interested: "Interested", enrolled: "Enrolled / Paid", onhold: "On hold",
 };
 
 function chunk<T>(a: T[], n: number) { const o: T[][] = []; for (let i = 0; i < a.length; i += n) o.push(a.slice(i, i + n)); return o; }
@@ -90,9 +90,9 @@ async function buildCustomers(supabase: any, ids: string[], canFinance: boolean)
   }
 
   const headers = [
-    "الاسم", "موبايل 1", "موبايل 2", "الإيميل", "الشركة / الجروب", "المصدر",
-    "التخصص", "المرحلة", "المسؤول", "الدبلومات", "عدد الدبلومات", "تاريخ الإنشاء",
-    ...(canFinance ? ["المتفق (ج)", "المدفوع (ج)", "المتبقّي (ج)", "المدفوع ($)"] : []),
+    "Name", "Mobile 1", "Mobile 2", "Email", "Company / Group", "Source",
+    "Specialty", "Stage", "Owner", "Diplomas", "Diplomas Count", "Created At",
+    ...(canFinance ? ["Agreed (EGP)", "Paid (EGP)", "Remaining (EGP)", "Paid (USD)"] : []),
   ];
 
   const nf = (n: number) => Math.round(n || 0);
@@ -100,8 +100,8 @@ async function buildCustomers(supabase: any, ids: string[], canFinance: boolean)
     const dipNames = dipNamesByCust.get(c.id) || [];
     const base: (string | number)[] = [
       c.name || "", c.phone1 || "", c.phone2 || "", c.email || "", c.company || "", c.source || "",
-      specMap.get(c.specialty_id) || "", STAGE_AR[c.stage] || c.stage || "",
-      profMap.get(c.owner_id) || "", dipNames.join("، "), dipNames.length,
+      specMap.get(c.specialty_id) || "", STAGE_EN[c.stage] || c.stage || "",
+      profMap.get(c.owner_id) || "", dipNames.join(", "), dipNames.length,
       c.created_at ? String(c.created_at).slice(0, 10) : "",
     ];
     if (canFinance) {
@@ -136,7 +136,7 @@ export async function POST(req: Request) {
     if (!ids.length) return new Response("No rows", { status: 400 });
     const built = await buildCustomers(supabase, ids, canFinance);
     headers = built.headers; rows = built.rows;
-    title = "العملاء";
+    title = "Customers";
   } else if (type === "generic") {
     headers = (body.headers as string[]) || [];
     rows = (body.rows as (string | number)[][]) || [];
