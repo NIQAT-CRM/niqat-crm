@@ -1,9 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
+import { requirePerm } from "@/lib/authz";
 import PipelineBoard from "./PipelineBoard";
 
 export const dynamic = "force-dynamic";
 
 export default async function Pipeline({ searchParams }: { searchParams: { q?: string } }) {
+  await requirePerm("can_view_pipeline");
   const supabase = createClient();
   const q = (searchParams?.q || "").trim().toLowerCase();
   const { data: { user } } = await supabase.auth.getUser();

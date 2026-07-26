@@ -1,9 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
+import { requirePerm } from "@/lib/authz";
 import SupportBoard from "./SupportBoard";
 
 export const dynamic = "force-dynamic";
 
 export default async function Support({ searchParams }: { searchParams: { q?: string } }) {
+  await requirePerm("can_view_support");
   const supabase = createClient();
   const q = (searchParams?.q || "").trim().toLowerCase();
   // موجة متوازية: كل الاستعلامات مستقلة عن بعضها

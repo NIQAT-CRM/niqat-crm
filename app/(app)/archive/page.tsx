@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requirePerm } from "@/lib/authz";
 import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import RestoreBtn from "./RestoreBtn";
@@ -6,6 +7,7 @@ import EmptyState from "../EmptyState";
 export const dynamic = "force-dynamic";
 
 export default async function Archive() {
+  await requirePerm("can_view_archive");
   const supabase = createClient();
   const { data: rows } = await supabase
     .from("customers")

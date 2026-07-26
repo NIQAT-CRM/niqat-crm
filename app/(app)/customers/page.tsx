@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requirePerm } from "@/lib/authz";
 import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import ExportButton from "./ExportButton";
@@ -22,6 +23,7 @@ type SP = { q?: string; stage?: string; owner?: string; dip?: string; spec?: str
 const LIST_LIMIT = 50;
 
 export default async function Customers({ searchParams }: { searchParams: SP }) {
+  await requirePerm("can_view_customers");
   const STAGE_OPTS = Object.entries(STAGES).map(([v, x]) => ({ v, label: tr(x.labelKey) }));
   const q = (searchParams?.q || "").trim();
   const f = searchParams || {};
@@ -38,9 +40,10 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: meProf } = await supabase.from("profiles")
-    .select("can_export,can_see_finance,can_message,can_manage_batches,can_edit_customers").eq("id", user?.id || "").maybeSingle();
+    .select("can_export,can_see_finance,can_message,can_manage_batches,can_edit_customers,can_add_customers,team").eq("id", user?.id || "").maybeSingle();
   const canExport = !!meProf?.can_export;
   const canEditCustomers = !!meProf?.can_edit_customers;
+  const canAddCustomers = !!meProf?.can_add_customers || (meProf?.team || "").toLowerCase() === "admin";
   const canFinance = !!meProf?.can_see_finance;
   const canMessage = !!meProf?.can_message;
   const canManageBatches = !!meProf?.can_manage_batches;
@@ -291,7 +294,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         <div><h1>{tr("customers")}</h1><p>{shownCount} {tr("customersPl")}{q ? <> · {tr("searchColon")} «{q}»</> : null}</p></div>
         <div style={{ display: "flex", gap: 8 }}>
           {canExport && <ExportButton filter={{ q, stage: f.stage, owner: f.owner, dip: f.dip, spec: f.spec, batch: f.batch, svc: f.svc, company: f.company, pay: f.pay }} />}
-          {canEditCustomers && (
+          {canAddCustomers && (
             <a className="btn" href="/customers/new">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
               {tr("addCust")}

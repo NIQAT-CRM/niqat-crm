@@ -14,7 +14,7 @@ import ChatLogView from "../admin/chat-log/ChatLogView";
 export const dynamic = "force-dynamic";
 
 const TEAM_AR: Record<string, string> = { sales: "المبيعات", support: "الدعم", admin: "الإدارة", ops: "العمليات", operations: "العمليات" };
-const USER_COLS = "id,full_name,team,phone,can_edit_customers,can_see_finance,can_view_reports,can_manage_tickets,can_manage_batches,can_grant_access,can_message,can_export,can_manage_settings,can_manage_users,can_see_daily_sales,can_use_ai,ai_options";
+const USER_COLS = "id,full_name,team,phone,can_edit_customers,can_see_finance,can_view_reports,can_manage_tickets,can_manage_batches,can_grant_access,can_message,can_export,can_manage_settings,can_manage_users,can_see_daily_sales,can_use_ai,ai_options,can_view_pipeline,can_add_customers,can_view_support,can_view_activations,can_view_archive,can_view_batches,can_view_universities,can_view_refunds,can_view_customers";
 
 async function safeList(supabase: any, table: string, col: string) {
   const { data, error } = await supabase.from(table).select(`id,${col}`).order(col);

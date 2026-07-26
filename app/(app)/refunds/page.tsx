@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requirePerm } from "@/lib/authz";
 import RefundTable from "./RefundTable";
 import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
@@ -16,6 +17,7 @@ const STATUS: Record<string, { labelKey: string; color: string; bg: string }> = 
 };
 
 export default async function Refunds() {
+  await requirePerm("can_view_refunds");
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: prof } = await supabase.from("profiles").select("can_see_finance").eq("id", user?.id || "").maybeSingle();
