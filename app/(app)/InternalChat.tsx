@@ -59,10 +59,12 @@ export default function InternalChat({ me }: { me: Me }) {
   const openRef = useRef(open);
   const soundRef = useRef(sound);
   const trRef = useRef(tr);
+  const msgsRef = useRef<Msg[]>([]);
   useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
   useEffect(() => { openRef.current = open; }, [open]);
   useEffect(() => { soundRef.current = sound; }, [sound]);
   useEffect(() => { trRef.current = tr; }, [tr]);
+  useEffect(() => { msgsRef.current = msgs; }, [msgs]);
 
   const totalUnread = rooms.reduce((a, r) => a + (r.unread || 0), 0);
 
@@ -114,6 +116,38 @@ export default function InternalChat({ me }: { me: Me }) {
     return () => { supabase.removeChannel(ch); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, me.id]);
+
+  // ---- استطلاع احتياطي: يضمن ظهور الرسائل حتى لو الـ Realtime فشل ----
+  useEffect(() => {
+    if (!open || !activeId) return;
+    let stop = false;
+    const iv = setInterval(async () => {
+      if (stop) return;
+      const cur = msgsRef.current;
+      const last = cur.length ? cur[cur.length - 1] : null;
+      let q = supabase.from("internal_messages")
+        .select("id,room_id,sender_id,body,customer_id,attachment_path,created_at,reply_to")
+        .eq("room_id", activeId).order("created_at", { ascending: true }).limit(40);
+      if (last) q = q.gte("created_at", last.created_at);
+      const { data } = await q;
+      const list = (data as Msg[]) || [];
+      if (list.length && !stop) {
+        const have = new Set(cur.map((x) => x.id));
+        const add = list.filter((m) => !have.has(m.id));
+        if (add.length) {
+          await ensureMeta(add);
+          setMsgs((prev) => {
+            const ids = new Set(prev.map((x) => x.id));
+            const merged = [...prev, ...add.filter((m) => !ids.has(m.id))];
+            return merged.length === prev.length ? prev : merged;
+          });
+          markRead(activeId);
+        }
+      }
+    }, 3000);
+    return () => { stop = true; clearInterval(iv); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, activeId, supabase]);
 
   // ---- أدوات ----
   async function custName(id: string): Promise<string> {
