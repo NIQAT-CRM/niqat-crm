@@ -8,7 +8,7 @@ import { useT } from "@/lib/i18n/client";
 type Room = { id: string; key: string; name: string; color: string; unread: number };
 type Msg = {
   id: string; room_id: string; sender_id: string; body: string;
-  customer_id: string | null; attachment_path: string | null; created_at: string;
+  customer_id: string | null; attachment_path: string | null; created_at: string; reply_to: string | null;
 };
 type Me = { id: string; name: string; team: string; sound: boolean };
 
@@ -48,6 +48,8 @@ export default function InternalChat({ me }: { me: Me }) {
   const [pickRes, setPickRes] = useState<{ id: string; name: string }[]>([]);
   const [sound, setSound] = useState(me.sound);
   const [toastMsg, setToastMsg] = useState<{ text: string; roomId: string } | null>(null);
+  const [replyTo, setReplyTo] = useState<Msg | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   const profNames = useRef<Map<string, { name: string; team: string }>>(new Map());
   const custNames = useRef<Map<string, string>>(new Map());
@@ -147,7 +149,7 @@ export default function InternalChat({ me }: { me: Me }) {
     setActiveId(roomId);
     setMsgs([]);
     const { data } = await supabase.from("internal_messages")
-      .select("id,room_id,sender_id,body,customer_id,attachment_path,created_at")
+      .select("id,room_id,sender_id,body,customer_id,attachment_path,created_at,reply_to")
       .eq("room_id", roomId).order("created_at", { ascending: true }).limit(80);
     const list = (data as Msg[]) || [];
     await ensureMeta(list);
@@ -193,8 +195,8 @@ export default function InternalChat({ me }: { me: Me }) {
       attachment_path = path;
     }
     const { data: inserted, error } = await supabase.from("internal_messages").insert({
-      room_id: activeId, sender_id: me.id, body, customer_id: linked?.id || null, attachment_path,
-    }).select("id,room_id,sender_id,body,customer_id,attachment_path,created_at").single();
+      room_id: activeId, sender_id: me.id, body, customer_id: linked?.id || null, attachment_path, reply_to: replyTo?.id || null,
+    }).select("id,room_id,sender_id,body,customer_id,attachment_path,created_at,reply_to").single();
     setSending(false);
     if (error) { toast(tr("chatSendFailed") + error.message); return; }
     // أظهر رسالتي فوراً (والـ Realtime هيتعامل معها بالـ dedup لو رجّعها)
@@ -203,7 +205,7 @@ export default function InternalChat({ me }: { me: Me }) {
       await ensureMeta([im]);
       setMsgs((prev) => prev.some((x) => x.id === im.id) ? prev : [...prev, im]);
     }
-    setText(""); setLinked(null); setFile(null); setPickOpen(false);
+    setText(""); setLinked(null); setFile(null); setPickOpen(false); setReplyTo(null);
   }
 
   async function toggleSound() {
@@ -214,6 +216,19 @@ export default function InternalChat({ me }: { me: Me }) {
   function fmtTime(iso: string) {
     try { return new Intl.DateTimeFormat("ar-EG", { hour: "2-digit", minute: "2-digit", timeZone: "Africa/Cairo" }).format(new Date(iso)); } catch { return ""; }
   }
+
+  // النطّ للرسالة الأصلية عند الضغط على المقتبس + تمييز مؤقّت
+  function scrollToMsg(id: string) {
+    const el = document.getElementById("cm-" + id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightId(id);
+      setTimeout(() => setHighlightId((h) => (h === id ? null : h)), 1600);
+    }
+  }
+  // اسم مُرسِل + مقتطف لرسالة (للمقتبس)
+  function msgWho(m: Msg) { return m.sender_id === me.id ? tr("chatYou") : (profNames.current.get(m.sender_id)?.name || tr("chatTeammate")); }
+  function msgSnippet(m: Msg) { const b = (m.body || "").trim(); return b ? (b.length > 64 ? b.slice(0, 64) + "…" : b) : (m.attachment_path ? "📎 " + tr("chatAttachment") : tr("chatMessage")); }
 
   const active = rooms.find((r) => r.id === activeId);
 
@@ -272,9 +287,19 @@ export default function InternalChat({ me }: { me: Me }) {
               const cn = m.customer_id ? custNames.current.get(m.customer_id) : "";
               const url = m.attachment_path ? signed.current.get(m.attachment_path) : "";
               return (
-                <div key={m.id} className={"chat-m " + (mine ? "out" : "in")}>
+                <div key={m.id} id={"cm-" + m.id} className={"chat-m " + (mine ? "out" : "in")}>
                   <div className="chat-who">{who}</div>
-                  <div className="chat-bub">
+                  <div className="chat-bub" style={highlightId === m.id ? { boxShadow: "0 0 0 2px var(--brand)", transition: "box-shadow .3s" } : { transition: "box-shadow .3s" }}>
+                    {m.reply_to && (() => {
+                      const orig = msgs.find((x) => x.id === m.reply_to);
+                      return (
+                        <button type="button" onClick={() => m.reply_to && scrollToMsg(m.reply_to)}
+                          style={{ display: "block", width: "100%", textAlign: "start", border: "none", cursor: "pointer", background: "rgba(0,0,0,.08)", borderInlineStart: "3px solid var(--brand)", borderRadius: 7, padding: "5px 8px", marginBottom: 6 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--brand-d, var(--brand))", marginBottom: 1 }}>{orig ? msgWho(orig) : tr("chatMessage")}</div>
+                          <div style={{ fontSize: 11.5, opacity: 0.75, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{orig ? msgSnippet(orig) : "…"}</div>
+                        </button>
+                      );
+                    })()}
                     {m.customer_id && (
                       <button className="chat-cchip" onClick={() => { setOpen(false); router.push(`/customers/${m.customer_id}`); }}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
@@ -289,7 +314,13 @@ export default function InternalChat({ me }: { me: Me }) {
                       </a>
                     )}
                   </div>
-                  <div className="chat-time num">{fmtTime(m.created_at)}</div>
+                  <div className="chat-time num" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span>{fmtTime(m.created_at)}</span>
+                    <button type="button" onClick={() => setReplyTo(m)} title={tr("reply")}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", display: "inline-flex", padding: 0, opacity: 0.7 }}>
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 17l-5-5 5-5M4 12h11a4 4 0 0 1 4 4v2" /></svg>
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -305,6 +336,15 @@ export default function InternalChat({ me }: { me: Me }) {
                   {pickRes.map((c) => (
                     <button key={c.id} className="chat-pickrow" onClick={() => { setLinked({ id: c.id, name: c.name }); setPickOpen(false); setPickQ(""); }}>{c.name}</button>
                   ))}
+                </div>
+              )}
+              {replyTo && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--muted-soft)", borderInlineStart: "3px solid var(--brand)", borderRadius: 8, padding: "6px 10px", margin: "0 8px 6px" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--brand-d, var(--brand))" }}>{tr("replyingTo")} {msgWho(replyTo)}</div>
+                    <div style={{ fontSize: 11.5, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{msgSnippet(replyTo)}</div>
+                  </div>
+                  <button type="button" onClick={() => setReplyTo(null)} title={tr("cancel")} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 15, lineHeight: 1 }}>✕</button>
                 </div>
               )}
               {(linked || file) && (
