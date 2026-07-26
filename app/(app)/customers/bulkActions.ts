@@ -66,21 +66,6 @@ export async function bulkArchive(ids: string[]) {
   return res;
 }
 
-export async function bulkExportRows(ids: string[]): Promise<{ name: string; phone1: string; phone2: string; email: string; company: string; stage: string }[]> {
-  if (!ids.length) return [];
-  const supabase = createClient();
-  const out: any[] = [];
-  for (let i = 0; i < ids.length; i += CHUNK) {
-    const { data } = await supabase.from("customers")
-      .select("name,phone1,phone2,email,company,stage").in("id", ids.slice(i, i + CHUNK));
-    for (const r of (data as any[]) || []) out.push({
-      name: r.name || "", phone1: r.phone1 || "", phone2: r.phone2 || "",
-      email: r.email || "", company: r.company || "", stage: r.stage || "",
-    });
-  }
-  return out;
-}
-
 /* ===== مرحلة ٢ ===== */
 
 // متابعة جماعية — ينشئ follow_up لكل عميل محدّد
