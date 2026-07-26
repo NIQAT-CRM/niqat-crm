@@ -31,7 +31,7 @@ function playBlip() {
 }
 
 export default function InternalChat({ me }: { me: Me }) {
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const router = useRouter();
   const tr = useT();
 
@@ -55,8 +55,12 @@ export default function InternalChat({ me }: { me: Me }) {
   const msgsEnd = useRef<HTMLDivElement>(null);
   const activeIdRef = useRef(activeId);
   const openRef = useRef(open);
+  const soundRef = useRef(sound);
+  const trRef = useRef(tr);
   useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
   useEffect(() => { openRef.current = open; }, [open]);
+  useEffect(() => { soundRef.current = sound; }, [sound]);
+  useEffect(() => { trRef.current = tr; }, [tr]);
 
   const totalUnread = rooms.reduce((a, r) => a + (r.unread || 0), 0);
 
@@ -86,27 +90,28 @@ export default function InternalChat({ me }: { me: Me }) {
           await ensureMeta([m]);
           setMsgs((prev) => prev.some((x) => x.id === m.id) ? prev : [...prev, m]);
           markRead(m.room_id);
-          if (m.sender_id !== me.id && sound) playBlip();
+          if (m.sender_id !== me.id && soundRef.current) playBlip();
         } else {
           // غرفة تانية → زوّد البادچ + توست + صوت (لو مش أنا)
           setRooms((prev) => prev.map((r) => r.id === m.room_id ? { ...r, unread: (r.unread || 0) + (m.sender_id !== me.id ? 1 : 0) } : r));
           if (m.sender_id !== me.id) {
-            const sn = profNames.current.get(m.sender_id)?.name || tr("chatTeammate");
+            const t = trRef.current;
+            const sn = profNames.current.get(m.sender_id)?.name || t("chatTeammate");
             let hint = "";
             if (m.customer_id) {
               const cn = await custName(m.customer_id);
-              hint = cn ? " · " + tr("chatAbout") + " " + cn : "";
+              hint = cn ? " · " + t("chatAbout") + " " + cn : "";
             }
-            setToastMsg({ text: `${tr("chatNewMsgFrom")} ${sn}${hint}`, roomId: m.room_id });
-            if (sound) playBlip();
-            setTimeout(() => setToastMsg((t) => (t && t.roomId === m.room_id ? null : t)), 6000);
+            setToastMsg({ text: `${t("chatNewMsgFrom")} ${sn}${hint}`, roomId: m.room_id });
+            if (soundRef.current) playBlip();
+            setTimeout(() => setToastMsg((tt) => (tt && tt.roomId === m.room_id ? null : tt)), 6000);
           }
         }
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, me.id, sound, tr]);
+  }, [supabase, me.id]);
 
   // ---- أدوات ----
   async function custName(id: string): Promise<string> {
@@ -187,13 +192,18 @@ export default function InternalChat({ me }: { me: Me }) {
       if (up.error) { setSending(false); toast(tr("chatUploadFailed")); return; }
       attachment_path = path;
     }
-    const { error } = await supabase.from("internal_messages").insert({
+    const { data: inserted, error } = await supabase.from("internal_messages").insert({
       room_id: activeId, sender_id: me.id, body, customer_id: linked?.id || null, attachment_path,
-    });
+    }).select("id,room_id,sender_id,body,customer_id,attachment_path,created_at").single();
     setSending(false);
     if (error) { toast(tr("chatSendFailed") + error.message); return; }
+    // أظهر رسالتي فوراً (والـ Realtime هيتعامل معها بالـ dedup لو رجّعها)
+    if (inserted) {
+      const im = inserted as Msg;
+      await ensureMeta([im]);
+      setMsgs((prev) => prev.some((x) => x.id === im.id) ? prev : [...prev, im]);
+    }
     setText(""); setLinked(null); setFile(null); setPickOpen(false);
-    // الرسالة هترجع عبر Realtime وتتضاف تلقائياً
   }
 
   async function toggleSound() {
