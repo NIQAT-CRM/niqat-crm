@@ -9,14 +9,6 @@ type Perms = {
   canSettings?: boolean;
   canGrant?: boolean;
   canAi?: boolean;
-  canPipeline?: boolean;
-  canSupport?: boolean;
-  canActivations?: boolean;
-  canArchive?: boolean;
-  canBatches?: boolean;
-  canUniversities?: boolean;
-  canRefunds?: boolean;
-  canCustomers?: boolean;
   isAdmin?: boolean;
   dueCount?: number;
   handoffCount?: number;
@@ -48,23 +40,21 @@ export default function NavLinks(p: Perms) {
   const t = useT();
   const closeSb = () => document.getElementById("sb")?.classList.remove("open");
 
-  const A = !!p.isAdmin; // الأدمن يشوف كل حاجة
   const main: Item[] = [
     { href: "/", key: "dash", tk: "dash" },
+    { href: "/customers", key: "users", tk: "customers" },
+    { href: "/pipeline", key: "pipe", tk: "pipeline" },
+    { href: "/my-tasks", key: "task", tk: "myTasks", badge: p.dueCount },
+    { href: "/batches", key: "batch", tk: "batches" },
+    { href: "/universities", key: "uni2", tk: "universities" },
   ];
-  if (A || p.canCustomers) main.push({ href: "/customers", key: "users", tk: "customers" });
-  if (A || p.canPipeline) main.push({ href: "/pipeline", key: "pipe", tk: "pipeline" });
-  main.push({ href: "/my-tasks", key: "task", tk: "myTasks", badge: p.dueCount });
-  if (A || p.canBatches) main.push({ href: "/batches", key: "batch", tk: "batches" });
-  if (A || p.canUniversities) main.push({ href: "/universities", key: "uni2", tk: "universities" });
 
   // الرؤى بقت جزء من صفحة التقارير (نفس صلاحية can_view_reports) — مبقاش بند مستقل
-  const teams: Item[] = [];
-  if (A || p.canSupport) teams.push({ href: "/support", key: "support", tk: "support" });
-  if (A || p.canActivations) teams.push({ href: "/onboarding", key: "onb", tk: "onboarding", badge: p.handoffCount });
-  if (A || p.canRefunds) teams.push({ href: "/refunds", key: "refund", tk: "refunds", badge: p.refundCount });
-  if (A || p.canArchive) teams.push({ href: "/archive", key: "archive", tk: "archive" });
-  if (A || p.canReports) teams.push({ href: "/reports", key: "report", tk: "reports" });
+  const teams: Item[] = [{ href: "/support", key: "support", tk: "support" }];
+  if (p.canGrant) teams.push({ href: "/onboarding", key: "onb", tk: "onboarding", badge: p.handoffCount });
+  teams.push({ href: "/refunds", key: "refund", tk: "refunds", badge: p.refundCount });
+  teams.push({ href: "/archive", key: "archive", tk: "archive" });
+  if (p.canReports) teams.push({ href: "/reports", key: "report", tk: "reports" });
 
   // المستخدمون + سجل الشات بقوا تبويبات جوّه الإعدادات — مبقاش فيه صفحات منفصلة
   const admin: Item[] = [];
@@ -89,7 +79,7 @@ export default function NavLinks(p: Perms) {
     <nav className="nav">
       <div className="sect">{t("MAIN")}</div>
       {main.map(Btn)}
-      {teams.length > 0 && <div className="sect">{t("TEAMS")}</div>}
+      <div className="sect">{t("TEAMS")}</div>
       {teams.map(Btn)}
       {admin.length > 0 && <div className="sect">{t("ADMIN")}</div>}
       {admin.map(Btn)}

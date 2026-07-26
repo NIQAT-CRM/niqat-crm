@@ -13,7 +13,6 @@ import SidebarRail from "./SidebarRail";
 import InternalChat from "./InternalChat";
 // import AnimatedMain from "./AnimatedMain";
 import { LangProvider } from "@/lib/i18n/client";
-import { AiFlagsProvider } from "./AiFlags";
 import { getLang, tFor } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -43,9 +42,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .eq("id", user.id).maybeSingle();
 
   // بوابة الذكاء الاصطناعي: مفعّل للمستخدم + مفعّل عام في ai_settings
-  const { data: aiSet } = await supabase.from("ai_settings").select("insights_enabled, quick_shortcuts_enabled").maybeSingle();
+  const { data: aiSet } = await supabase.from("ai_settings").select("insights_enabled").maybeSingle();
   const canAi = !!profile?.can_use_ai && !!aiSet?.insights_enabled;
-  const shortcutsEnabled = !!aiSet?.quick_shortcuts_enabled;
 
   const tomorrow = new Date(); tomorrow.setHours(0, 0, 0, 0); tomorrow.setDate(tomorrow.getDate() + 1);
   const [dueRes, handoffRes] = await Promise.all([
@@ -111,7 +109,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <LangProvider lang={lang}>
-    <AiFlagsProvider value={{ canUseAi: canAi, shortcutsEnabled }}>
     <div className="app rail">
       <aside className="sb" id="sb">
         <div className="sb-logo">
@@ -171,7 +168,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <DailyGreeting />
     <InternalChat me={{ id: user.id, name, team: (profile?.team || "").toLowerCase(), sound: profile?.chat_sound !== false }} />
     </div>
-    </AiFlagsProvider>
     </LangProvider>
   );
 }

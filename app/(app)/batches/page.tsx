@@ -1,11 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { requirePerm } from "@/lib/authz";
 import { t as tr } from "@/lib/i18n";
 import BatchesView from "./BatchesView";
 export const dynamic = "force-dynamic";
 
 export default async function Batches() {
-  await requirePerm("can_view_batches");
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

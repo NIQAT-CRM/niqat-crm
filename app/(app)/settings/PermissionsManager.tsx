@@ -16,15 +16,6 @@ const PERMS: [string, string][] = [
   ["can_grant_access", "منح صلاحية الدخول"],
   ["can_message", "إرسال واتساب"],
   ["can_export", "تصدير البيانات"],
-  ["can_view_customers", "عرض: العملاء"],
-  ["can_add_customers", "عرض: زر إضافة عميل"],
-  ["can_view_pipeline", "عرض: مسار المبيعات"],
-  ["can_view_support", "عرض: الدعم"],
-  ["can_view_activations", "عرض: طلبات التفعيل"],
-  ["can_view_archive", "عرض: الأرشيف"],
-  ["can_view_batches", "عرض: الباتشات"],
-  ["can_view_universities", "عرض: الجامعات"],
-  ["can_view_refunds", "عرض: المستردات"],
 ];
 
 export default function PermissionsManager({ profiles }: { profiles: Profile[] }) {
