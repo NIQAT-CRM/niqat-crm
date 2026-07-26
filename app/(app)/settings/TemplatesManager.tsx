@@ -47,7 +47,7 @@ export default function TemplatesManager({ initial }: { initial: Tpl[] }) {
   }
 
   async function del(t: Tpl) {
-    if (!await confirmDialog(`${tr("deleteTemplateQ")} «${t.name}»?`)) return;
+    if (!await confirmDialog(`${tr("deleteTemplateQ")} «${t.name}»?`, true)) return;
     setList((s) => s.filter((x) => x.id !== t.id));
     const { error } = await supabase.from("wa_templates").delete().eq("id", t.id);
     toast(error ? tr("deleteFailed") : tr("deletedM"));

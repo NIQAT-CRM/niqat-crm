@@ -176,7 +176,7 @@ export default function ServicesPanel({
   }
 
   async function delAddon(a: Addon) {
-    if (!await confirmDialog(`${tr("deleteQ")} «${a.name}»؟`)) return;
+    if (!await confirmDialog(`${tr("deleteQ")} «${a.name}»؟`, true)) return;
     await supabase.from("customer_addons").delete().eq("id", a.id);
     toast(tr("deleted")); router.refresh();
   }

@@ -49,7 +49,7 @@ export default function AffiliatesManager({ initial }: { initial: Aff[] }) {
   }
 
   async function remove(i: number) {
-    if (!await confirmDialog(tr("deleteCodeQ"))) return;
+    if (!await confirmDialog(tr("deleteCodeQ"), true)) return;
     const next = list.filter((_, idx) => idx !== i);
     setList(next); await persist(next);
   }

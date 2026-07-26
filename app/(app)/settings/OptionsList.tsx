@@ -51,7 +51,7 @@ export default function OptionsList({
   }
 
   async function del(it: Item) {
-    if (!await confirmDialog(`${tr("deleteQ")} «${it.label}»?`)) return;
+    if (!await confirmDialog(`${tr("deleteQ")} «${it.label}»?`, true)) return;
     setItems((s) => s.filter((x) => x.id !== it.id));
     const { error } = await (supabase.from(table) as any).delete().eq("id", it.id);
     if (error) { toast(tr("deleteFailed")); router.refresh(); return; }

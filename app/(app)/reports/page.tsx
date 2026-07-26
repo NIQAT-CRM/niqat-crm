@@ -282,7 +282,6 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
       batchOpts={batchOpts} diplomaOpts={diplomaOpts} affiliates={affiliatesList}
       resetAt={resetAt}
       insights={insights}
-      showInsights={showInsights}
     />
   );
 }

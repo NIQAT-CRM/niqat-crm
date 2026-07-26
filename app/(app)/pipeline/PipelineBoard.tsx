@@ -77,7 +77,7 @@ export default function PipelineBoard({ initial, canFinance = false }: { initial
 
   async function archiveColumn(ids: string[]) {
     if (!ids.length) return;
-    if (!await confirmDialog(`${tr("archiveColumnQ")} (${ids.length})`)) return;
+    if (!await confirmDialog(`${tr("archiveColumnQ")} (${ids.length})`, true)) return;
     const idset = new Set(ids);
     const prev = custs;
     setCusts((l) => l.filter((x) => !idset.has(x.id)));

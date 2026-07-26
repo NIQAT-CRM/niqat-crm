@@ -252,7 +252,7 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
   }, [supabase]);
 
   const archiveCustomer = useCallback(async (custId: string, hid: string) => {
-    if (!await confirmDialog(tr("archiveCustomerQ"))) return;
+    if (!await confirmDialog(tr("archiveCustomerQ"), true)) return;
     setCards((cs) => cs.filter((c) => c.handoffId !== hid));
     const { error } = await supabase.from("customers").update({ archived: true }).eq("id", custId);
     if (error) { toast(tr("archiveFailed") + error.message); return; }

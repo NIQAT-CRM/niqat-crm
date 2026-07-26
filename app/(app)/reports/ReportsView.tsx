@@ -109,7 +109,7 @@ export default function ReportsView({
   const fmt = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 
   async function resetMeasurement() {
-    if (!await confirmDialog(tr("resetChartQ"))) return;
+    if (!await confirmDialog(tr("resetChartQ"), true)) return;
     setResetting(true);
     const { error } = await supabase.from("app_settings")
       .upsert({ key: "reports_reset_at", value: new Date().toISOString(), updated_at: new Date().toISOString() });

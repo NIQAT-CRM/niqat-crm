@@ -142,7 +142,7 @@ export default function SupportBoard({ initial, assignees, subjects, meId }: {
 
   async function archiveColumn(ids: string[]) {
     if (!ids.length) return;
-    if (!await confirmDialog(`${tr("archiveColumnQ")} (${ids.length})`)) return;
+    if (!await confirmDialog(`${tr("archiveColumnQ")} (${ids.length})`, true)) return;
     const idset = new Set(ids);
     const prev = tickets;
     setTickets((l) => l.filter((t) => !idset.has(t.id)));

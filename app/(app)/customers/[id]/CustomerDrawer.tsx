@@ -73,7 +73,7 @@ export default function CustomerDrawer(props: {
   const finRemaining = finSum.agreed - finSum.paid;
 
   async function archiveCustomer() {
-    if (!await confirmDialog(tr("archiveCustomerQ"))) return;
+    if (!await confirmDialog(tr("archiveCustomerQ"), true)) return;
     setArchiving(true);
     const { error } = await supabase.from("customers").update({ archived: true }).eq("id", props.c.id);
     if (error) { setArchiving(false); toast(tr("archiveFailed") + error.message); return; }
@@ -83,8 +83,8 @@ export default function CustomerDrawer(props: {
   }
 
   async function deleteCustomer() {
-    if (!await confirmDialog(tr("deleteCustomerQ1"))) return;
-    if (!await confirmDialog(tr("deleteCustomerQ2"))) return;
+    if (!await confirmDialog(tr("deleteCustomerQ1"), true)) return;
+    if (!await confirmDialog(tr("deleteCustomerQ2"), true)) return;
     setDeleting(true);
     const { error } = await supabase.from("customers").delete().eq("id", props.c.id);
     if (error) { setDeleting(false); toast(tr("deleteFailed") + error.message); return; }

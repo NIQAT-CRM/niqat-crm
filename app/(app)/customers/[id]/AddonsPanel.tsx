@@ -68,7 +68,7 @@ export default function AddonsPanel({
   }
 
   async function del(a: Addon) {
-    if (!await confirmDialog(`${tr("deleteQ")} «${a.name}»؟`)) return;
+    if (!await confirmDialog(`${tr("deleteQ")} «${a.name}»؟`, true)) return;
     setList((s) => s.filter((x) => x.id !== a.id));
     await supabase.from("customer_addons").delete().eq("id", a.id);
     toast(tr("deletedM"));

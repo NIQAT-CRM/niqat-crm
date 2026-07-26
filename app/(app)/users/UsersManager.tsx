@@ -100,7 +100,7 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
     setEditId(null); toast(tr("edited"));
   }
   async function removeUser(u: Profile) {
-    if (!await confirmDialog(`${tr("confirmDeleteMember")} ${u.full_name || tr("member")}?`)) return;
+    if (!await confirmDialog(`${tr("confirmDeleteMember")} ${u.full_name || tr("member")}?`, true)) return;
     setBusy(u.id + "del");
     const res = await fetch("/api/team", {
       method: "DELETE", headers: { "Content-Type": "application/json" },

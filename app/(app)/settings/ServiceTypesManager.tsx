@@ -50,7 +50,7 @@ export default function ServiceTypesManager({ initial }: { initial: ST[] }) {
   }
 
   async function del(it: ST) {
-    if (!await confirmDialog(tr("deleteServiceTypeQ").replace("{n}", it.name))) return;
+    if (!await confirmDialog(tr("deleteServiceTypeQ").replace("{n}", it.name), true)) return;
     setBusy(true);
     const { error } = await supabase.from("service_types").delete().eq("id", it.id);
     setBusy(false);
