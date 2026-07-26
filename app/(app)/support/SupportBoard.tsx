@@ -7,6 +7,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import NewTicketModal from "./NewTicketModal";
+import SmartActions from "../SmartActions";
+import { useLogUsage } from "../AiFlags";
 
 type Ticket = {
   id: string;
@@ -54,6 +56,7 @@ export default function SupportBoard({ initial, assignees, subjects, meId }: {
 }) {
   const tr = useT();
   const router = useRouter();
+  const log = useLogUsage();
   const downRef = useRef<{ x: number; y: number } | null>(null);
   const supabase = createClient();
   const [tickets, setTickets] = useState<Ticket[]>(initial);
@@ -123,6 +126,7 @@ export default function SupportBoard({ initial, assignees, subjects, meId }: {
     if (!tk || tk.status === status) return;
     const prev = tickets;
     setTickets((list) => list.map((t) => (t.id === id ? { ...t, status } : t)));
+    if (status === "closed") log("action", "action:close_ticket", "support");
     const { error } = await supabase.from("tickets").update({ status }).eq("id", id);
     if (error) {
       setTickets(prev);
@@ -142,7 +146,7 @@ export default function SupportBoard({ initial, assignees, subjects, meId }: {
 
   async function archiveColumn(ids: string[]) {
     if (!ids.length) return;
-    if (!await confirmDialog(`${tr("archiveColumnQ")} (${ids.length})`, true)) return;
+    if (!await confirmDialog(`${tr("archiveColumnQ")} (${ids.length})`)) return;
     const idset = new Set(ids);
     const prev = tickets;
     setTickets((l) => l.filter((t) => !idset.has(t.id)));
@@ -160,11 +164,15 @@ export default function SupportBoard({ initial, assignees, subjects, meId }: {
           <h1>{tr("support")}</h1>
           <p>{tickets.length} {tr("ticketWord")} — {tr("dragTicketHint")}</p>
         </div>
-        <button type="button" className="btn" onClick={() => setNewOpen(true)}>
+        <button type="button" className="btn" onClick={() => { log("action", "action:new_ticket", "support"); setNewOpen(true); }}>
           <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
           {tr("newTicket")}
         </button>
       </div>
+
+      <SmartActions context="support" title={tr("qaQuickAccess")}
+        actionLabels={{ new_ticket: tr("newTicket"), close_ticket: tr("closedLabel") }}
+        onRun={(item) => { if (item.key === "action:new_ticket") { log("action", "action:new_ticket", "support"); setNewOpen(true); } }} />
 
       <div className="pipe">
         {STATUSES.map((s) => {

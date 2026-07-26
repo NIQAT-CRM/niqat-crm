@@ -16,6 +16,8 @@ import AccessPanel from "./AccessPanel";
 import FollowUpPanel from "./FollowUpPanel";
 import RefundPanel from "./RefundPanel";
 import WhatsAppPanel from "./WhatsAppPanel";
+import SmartActions from "../../SmartActions";
+import { useLogUsage } from "../../AiFlags";
 
 const fmtNum = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 
@@ -73,7 +75,7 @@ export default function CustomerDrawer(props: {
   const finRemaining = finSum.agreed - finSum.paid;
 
   async function archiveCustomer() {
-    if (!await confirmDialog(tr("archiveCustomerQ"), true)) return;
+    if (!await confirmDialog(tr("archiveCustomerQ"))) return;
     setArchiving(true);
     const { error } = await supabase.from("customers").update({ archived: true }).eq("id", props.c.id);
     if (error) { setArchiving(false); toast(tr("archiveFailed") + error.message); return; }
@@ -83,8 +85,8 @@ export default function CustomerDrawer(props: {
   }
 
   async function deleteCustomer() {
-    if (!await confirmDialog(tr("deleteCustomerQ1"), true)) return;
-    if (!await confirmDialog(tr("deleteCustomerQ2"), true)) return;
+    if (!await confirmDialog(tr("deleteCustomerQ1"))) return;
+    if (!await confirmDialog(tr("deleteCustomerQ2"))) return;
     setDeleting(true);
     const { error } = await supabase.from("customers").delete().eq("id", props.c.id);
     if (error) { setDeleting(false); toast(tr("deleteFailed") + error.message); return; }
@@ -98,6 +100,26 @@ export default function CustomerDrawer(props: {
     setTimeout(() => { document.getElementById(panelId)?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80);
   }
 
+  const log = useLogUsage();
+  const CTX = "customer_card";
+  // أكشنز الكارت: الاسم → (تسجيل + تنفيذ فعلي عبر goTo)
+  function cardAction(name: string) {
+    log("action", "action:" + name, CTX);
+    if (name === "whatsapp") goTo("docs", "panel-whatsapp");
+    else if (name === "followup") goTo("sales", "panel-followup");
+    else if (name === "handoff") goTo("sales", "panel-access");
+    else if (name === "service") goTo("sales", "panel-services");
+    else if (name === "note") goTo("docs", "panel-activity");
+  }
+  // تشغيل عنصر من SmartActions (كلها أكشنز في سياق الكارت)
+  function runSmart(item: { kind: "action" | "filter"; key: string }) {
+    if (item.key.startsWith("action:")) cardAction(item.key.slice(7));
+  }
+  const cardActionLabels: Record<string, string> = {
+    whatsapp: tr("qaWhatsapp"), followup: tr("qaFollow"), handoff: tr("qaHandoff"),
+    service: tr("qaService"), note: tr("addNote"),
+  };
+
   const qbtn: React.CSSProperties = {
     display: "inline-flex", alignItems: "center", gap: 6, height: 36, padding: "0 13px",
     borderRadius: 9, fontWeight: 700, fontSize: 13, whiteSpace: "nowrap", cursor: "pointer",
@@ -108,20 +130,20 @@ export default function CustomerDrawer(props: {
   const quickBar = (
     <div style={{ display: "flex", gap: 8, padding: "12px 18px", borderBottom: "1px solid var(--line)", background: "linear-gradient(0deg,var(--muted-soft),transparent)", overflowX: "auto" }}>
       {props.canMessage && (
-        <button type="button" style={qbtnWa} onClick={() => goTo("docs", "panel-whatsapp")}>
+        <button type="button" style={qbtnWa} onClick={() => cardAction("whatsapp")}>
           <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1-.4-.1-.9-.3-1.6-.6-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8s.7-2 .9-2.2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5.2.5.7 1.8.8 1.9.1.1.1.3 0 .5-.3.6-.6.8-.8 1-.1.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.7-.1.2-.2.8-.9 1-1.2.2-.3.4-.2.7-.1.3.1 1.8.8 2.1 1 .3.1.5.2.6.3.1.2.1.7-.1 1.3z" /></svg>
           {tr("qaWhatsapp")}
         </button>
       )}
-      <button type="button" style={qbtn} onClick={() => goTo("sales", "panel-followup")}>
+      <button type="button" style={qbtn} onClick={() => cardAction("followup")}>
         <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" /></svg>
         {tr("qaFollow")}
       </button>
-      <button type="button" style={qbtn} onClick={() => goTo("sales", "panel-access")}>
+      <button type="button" style={qbtn} onClick={() => cardAction("handoff")}>
         <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
         {tr("qaHandoff")}
       </button>
-      <button type="button" style={qbtn} onClick={() => goTo("sales", "panel-services")}>
+      <button type="button" style={qbtn} onClick={() => cardAction("service")}>
         <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
         {tr("qaService")}
       </button>
@@ -129,6 +151,8 @@ export default function CustomerDrawer(props: {
   );
 
   return (
+    <>
+    <SmartActions context="customer_card" actionLabels={cardActionLabels} onRun={runSmart} />
     <DrawerTabs
       tab={tab} onTab={setTab} quickBar={quickBar} showOps={showOps}
       basic={<div className="px-5 py-5">
@@ -271,5 +295,6 @@ export default function CustomerDrawer(props: {
       </div>}
       footer={() => null}
     />
+    </>
   );
 }

@@ -4,13 +4,16 @@ import { useT } from "@/lib/i18n/client";
 import { toast } from "@/lib/toast";
 import { postExport } from "@/lib/export/download";
 import type { CustFilterSP } from "@/lib/customerFilter";
+import { useLogUsage } from "../AiFlags";
 
 // يصدّر كل العملاء المطابقين للفلتر (مش الصفحة المعروضة بس) — XLSX مبراندَد كامل
 export default function ExportButton({ filter }: { filter: CustFilterSP }) {
   const tr = useT();
+  const log = useLogUsage();
   const [busy, setBusy] = useState(false);
   async function download() {
     setBusy(true);
+    log("action", "action:export", "customers");
     const r = await postExport({ type: "customers", filter }, "niqat-customers");
     setBusy(false);
     if (!r.ok) toast(tr("exportFailed") + (r.error ? ` (${r.error})` : ""));

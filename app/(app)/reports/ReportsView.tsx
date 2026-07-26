@@ -77,10 +77,11 @@ function Lead({ rank, name, sub, value, valueColor }: { rank: number; name: stri
 export default function ReportsView({
   canFinance, agreed, collected, overdueN, collectedUsd, agreedUsd, refundReport = null,
   stageRows, totalCust, affRows, salesRows, supportRows, monthly, byDiploma, byService = [],
-  batchOpts, diplomaOpts, affiliates, resetAt = "", insights,
+  batchOpts, diplomaOpts, affiliates, resetAt = "", insights, showInsights = false,
 }: {
   canFinance: boolean;
   insights: InsightsData;
+  showInsights?: boolean;
   agreed: number; collected: number; overdueN: number; collectedUsd: number; agreedUsd: number;
   refundReport?: any;
   stageRows: StageRow[]; totalCust: number; affRows: AffRow[];
@@ -109,7 +110,7 @@ export default function ReportsView({
   const fmt = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 
   async function resetMeasurement() {
-    if (!await confirmDialog(tr("resetChartQ"), true)) return;
+    if (!await confirmDialog(tr("resetChartQ"))) return;
     setResetting(true);
     const { error } = await supabase.from("app_settings")
       .upsert({ key: "reports_reset_at", value: new Date().toISOString(), updated_at: new Date().toISOString() });
@@ -266,7 +267,7 @@ export default function ReportsView({
             </div>
           </div>
           {/* ===== الرؤى (داخل تبويب الأداء فقط) ===== */}
-          <InsightsSection insights={insights} canFinance={canFinance} />
+          {showInsights && <InsightsSection insights={insights} canFinance={canFinance} />}
         </div>
       )}
 

@@ -13,6 +13,7 @@ import SidebarRail from "./SidebarRail";
 import InternalChat from "./InternalChat";
 // import AnimatedMain from "./AnimatedMain";
 import { LangProvider } from "@/lib/i18n/client";
+import { AiFlagsProvider } from "./AiFlags";
 import { getLang, tFor } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -38,12 +39,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users, can_grant_access, can_use_ai, chat_sound, can_view_pipeline, can_add_customers, can_view_support, can_view_activations, can_view_archive, can_view_batches, can_view_universities, can_view_refunds, can_view_customers")
+    .select("full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users, can_grant_access, can_use_ai, chat_sound")
     .eq("id", user.id).maybeSingle();
 
   // بوابة الذكاء الاصطناعي: مفعّل للمستخدم + مفعّل عام في ai_settings
-  const { data: aiSet } = await supabase.from("ai_settings").select("insights_enabled").maybeSingle();
+  const { data: aiSet } = await supabase.from("ai_settings").select("insights_enabled, quick_shortcuts_enabled").maybeSingle();
   const canAi = !!profile?.can_use_ai && !!aiSet?.insights_enabled;
+  const shortcutsEnabled = !!aiSet?.quick_shortcuts_enabled;
 
   const tomorrow = new Date(); tomorrow.setHours(0, 0, 0, 0); tomorrow.setDate(tomorrow.getDate() + 1);
   const [dueRes, handoffRes] = await Promise.all([
@@ -109,6 +111,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <LangProvider lang={lang}>
+    <AiFlagsProvider value={{ canUseAi: canAi, shortcutsEnabled }}>
     <div className="app rail">
       <aside className="sb" id="sb">
         <div className="sb-logo">
@@ -126,14 +129,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           canSettings={!!profile?.can_manage_settings}
           canGrant={!!profile?.can_grant_access}
           canAi={canAi}
-          canPipeline={!!profile?.can_view_pipeline}
-          canSupport={!!profile?.can_view_support}
-          canActivations={!!profile?.can_view_activations}
-          canArchive={!!profile?.can_view_archive}
-          canBatches={!!profile?.can_view_batches}
-          canUniversities={!!profile?.can_view_universities}
-          canRefunds={!!profile?.can_view_refunds}
-          canCustomers={!!profile?.can_view_customers}
           isAdmin={(profile?.team || "").toLowerCase() === "admin"}
           dueCount={dueCount}
           handoffCount={handoffCount}
@@ -176,6 +171,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <DailyGreeting />
     <InternalChat me={{ id: user.id, name, team: (profile?.team || "").toLowerCase(), sound: profile?.chat_sound !== false }} />
     </div>
+    </AiFlagsProvider>
     </LangProvider>
   );
 }

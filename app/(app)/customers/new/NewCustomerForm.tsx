@@ -7,6 +7,7 @@ import { useT } from "@/lib/i18n/client";
 import { COUNTRIES, DEFAULT_DIAL, combineDialAndNumber, phoneKey } from "@/lib/phone";
 import FileDrop from "@/lib/ui/FileDrop";
 import SearchSelect from "../../SearchSelect";
+import { useLogUsage } from "../../AiFlags";
 
 type Opt = { id: string; name: string };
 type BatchOpt = { id: string; name: string; price?: number; currency?: string; price_egp?: number; price_usd?: number; diploma_id?: string };
@@ -57,6 +58,7 @@ export default function NewCustomerForm({
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
+  const log = useLogUsage();
   const [subMode, setSubMode] = useState<"diploma" | "service">("diploma");
   const [serviceId, setServiceId] = useState("");
   const [serviceKind, setServiceKind] = useState<string>(serviceTypes[0]?.slug || "accreditation");
@@ -222,6 +224,7 @@ export default function NewCustomerForm({
       return;
     }
     const cid = cust.id;
+    log("action", "action:new_customer", "customers");
     // صورة تحويل الفلوس المتفق عليها → تخزين + تسجيل في المستندات
     // (نتخطّاها لو الإيصال هيتربط بالقسط الأول في وضع التقسيط)
     const receiptGoesToInstallment = payMode === "installment" && payFirstNow;
