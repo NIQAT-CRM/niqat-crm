@@ -76,10 +76,11 @@ function Lead({ rank, name, sub, value, valueColor }: { rank: number; name: stri
 export default function ReportsView({
   canFinance, agreed, collected, overdueN, collectedUsd, agreedUsd, refundReport = null,
   stageRows, totalCust, affRows, salesRows, supportRows, monthly, byDiploma, byService = [],
-  batchOpts, diplomaOpts, affiliates, resetAt = "", insights,
+  batchOpts, diplomaOpts, affiliates, resetAt = "", insights, showInsights = false,
 }: {
   canFinance: boolean;
   insights: InsightsData;
+  showInsights?: boolean;
   agreed: number; collected: number; overdueN: number; collectedUsd: number; agreedUsd: number;
   refundReport?: any;
   stageRows: StageRow[]; totalCust: number; affRows: AffRow[];
@@ -264,8 +265,8 @@ export default function ReportsView({
               )}
             </div>
           </div>
-          {/* ===== الرؤى (داخل تبويب الأداء فقط) ===== */}
-          <InsightsSection insights={insights} canFinance={canFinance} />
+          {/* ===== الرؤى (داخل تبويب الأداء فقط — خلف بوّابة الذكاء) ===== */}
+          {showInsights && <InsightsSection insights={insights} canFinance={canFinance} />}
         </div>
       )}
 

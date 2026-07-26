@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import ReportsView from "./ReportsView";
+import { type InsightsData } from "./InsightsSection";
 
 export const dynamic = "force-dynamic";
 
@@ -33,19 +34,27 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: prof } = await supabase.from("profiles")
-    .select("can_view_reports, can_see_finance").eq("id", user?.id || "").maybeSingle();
+    .select("can_view_reports, can_see_finance, can_use_ai").eq("id", user?.id || "").maybeSingle();
 
   if (!prof?.can_view_reports) {
     return (<div className="page-h"><div><h1>{tr("reports")}</h1><p>{tr("noReportsAccess")}</p></div></div>);
   }
   const canFinance = !!prof.can_see_finance;
 
+  // ==== بوّابة لوحة الرؤى: صلاحية المستخدم (can_use_ai) + سويتش الأدمن (ai_settings.insights_enabled) ====
+  let showInsights = false;
+  if (prof.can_use_ai) {
+    const { data: aiSettings } = await supabase.from("ai_settings")
+      .select("insights_enabled").eq("id", 1).maybeSingle();
+    showInsights = !!aiSettings?.insights_enabled;
+  }
+
   const period = searchParams?.period || "all";
   const range = periodRange(period);
   const rpcArgs = range ? { p_from: range.from, p_to: range.to } : undefined;
 
-  // ==== كل الاستعلامات المستقلة بالتوازي (رؤى + تقارير + مستقلة) — بيقلّل زمن فتح الصفحة ====
-  const insightsP = Promise.all([
+  // ==== لوحة الرؤى: تتشغّل استعلاماتها فقط لو البوّابة مفتوحة (توفير وقت) ====
+  const insightsP: Promise<any[] | null> = showInsights ? Promise.all([
     supabase.rpc("ins_top_diplomas", { p_days: 30 }),
     supabase.rpc("ins_peak_hours", { p_days: 30 }),
     supabase.rpc("ins_batches_filling"),
@@ -59,7 +68,7 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
     supabase.rpc("ins_overdue_installments"),
     supabase.rpc("ins_expected_week"),
     supabase.rpc("ins_refunds_month"),
-  ]);
+  ]) : Promise.resolve(null);
   const mainP = Promise.all([
     supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
     supabase.from("profiles").select("id,full_name,team"),
@@ -76,25 +85,31 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
     supabase.from("app_settings").select("value").eq("key", "reports_reset_at").maybeSingle(),
   ]);
   const [
-    [insTopRes, insPeakRes, insBatchRes, insStaleRes, insTrendRes, insSrcRes, insUnassignedRes, insStaleTkRes, insPendingRes, insSpecRes, insOverdueRes, insExpectedRes, insRefundsRes],
+    insRes,
     [affRes, profRes, dipRes, refundRes, batchRes, tkRes, scRes, edRes, acRes, occRes, svcBatchesRes, svcEnrRes, resetRowRes],
   ] = await Promise.all([insightsP, mainP]);
 
-  const insights = {
-    topDip: ((insTopRes.data as any[]) || [])[0] || null,
-    peak: (insPeakRes.data as any) || null,
-    batches: (insBatchRes.data as any[]) || [],
-    stale: (insStaleRes.data as any) || { count: 0, list: [] },
-    trend: (insTrendRes.data as any) || null,
-    topSource: (insSrcRes.data as any) || null,
-    unassigned: (insUnassignedRes.data as any) || { count: 0, list: [] },
-    staleTickets: (insStaleTkRes.data as any) || { count: 0, list: [] },
-    pendingHandoffs: (insPendingRes.data as any) || { count: 0, list: [] },
-    specialtyDist: (insSpecRes.data as any[]) || [],
-    overdue: (insOverdueRes.data as any) || null,
-    expectedWeek: (insExpectedRes.data as any) || null,
-    refundsMonth: (insRefundsRes.data as any) || null,
+  const emptyInsights: InsightsData = {
+    topDip: null, peak: null, batches: [], stale: { count: 0, list: [] },
+    trend: null, topSource: null, unassigned: { count: 0, list: [] },
+    staleTickets: { count: 0, list: [] }, pendingHandoffs: { count: 0, list: [] },
+    specialtyDist: [], overdue: null, expectedWeek: null, refundsMonth: null,
   };
+  const insights: InsightsData = insRes ? {
+    topDip: ((insRes[0].data as any[]) || [])[0] || null,
+    peak: (insRes[1].data as any) || null,
+    batches: (insRes[2].data as any[]) || [],
+    stale: (insRes[3].data as any) || { count: 0, list: [] },
+    trend: (insRes[4].data as any) || null,
+    topSource: (insRes[5].data as any) || null,
+    unassigned: (insRes[6].data as any) || { count: 0, list: [] },
+    staleTickets: (insRes[7].data as any) || { count: 0, list: [] },
+    pendingHandoffs: (insRes[8].data as any) || { count: 0, list: [] },
+    specialtyDist: (insRes[9].data as any[]) || [],
+    overdue: (insRes[10].data as any) || null,
+    expectedWeek: (insRes[11].data as any) || null,
+    refundsMonth: (insRes[12].data as any) || null,
+  } : emptyInsights;
 
   const profiles = (profRes.data as any[]) || [];
   const diplomas = (dipRes.data as any[]) || [];
@@ -267,6 +282,7 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
       batchOpts={batchOpts} diplomaOpts={diplomaOpts} affiliates={affiliatesList}
       resetAt={resetAt}
       insights={insights}
+      showInsights={showInsights}
     />
   );
 }
