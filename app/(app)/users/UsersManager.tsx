@@ -268,7 +268,7 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
     if (!list.length) return null;
     const isOpen = !!openTeams[team];
     return (
-      <div key={team} className="card" style={{ padding: 0, marginBottom: 16, overflow: "hidden" }}>
+      <div key={team} className="card" style={{ padding: 0, overflow: "hidden", gridColumn: isOpen ? "1 / -1" : "auto" }}>
         <button
           onClick={() => setOpenTeams((s) => ({ ...s, [team]: !s[team] }))}
           style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "16px 18px", background: "none", border: "none", cursor: "pointer", textAlign: "start" }}>
@@ -359,10 +359,12 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
           <button onClick={addMember} disabled={adding} className="btn">{adding ? tr("sending") : tr("sendInvite")}</button>        </div>
       )}
 
-      {grp(tr("teamAdmin"), "admin")}
-      {grp(tr("teamSales"), "sales")}
-      {grp(tr("teamSupport"), "support")}
-      {grp(tr("teamOps"), "ops")}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 16, alignItems: "start" }}>
+        {grp(tr("teamAdmin"), "admin")}
+        {grp(tr("teamSales"), "sales")}
+        {grp(tr("teamSupport"), "support")}
+        {grp(tr("teamOps"), "ops")}
+      </div>
     </div>
   );
 }
