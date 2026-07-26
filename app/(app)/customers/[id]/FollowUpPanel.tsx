@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "@/lib/toast";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -24,13 +25,13 @@ export default function FollowUpPanel({
   const [busy, setBusy] = useState(false);
 
   async function setFollowUp() {
-    if (!date) { alert(tr("pickFollowDate")); return; }
+    if (!date) { toast(tr("pickFollowDate")); return; }
     setBusy(true);
     const { error } = await supabase.from("follow_ups").insert({
       customer_id: customerId, owner_id: meId, due_at: new Date(date).toISOString(), note: note.trim(), done: false,
     });
     setBusy(false);
-    if (error) { alert(tr("saveFailed") + error.message); return; }
+    if (error) { toast(tr("saveFailed") + error.message); return; }
     setDate(""); setNote("");
     router.refresh();
   }
@@ -39,7 +40,7 @@ export default function FollowUpPanel({
     setBusy(true);
     const { error } = await supabase.from("follow_ups").update({ done: true }).eq("id", id);
     setBusy(false);
-    if (error) { alert(tr("updateFailed") + error.message); return; }
+    if (error) { toast(tr("updateFailed") + error.message); return; }
     router.refresh();
   }
 

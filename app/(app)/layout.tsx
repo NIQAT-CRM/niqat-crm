@@ -7,6 +7,7 @@ import NotificationsBell from "./NotificationsBell";
 import LangToggle from "./LangToggle";
 import ThemeToggle from "./ThemeToggle";
 import Toaster from "./Toaster";
+import ConfirmHost from "./ConfirmHost";
 import DailyGreeting from "./DailyGreeting";
 import SidebarRail from "./SidebarRail";
 import InternalChat from "./InternalChat";
@@ -163,6 +164,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <main className="content"><div>{children}</div></main>
       </div>
     <Toaster />
+    <ConfirmHost />
     <DailyGreeting />
     <InternalChat me={{ id: user.id, name, team: (profile?.team || "").toLowerCase(), sound: profile?.chat_sound !== false }} />
     </div>

@@ -1,4 +1,5 @@
 "use client";
+import { confirmDialog } from "@/lib/confirm";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
@@ -67,7 +68,7 @@ export default function AddonsPanel({
   }
 
   async function del(a: Addon) {
-    if (!confirm(`${tr("deleteQ")} «${a.name}»؟`)) return;
+    if (!await confirmDialog(`${tr("deleteQ")} «${a.name}»؟`)) return;
     setList((s) => s.filter((x) => x.id !== a.id));
     await supabase.from("customer_addons").delete().eq("id", a.id);
     toast(tr("deletedM"));

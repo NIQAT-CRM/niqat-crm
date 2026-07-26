@@ -1,4 +1,5 @@
 "use client";
+import { confirmDialog } from "@/lib/confirm";
 import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
@@ -46,7 +47,7 @@ export default function TemplatesManager({ initial }: { initial: Tpl[] }) {
   }
 
   async function del(t: Tpl) {
-    if (!confirm(`${tr("deleteTemplateQ")} «${t.name}»?`)) return;
+    if (!await confirmDialog(`${tr("deleteTemplateQ")} «${t.name}»?`)) return;
     setList((s) => s.filter((x) => x.id !== t.id));
     const { error } = await supabase.from("wa_templates").delete().eq("id", t.id);
     toast(error ? tr("deleteFailed") : tr("deletedM"));

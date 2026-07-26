@@ -1,4 +1,6 @@
 "use client";
+import { confirmDialog } from "@/lib/confirm";
+import { toast } from "@/lib/toast";
 import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { useRouter } from "next/navigation";
@@ -23,14 +25,14 @@ export default function AffiliatesManager({ initial }: { initial: Aff[] }) {
     const { error } = await supabase.from("app_settings")
       .upsert({ key: "affiliates", value: next, updated_at: new Date().toISOString() });
     setBusy(false);
-    if (error) { alert(tr("saveFailedColon") + error.message); return false; }
+    if (error) { toast(tr("saveFailedColon") + error.message); return false; }
     setSaved(true); router.refresh(); return true;
   }
 
   async function add() {
     const c = code.trim().toUpperCase();
-    if (!c) return alert(tr("enterCode"));
-    if (list.some((a) => a.code.toUpperCase() === c)) return alert(tr("codeAlreadyExists"));
+    if (!c) return toast(tr("enterCode"));
+    if (list.some((a) => a.code.toUpperCase() === c)) return toast(tr("codeAlreadyExists"));
     const d = Number(disc) || 0;
     const r = Number(rate) || 0;
     const next = [...list, { name: name.trim() || "—", code: c, discount: d, rate: r }];
@@ -47,7 +49,7 @@ export default function AffiliatesManager({ initial }: { initial: Aff[] }) {
   }
 
   async function remove(i: number) {
-    if (!confirm(tr("deleteCodeQ"))) return;
+    if (!await confirmDialog(tr("deleteCodeQ"))) return;
     const next = list.filter((_, idx) => idx !== i);
     setList(next); await persist(next);
   }

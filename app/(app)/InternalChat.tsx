@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "@/lib/toast";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -183,14 +184,14 @@ export default function InternalChat({ me }: { me: Me }) {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `${activeId}/${me.id}-${Date.now()}.${ext}`;
       const up = await supabase.storage.from("internal-chat").upload(path, file, { upsert: false });
-      if (up.error) { setSending(false); alert(tr("chatUploadFailed")); return; }
+      if (up.error) { setSending(false); toast(tr("chatUploadFailed")); return; }
       attachment_path = path;
     }
     const { error } = await supabase.from("internal_messages").insert({
       room_id: activeId, sender_id: me.id, body, customer_id: linked?.id || null, attachment_path,
     });
     setSending(false);
-    if (error) { alert(tr("chatSendFailed") + error.message); return; }
+    if (error) { toast(tr("chatSendFailed") + error.message); return; }
     setText(""); setLinked(null); setFile(null); setPickOpen(false);
     // الرسالة هترجع عبر Realtime وتتضاف تلقائياً
   }

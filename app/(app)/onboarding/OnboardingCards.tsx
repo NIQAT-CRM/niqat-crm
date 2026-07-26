@@ -1,4 +1,6 @@
 "use client";
+import { confirmDialog } from "@/lib/confirm";
+import { toast } from "@/lib/toast";
 import { useState, useCallback, useMemo, memo } from "react";
 import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
@@ -250,10 +252,10 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
   }, [supabase]);
 
   const archiveCustomer = useCallback(async (custId: string, hid: string) => {
-    if (!confirm(tr("archiveCustomerQ"))) return;
+    if (!await confirmDialog(tr("archiveCustomerQ"))) return;
     setCards((cs) => cs.filter((c) => c.handoffId !== hid));
     const { error } = await supabase.from("customers").update({ archived: true }).eq("id", custId);
-    if (error) { alert(tr("archiveFailed") + error.message); return; }
+    if (error) { toast(tr("archiveFailed") + error.message); return; }
     // قفل الريفند (best-effort — الفلترة بالأرشفة بتخفيه برضه)
     await supabase.from("refunds").update({ status: "closed" }).eq("customer_id", custId).neq("status", "closed");
     await revalidateCustomers();

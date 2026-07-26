@@ -70,8 +70,8 @@ export default function RefundPanel({
   async function request() {
     if (!selected) { toast(tr("selectRefundService")); return; }
     const a = Number(amount) || 0;
-    if (a < 0) { alert(tr("enterRefundAmount")); return; }
-    if (!selected.free && a <= 0) { alert(tr("enterRefundAmount")); return; }
+    if (a < 0) { toast(tr("enterRefundAmount")); return; }
+    if (!selected.free && a <= 0) { toast(tr("enterRefundAmount")); return; }
     setBusy("req");
     const row: any = {
       customer_id: customerId, amount: a, currency, reason: reason.trim(),
@@ -82,7 +82,7 @@ export default function RefundPanel({
     const { error } = await supabase.from("refunds").insert(row);
     if (!error) await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "refund_request", detail: `${tr("auditRefundRequest")} ${money(a, currency)} — ${selected.name}` });
     setBusy("");
-    if (error) { alert(tr("logRequestFailed") + error.message); return; }
+    if (error) { toast(tr("logRequestFailed") + error.message); return; }
     setSvcKey(""); setAmount(""); setReason(""); setCloses(false);
     toast(tr("refundRequestLogged")); router.refresh();
   }
@@ -96,7 +96,7 @@ export default function RefundPanel({
       enrollment_id: s.kind === "enrollment" ? s.id : null,
       addon_id: s.kind === "addon" ? s.id : null,
     }).select("id").single();
-    if (error || !r) { setBusy(""); alert(tr("logRequestFailed") + (error?.message || "")); return; }
+    if (error || !r) { setBusy(""); toast(tr("logRequestFailed") + (error?.message || "")); return; }
     // فري: نعدّي على مرحلة "refunded" مباشرة للإغلاق
     await closeService({ id: (r as any).id, enrollmentId: s.kind === "enrollment" ? s.id : "", addonId: s.kind === "addon" ? s.id : "", amount: 0, currency: "EGP", reason: "", status: "refunded", closesService: true, shot_url: "", at: "" });
     setBusy("");
@@ -110,7 +110,7 @@ export default function RefundPanel({
     const { error } = await supabase.from("refunds").update(patch).eq("id", r.id);
     if (!error) await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "refunded", detail: `${tr("refundTransferred")} — ${svcName(r)}` });
     setBusy(""); setFile(null);
-    if (error) { alert(tr("updateFailed") + error.message); return; }
+    if (error) { toast(tr("updateFailed") + error.message); return; }
     toast(tr("updated")); router.refresh();
   }
 
@@ -118,7 +118,7 @@ export default function RefundPanel({
   async function closeService(r: Refund) {
     setBusy("close:" + r.id);
     const { error } = await supabase.from("refunds").update({ status: "closed" }).eq("id", r.id);
-    if (error) { setBusy(""); alert(tr("updateFailed") + error.message); return; }
+    if (error) { setBusy(""); toast(tr("updateFailed") + error.message); return; }
     if (r.closesService) {
       if (r.enrollmentId) await supabase.from("enrollments").update({ status: "refunded" }).eq("id", r.enrollmentId);
       else if (r.addonId) await supabase.from("customer_addons").update({ refunded: true }).eq("id", r.addonId);
@@ -137,7 +137,7 @@ export default function RefundPanel({
     let hoId = (existingHo as any)?.id as string | undefined;
     if (!hoId) {
       const { data: h, error } = await supabase.from("handoffs").insert({ customer_id: customerId, created_by: meId || null, note: "", status: "pending" }).select("id").single();
-      if (error || !h) { setBusy(""); alert(tr("createHandoffFailed") + (error?.message || "")); return; }
+      if (error || !h) { setBusy(""); toast(tr("createHandoffFailed") + (error?.message || "")); return; }
       hoId = (h as any).id;
     } else {
       await supabase.from("handoffs").update({ status: "pending" }).eq("id", hoId);
@@ -146,7 +146,7 @@ export default function RefundPanel({
     const already = new Set(((cur as any[]) || []).map((x) => x.label));
     if (!already.has(LABEL)) {
       const { error: e2 } = await supabase.from("handoff_items").insert({ handoff_id: hoId, label: LABEL, done: false });
-      if (e2) { setBusy(""); alert(tr("addItemsFailed") + e2.message); return; }
+      if (e2) { setBusy(""); toast(tr("addItemsFailed") + e2.message); return; }
     }
     await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "refund_handoff", detail: `${tr("refundHandoffToSupport")} — ${svcName(r)}` });
     setBusy("");
@@ -157,7 +157,7 @@ export default function RefundPanel({
   async function archiveCustomer() {
     setBusy("archive");
     const { error } = await supabase.from("customers").update({ archived: true }).eq("id", customerId);
-    if (error) { setBusy(""); alert(tr("updateFailed") + error.message); return; }
+    if (error) { setBusy(""); toast(tr("updateFailed") + error.message); return; }
     await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "refunded", detail: tr("closedArchiveBtn") });
     setBusy("");
     await revalidateCustomers();

@@ -1,4 +1,5 @@
 "use client";
+import { confirmDialog } from "@/lib/confirm";
 import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { useRouter } from "next/navigation";
@@ -99,7 +100,7 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
     setEditId(null); toast(tr("edited"));
   }
   async function removeUser(u: Profile) {
-    if (!confirm(`${tr("confirmDeleteMember")} ${u.full_name || tr("member")}?`)) return;
+    if (!await confirmDialog(`${tr("confirmDeleteMember")} ${u.full_name || tr("member")}?`)) return;
     setBusy(u.id + "del");
     const res = await fetch("/api/team", {
       method: "DELETE", headers: { "Content-Type": "application/json" },

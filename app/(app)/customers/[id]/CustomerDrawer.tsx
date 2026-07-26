@@ -1,4 +1,5 @@
 "use client";
+import { confirmDialog } from "@/lib/confirm";
 import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -72,21 +73,21 @@ export default function CustomerDrawer(props: {
   const finRemaining = finSum.agreed - finSum.paid;
 
   async function archiveCustomer() {
-    if (!confirm(tr("archiveCustomerQ"))) return;
+    if (!await confirmDialog(tr("archiveCustomerQ"))) return;
     setArchiving(true);
     const { error } = await supabase.from("customers").update({ archived: true }).eq("id", props.c.id);
-    if (error) { setArchiving(false); alert(tr("archiveFailed") + error.message); return; }
+    if (error) { setArchiving(false); toast(tr("archiveFailed") + error.message); return; }
     await revalidateCustomers();
     toast(tr("customerArchived"));
     router.push("/customers");
   }
 
   async function deleteCustomer() {
-    if (!confirm(tr("deleteCustomerQ1"))) return;
-    if (!confirm(tr("deleteCustomerQ2"))) return;
+    if (!await confirmDialog(tr("deleteCustomerQ1"))) return;
+    if (!await confirmDialog(tr("deleteCustomerQ2"))) return;
     setDeleting(true);
     const { error } = await supabase.from("customers").delete().eq("id", props.c.id);
-    if (error) { setDeleting(false); alert(tr("deleteFailed") + error.message); return; }
+    if (error) { setDeleting(false); toast(tr("deleteFailed") + error.message); return; }
     await revalidateCustomers();
     toast(tr("customerDeleted"));
     router.push("/customers");

@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "@/lib/toast";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -30,7 +31,7 @@ export default function PermissionsManager({ profiles }: { profiles: Profile[] }
     setBusy(null);
     if (error) {
       setRows((rs) => rs.map((r) => (r.id === pid ? { ...r, [col]: current } : r)));
-      alert("تعذّر التحديث: " + error.message);
+      toast("تعذّر التحديث: " + error.message);
     }
   }
 

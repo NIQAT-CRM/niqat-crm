@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "@/lib/toast";
 import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
@@ -32,7 +33,7 @@ export default function CollectionsTable({ rows }: { rows: Row[] }) {
     const { error } = await supabase.from("installments")
       .update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", id);
     setBusy(null);
-    if (error) { alert(tr("updateFailed") + error.message); return; }
+    if (error) { toast(tr("updateFailed") + error.message); return; }
     setList((l) => l.filter((r) => r.id !== id));
     router.refresh();
   }

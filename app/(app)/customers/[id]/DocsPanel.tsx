@@ -1,4 +1,5 @@
 "use client";
+import { confirmDialog } from "@/lib/confirm";
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -41,7 +42,7 @@ export default function DocsPanel({
   }, [file, customerId, supabase]);
 
   async function del(id: string) {
-    if (!confirm(tr("deleteDocQ"))) return;
+    if (!await confirmDialog(tr("deleteDocQ"))) return;
     setDocs((d) => d.filter((x) => x.id !== id));
     const { error } = await supabase.from("customer_docs").delete().eq("id", id);
     if (error) { toast(tr("deleteFailed")); router.refresh(); }

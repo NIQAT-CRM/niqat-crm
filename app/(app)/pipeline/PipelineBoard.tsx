@@ -1,4 +1,6 @@
 "use client";
+import { confirmDialog } from "@/lib/confirm";
+import { toast } from "@/lib/toast";
 import { useState, useRef } from "react";
 import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
@@ -59,7 +61,7 @@ export default function PipelineBoard({ initial, canFinance = false }: { initial
     const { error } = await supabase.from("customers").update({ stage }).eq("id", id);
     if (error) {
       setCusts(prev);
-      alert(tr("moveCustomerFailed") + error.message);
+      toast(tr("moveCustomerFailed") + error.message);
     }
   }
 
@@ -69,20 +71,20 @@ export default function PipelineBoard({ initial, canFinance = false }: { initial
     const { error } = await supabase.from("customers").update({ board_done: true }).eq("id", id);
     if (error) {
       setCusts(prev);
-      alert(tr("archiveFailed") + error.message);
+      toast(tr("archiveFailed") + error.message);
     }
   }
 
   async function archiveColumn(ids: string[]) {
     if (!ids.length) return;
-    if (!confirm(`${tr("archiveColumnQ")} (${ids.length})`)) return;
+    if (!await confirmDialog(`${tr("archiveColumnQ")} (${ids.length})`)) return;
     const idset = new Set(ids);
     const prev = custs;
     setCusts((l) => l.filter((x) => !idset.has(x.id)));
     const CH = 100;
     for (let i = 0; i < ids.length; i += CH) {
       const { error } = await supabase.from("customers").update({ board_done: true }).in("id", ids.slice(i, i + CH));
-      if (error) { setCusts(prev); alert(tr("archiveFailed") + error.message); return; }
+      if (error) { setCusts(prev); toast(tr("archiveFailed") + error.message); return; }
     }
   }
 

@@ -66,7 +66,7 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
     let hoId = (existingHo as any)?.id as string | undefined;
     if (!hoId) {
       const { data: h, error } = await supabase.from("handoffs").insert({ customer_id: customerId, created_by: meId || null, note: "", status: "pending" }).select("id").single();
-      if (error || !h) { setActBusy(false); alert(tr("createHandoffFailed") + (error?.message || "")); return; }
+      if (error || !h) { setActBusy(false); toast(tr("createHandoffFailed") + (error?.message || "")); return; }
       hoId = (h as any).id;
     } else {
       await supabase.from("handoffs").update({ status: "pending" }).eq("id", hoId);
@@ -77,7 +77,7 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
     const rows = labels.filter((l, i) => labels.indexOf(l) === i).filter((l) => !already.has(l)).map((label) => ({ handoff_id: hoId, label, done: false }));
     if (rows.length) {
       const { error: e2 } = await supabase.from("handoff_items").insert(rows);
-      if (e2) { setActBusy(false); alert(tr("addItemsFailed") + e2.message); return; }
+      if (e2) { setActBusy(false); toast(tr("addItemsFailed") + e2.message); return; }
     }
     // ملاحظة: مابنعملش نقل هنا. ده طلب نقل (pending) بس — الدعم هو اللي يأكّد النقل من صفحة التفعيل/التسليم.
     await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "handoff_requested", detail: labels.join(" · ") });
@@ -109,7 +109,7 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
     const patch: any = { status: "paid", paid_at: new Date().toISOString() };
     if (shotUrl) patch.screenshot_url = shotUrl;
     const { error } = await supabase.from("installments").update(patch).eq("id", id);
-    if (error) { setBusy(null); return alert(tr("updateFailed") + error.message); }
+    if (error) { setBusy(null); return toast(tr("updateFailed") + error.message); }
     await logAudit("installment_paid", tr("auditInstallmentPaid") + (shotUrl ? " + " + tr("receipt") : ""));
 
     // لو الدفعة دي كمّلت المبلغ المتفق عليه → افتح قايمة التفعيل (بدل التحويل الصامت)
@@ -129,23 +129,23 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
   }
   async function addInstallment(e: Enr) {
     const a = Number(amt);
-    if (!a || a <= 0) return alert(tr("enterValidAmount"));
+    if (!a || a <= 0) return toast(tr("enterValidAmount"));
     setBusy("add");
     const shotUrl = await uploadShot();
     const { error } = await supabase.from("installments").insert({ enrollment_id: e.id, amount: a, currency: e.currency || "EGP", due_date: due || null, status: "pending", screenshot_url: shotUrl });
-    if (error) { setBusy(null); return alert(tr("addInstallmentFailed") + error.message); }
+    if (error) { setBusy(null); return toast(tr("addInstallmentFailed") + error.message); }
     await logAudit("installment_add", `${tr("auditInstallmentAdd")} ${money(a, e.currency)}${shotUrl ? " + " + tr("transferShot") : ""}`);
     setBusy(null); setAddFor(null); setAmt(""); setDue(""); setFile(null);
     toast(tr("installmentAdded")); router.refresh();
   }
   async function saveAgreed(e: Enr) {
     const amt = Number(editAgreedVal);
-    if (isNaN(amt) || amt < 0) return alert(tr("enterValidAmount"));
+    if (isNaN(amt) || amt < 0) return toast(tr("enterValidAmount"));
     setBusy("agreed");
     const { error } = await supabase.from("enrollment_finance")
       .upsert({ enrollment_id: e.id, agreed_amount: amt, currency: e.currency || "EGP" }, { onConflict: "enrollment_id" });
     setBusy(null);
-    if (error) return alert(tr("updateFailed") + error.message);
+    if (error) return toast(tr("updateFailed") + error.message);
     await logAudit("agreed_edit", `${tr("agreedAmountUpdated")}: ${money(e.agreed, e.currency)} → ${money(amt, e.currency)}`);
     setEditAgreedId(null);
     toast(tr("agreedAmountUpdated"));

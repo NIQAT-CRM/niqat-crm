@@ -1,4 +1,6 @@
 "use client";
+import { confirmDialog } from "@/lib/confirm";
+import { toast } from "@/lib/toast";
 import { useState, useRef, useEffect } from "react";
 import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
@@ -124,7 +126,7 @@ export default function SupportBoard({ initial, assignees, subjects, meId }: {
     const { error } = await supabase.from("tickets").update({ status }).eq("id", id);
     if (error) {
       setTickets(prev);
-      alert(tr("moveTicketFailed") + error.message);
+      toast(tr("moveTicketFailed") + error.message);
     }
   }
 
@@ -134,20 +136,20 @@ export default function SupportBoard({ initial, assignees, subjects, meId }: {
     const { error } = await supabase.from("tickets").update({ archived: true }).eq("id", id);
     if (error) {
       setTickets(prev);
-      alert(tr("archiveFailed") + error.message);
+      toast(tr("archiveFailed") + error.message);
     }
   }
 
   async function archiveColumn(ids: string[]) {
     if (!ids.length) return;
-    if (!confirm(`${tr("archiveColumnQ")} (${ids.length})`)) return;
+    if (!await confirmDialog(`${tr("archiveColumnQ")} (${ids.length})`)) return;
     const idset = new Set(ids);
     const prev = tickets;
     setTickets((l) => l.filter((t) => !idset.has(t.id)));
     const CH = 100;
     for (let i = 0; i < ids.length; i += CH) {
       const { error } = await supabase.from("tickets").update({ archived: true }).in("id", ids.slice(i, i + CH));
-      if (error) { setTickets(prev); alert(tr("archiveFailed") + error.message); return; }
+      if (error) { setTickets(prev); toast(tr("archiveFailed") + error.message); return; }
     }
   }
 

@@ -1,4 +1,5 @@
 "use client";
+import { confirmDialog } from "@/lib/confirm";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -49,7 +50,7 @@ export default function ServiceTypesManager({ initial }: { initial: ST[] }) {
   }
 
   async function del(it: ST) {
-    if (!confirm(tr("deleteServiceTypeQ").replace("{n}", it.name))) return;
+    if (!await confirmDialog(tr("deleteServiceTypeQ").replace("{n}", it.name))) return;
     setBusy(true);
     const { error } = await supabase.from("service_types").delete().eq("id", it.id);
     setBusy(false);

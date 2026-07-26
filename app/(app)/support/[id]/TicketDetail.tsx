@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "@/lib/toast";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -72,7 +73,7 @@ export default function TicketDetail({
       ticket_id: ticket.id, author_id: currentUserId, body: b,
     });
     setAddingNote(false);
-    if (error) { alert(tr("addNoteFailed") + error.message); return; }
+    if (error) { toast(tr("addNoteFailed") + error.message); return; }
     setNoteText("");
     router.refresh();
   }

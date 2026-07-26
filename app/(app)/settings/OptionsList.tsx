@@ -1,4 +1,5 @@
 "use client";
+import { confirmDialog } from "@/lib/confirm";
 import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { useRouter } from "next/navigation";
@@ -50,7 +51,7 @@ export default function OptionsList({
   }
 
   async function del(it: Item) {
-    if (!confirm(`${tr("deleteQ")} «${it.label}»?`)) return;
+    if (!await confirmDialog(`${tr("deleteQ")} «${it.label}»?`)) return;
     setItems((s) => s.filter((x) => x.id !== it.id));
     const { error } = await (supabase.from(table) as any).delete().eq("id", it.id);
     if (error) { toast(tr("deleteFailed")); router.refresh(); return; }

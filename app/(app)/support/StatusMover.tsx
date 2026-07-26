@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "@/lib/toast";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -27,7 +28,7 @@ export default function StatusMover({ id, current }: { id: string; current: stri
     setBusy(false);
     if (error) {
       setVal(prev);
-      alert(tr("changeStatusFailed") + error.message);
+      toast(tr("changeStatusFailed") + error.message);
       return;
     }
     router.refresh();

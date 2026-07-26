@@ -62,20 +62,20 @@ export default function AccessPanel({
       }
     }
     setBusy(null);
-    if (error) { alert(tr("updateFailed") + error.message); return; }
+    if (error) { toast(tr("updateFailed") + error.message); return; }
     router.refresh();
   }
 
   // تحويل جديد: ينشئ handoff لو مفيش، أو يضيف بنود للموجود
   async function sendToSupport() {
-    if (picked.length === 0) { alert(tr("pickAtLeastOne")); return; }
+    if (picked.length === 0) { toast(tr("pickAtLeastOne")); return; }
     setBusy("send");
     let hoId = handoff?.id;
     if (!hoId) {
       const { data: h, error } = await supabase.from("handoffs").insert({
         customer_id: customerId, created_by: meId, note: note.trim(), status: "pending",
       }).select("id").single();
-      if (error || !h) { setBusy(null); alert(tr("createHandoffFailed") + (error?.message || "")); return; }
+      if (error || !h) { setBusy(null); toast(tr("createHandoffFailed") + (error?.message || "")); return; }
       hoId = h.id;
     } else if (note.trim()) {
       await supabase.from("handoffs").update({ note: note.trim(), status: "pending" }).eq("id", hoId);
@@ -85,7 +85,7 @@ export default function AccessPanel({
     const rows = picked.map((label) => ({ handoff_id: hoId, label, done: false }));
     const { error: e2 } = await supabase.from("handoff_items").insert(rows);
     setBusy(null);
-    if (e2) { alert(tr("addItemsFailed") + e2.message); return; }
+    if (e2) { toast(tr("addItemsFailed") + e2.message); return; }
     setNote(""); setPicked([]); setQ(""); setOpenAdd(false);
     toast(tr("sentToSupportOk")); router.refresh();
   }

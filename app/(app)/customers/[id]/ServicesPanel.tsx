@@ -1,4 +1,5 @@
 "use client";
+import { confirmDialog } from "@/lib/confirm";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -175,7 +176,7 @@ export default function ServicesPanel({
   }
 
   async function delAddon(a: Addon) {
-    if (!confirm(`${tr("deleteQ")} «${a.name}»؟`)) return;
+    if (!await confirmDialog(`${tr("deleteQ")} «${a.name}»؟`)) return;
     await supabase.from("customer_addons").delete().eq("id", a.id);
     toast(tr("deleted")); router.refresh();
   }
