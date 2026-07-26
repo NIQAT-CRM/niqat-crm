@@ -1,9 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { hasPerm } from "@/lib/authz";
+import NoAccess from "../NoAccess";
 import SupportBoard from "./SupportBoard";
 
 export const dynamic = "force-dynamic";
 
 export default async function Support({ searchParams }: { searchParams: { q?: string } }) {
+  if (!(await hasPerm("can_view_support"))) return <NoAccess />;
   const supabase = createClient();
   const q = (searchParams?.q || "").trim().toLowerCase();
   // موجة متوازية: كل الاستعلامات مستقلة عن بعضها

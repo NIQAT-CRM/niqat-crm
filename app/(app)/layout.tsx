@@ -38,7 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users, can_grant_access, can_use_ai, chat_sound")
+    .select("full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users, can_grant_access, can_use_ai, chat_sound, can_view_pipeline, can_view_support, can_view_activations, can_view_universities")
     .eq("id", user.id).maybeSingle();
 
   // بوابة الذكاء الاصطناعي: مفعّل للمستخدم + مفعّل عام في ai_settings
@@ -125,6 +125,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           canUsers={!!profile?.can_manage_users}
           canSettings={!!profile?.can_manage_settings}
           canGrant={!!profile?.can_grant_access}
+          canPipeline={!!profile?.can_view_pipeline}
+          canSupport={!!profile?.can_view_support}
+          canActivations={!!profile?.can_view_activations}
+          canUniversities={!!profile?.can_view_universities}
           canAi={canAi}
           isAdmin={(profile?.team || "").toLowerCase() === "admin"}
           dueCount={dueCount}

@@ -16,6 +16,11 @@ const PERMS: [string, string][] = [
   ["can_grant_access", "منح صلاحية الدخول"],
   ["can_message", "إرسال واتساب"],
   ["can_export", "تصدير البيانات"],
+  ["can_add_customers", "إضافة عميل جديد"],
+  ["can_view_pipeline", "رؤية مسار المبيعات"],
+  ["can_view_support", "رؤية الدعم"],
+  ["can_view_activations", "رؤية طلبات التفعيل"],
+  ["can_view_universities", "رؤية الجامعات"],
 ];
 
 export default function PermissionsManager({ profiles }: { profiles: Profile[] }) {

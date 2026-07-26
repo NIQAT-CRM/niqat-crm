@@ -1,10 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
+import { hasPerm } from "@/lib/authz";
+import NoAccess from "../../NoAccess";
 import { t as tr } from "@/lib/i18n";
 import NewCustomerForm from "./NewCustomerForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewCustomerPage() {
+  if (!(await hasPerm("can_add_customers"))) return <NoAccess />;
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   // حماية: إضافة عميل تحتاج صلاحية "تعديل العملاء"

@@ -1,9 +1,12 @@
 import { t as tr } from "@/lib/i18n";
+import { hasPerm } from "@/lib/authz";
+import NoAccess from "../NoAccess";
 import { createClient } from "@/lib/supabase/server";
 import OnboardingCards from "./OnboardingCards";
 export const dynamic = "force-dynamic";
 
 export default async function Onboarding() {
+  if (!(await hasPerm("can_view_activations"))) return <NoAccess />;
   const supabase = createClient();
   // حماية: صفحة التفعيل/التسليم للدعم والإدارة بس (اللي عندهم can_grant_access) — مش المبيعات
   const { data: { user } } = await supabase.auth.getUser();

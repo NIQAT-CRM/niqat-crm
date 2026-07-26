@@ -9,6 +9,10 @@ type Perms = {
   canSettings?: boolean;
   canGrant?: boolean;
   canAi?: boolean;
+  canPipeline?: boolean;
+  canSupport?: boolean;
+  canActivations?: boolean;
+  canUniversities?: boolean;
   isAdmin?: boolean;
   dueCount?: number;
   handoffCount?: number;
@@ -40,18 +44,20 @@ export default function NavLinks(p: Perms) {
   const t = useT();
   const closeSb = () => document.getElementById("sb")?.classList.remove("open");
 
+  const A = !!p.isAdmin; // الأدمن يشوف كل حاجة
   const main: Item[] = [
     { href: "/", key: "dash", tk: "dash" },
     { href: "/customers", key: "users", tk: "customers" },
-    { href: "/pipeline", key: "pipe", tk: "pipeline" },
-    { href: "/my-tasks", key: "task", tk: "myTasks", badge: p.dueCount },
-    { href: "/batches", key: "batch", tk: "batches" },
-    { href: "/universities", key: "uni2", tk: "universities" },
   ];
+  if (A || p.canPipeline) main.push({ href: "/pipeline", key: "pipe", tk: "pipeline" });
+  main.push({ href: "/my-tasks", key: "task", tk: "myTasks", badge: p.dueCount });
+  main.push({ href: "/batches", key: "batch", tk: "batches" });
+  if (A || p.canUniversities) main.push({ href: "/universities", key: "uni2", tk: "universities" });
 
   // الرؤى بقت جزء من صفحة التقارير (نفس صلاحية can_view_reports) — مبقاش بند مستقل
-  const teams: Item[] = [{ href: "/support", key: "support", tk: "support" }];
-  if (p.canGrant) teams.push({ href: "/onboarding", key: "onb", tk: "onboarding", badge: p.handoffCount });
+  const teams: Item[] = [];
+  if (A || p.canSupport) teams.push({ href: "/support", key: "support", tk: "support" });
+  if (A || p.canActivations) teams.push({ href: "/onboarding", key: "onb", tk: "onboarding", badge: p.handoffCount });
   teams.push({ href: "/refunds", key: "refund", tk: "refunds", badge: p.refundCount });
   teams.push({ href: "/archive", key: "archive", tk: "archive" });
   if (p.canReports) teams.push({ href: "/reports", key: "report", tk: "reports" });
