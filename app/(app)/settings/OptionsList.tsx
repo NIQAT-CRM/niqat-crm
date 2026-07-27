@@ -97,11 +97,10 @@ export default function OptionsList({
             <div key={it.id} className="optrow">
               <span className="lbl">{it.label}</span>
               {extraCol && (
-                <input defaultValue={it.extra || ""} placeholder={extraPlaceholder || ""} dir="ltr"
+                <input className="pfx" defaultValue={it.extra || ""} placeholder={extraPlaceholder ? "بادئة" : ""} dir="ltr"
                   onBlur={(e) => saveExtra(it, e.target.value.trim())}
                   onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                  title={extraPlaceholder}
-                  style={{ width: 130, padding: "5px 8px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--brand)", fontSize: 12, fontWeight: 700, marginInlineEnd: 8 }} />
+                  title={extraPlaceholder} />
               )}
               <div className="acts">
                 <button className="ed" onClick={() => startEdit(it)} title={tr("edit")}>

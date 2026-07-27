@@ -14,7 +14,7 @@ import ChatLogView from "../admin/chat-log/ChatLogView";
 export const dynamic = "force-dynamic";
 
 const TEAM_AR: Record<string, string> = { sales: "المبيعات", support: "الدعم", admin: "الإدارة", ops: "العمليات", operations: "العمليات" };
-const USER_COLS = "id,full_name,team,phone,can_edit_customers,can_see_finance,can_view_reports,can_manage_tickets,can_manage_batches,can_grant_access,can_message,can_export,can_manage_settings,can_manage_users,can_see_daily_sales,can_use_ai,ai_options,can_add_customers,can_view_pipeline,can_view_support,can_view_activations,can_view_universities,can_view_receipts";
+const USER_COLS = "id,full_name,team,phone,can_edit_customers,can_see_finance,can_view_reports,can_manage_tickets,can_manage_batches,can_grant_access,can_message,can_export,can_manage_settings,can_manage_users,can_see_daily_sales,can_use_ai,ai_options,can_add_customers,can_view_pipeline,can_view_support,can_view_activations,can_view_universities";
 
 async function safeList(supabase: any, table: string, col: string, extraCol?: string) {
   const sel = extraCol ? `id,${col},${extraCol}` : `id,${col}`;
@@ -117,6 +117,7 @@ export default async function Settings() {
   }
 
   const tabs: SettingsTab[] = [];
+  let tablesMissing = false;
 
   // ===== تبويبات الإعدادات (تكاملات/كتالوج/أفيلييت) — تظهر لمن عنده can_manage_settings =====
   if (canSettings) {
@@ -141,6 +142,7 @@ export default async function Settings() {
       sender_support: wRaw.sender_support || "",
     };
     const affiliates = Array.isArray(affRow.data?.value) ? (affRow.data!.value as any[]) : [];
+    tablesMissing = uni.missing;
 
     tabs.push({
       key: "integrations",
@@ -158,11 +160,11 @@ export default async function Settings() {
       label: "📚 " + tr("tabCatalog"),
       content: (
         <>
-          <ServiceTypesManager initial={(stRow.data as any[]) || []} />
           <div className="sec-t" style={{ marginTop: 8, marginBottom: 4 }}>{tr("manageLists")}</div>
           <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>{tr("manageListsHint")} {tr("servicesInBatchesHint")}</p>
           <div className="settings-grid">
             <OptionsList title={tr("manageDiplomas")} hint={tr("manageDiplomasHint")} table="diplomas" labelCol="name_ar" initial={dip.items} extraCol="batch_code_prefix" extraPlaceholder={tr("batchCodePrefixPh")} />
+            <ServiceTypesManager initial={(stRow.data as any[]) || []} />
             <OptionsList title={tr("manageSpecialties")} hint={tr("manageSpecialtiesHint")} table="specialties" labelCol="name_ar" initial={spec.items} />
             <OptionsList title={tr("manageAccessOptions")} hint={tr("manageAccessOptionsHint")} table="access_options" labelCol="label" initial={access.items} />
             <OptionsList title={tr("manageSources")} hint={tr("manageSourcesHint")} table="sources" labelCol="name" initial={src.items} />
@@ -195,6 +197,12 @@ export default async function Settings() {
   return (
     <div className="settings-page">
       <div className="page-h"><div><h1>{tr("settings")}</h1><p>{tr("settingsDesc")}</p></div></div>
+
+      {tablesMissing && (
+        <div className="banner settings-anim" style={{ marginBottom: 16 }}>
+          ⚠️ {tr("featuresUnderPrep")}
+        </div>
+      )}
 
       <SettingsTabs tabs={tabs} />
     </div>

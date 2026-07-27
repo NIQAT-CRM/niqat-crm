@@ -60,21 +60,15 @@ export default function ServiceTypesManager({ initial }: { initial: ST[] }) {
   }
 
   return (
-    <div className="card settings-anim" style={{ padding: 18, marginBottom: 18 }}>
-      <div className="card-h" style={{ padding: 0, border: "none" }}><h3>{tr("manageServiceTypes")}</h3></div>
-      <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "2px 0 14px" }}>{tr("manageServiceTypesHint")}</p>
-
-      {/* إضافة نوع جديد */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, marginBottom: 14, alignItems: "end" }}>
-        <div className="fld" style={{ marginBottom: 0 }}><label>{tr("serviceTypeName")}</label>
-          <input className="inp" value={nName} placeholder={tr("serviceTypeNamePh")} onChange={(e) => setNName(e.target.value)} /></div>
-        <div className="fld" style={{ marginBottom: 0 }}><label>{tr("activationLabel")}</label>
-          <input className="inp" value={nLabel} placeholder={tr("activationLabelPh")} onChange={(e) => setNLabel(e.target.value)} /></div>
-        <button className="btn" onClick={add} disabled={busy} style={{ height: 40 }}>{tr("add")}</button>
+    <div className="card optcard settings-anim" style={{ padding: 18, display: "flex", flexDirection: "column", maxHeight: 640 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 800, color: "var(--ink)" }}>{tr("manageServiceTypes")}</h3>
+        <span className="optcount">{items.length}</span>
       </div>
+      <p style={{ fontSize: 12, color: "var(--muted)", margin: "2px 0 14px" }}>{tr("manageServiceTypesHint")}</p>
 
       {/* القائمة */}
-      <div className="optrows" style={{ height: "auto", maxHeight: 320 }}>
+      <div className="optrows">
         {items.length === 0 && <span style={{ fontSize: 12.5, color: "var(--muted)", fontStyle: "italic" }}>{tr("noItemsYet")}</span>}
         {items.map((it) => (
           editId === it.id ? (
@@ -104,6 +98,12 @@ export default function ServiceTypesManager({ initial }: { initial: ST[] }) {
             </div>
           )
         ))}
+      </div>
+      {/* إضافة نوع جديد (تحت) */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+        <input className="inp" style={{ flex: "1 1 140px" }} value={nName} placeholder={tr("serviceTypeNamePh")} onChange={(e) => setNName(e.target.value)} />
+        <input className="inp" style={{ flex: "1 1 140px" }} value={nLabel} placeholder={tr("activationLabelPh")} onChange={(e) => setNLabel(e.target.value)} />
+        <button className="btn" onClick={add} disabled={busy} style={{ height: 40 }}>{tr("add")}</button>
       </div>
     </div>
   );
