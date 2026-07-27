@@ -78,14 +78,14 @@ export default function ServiceTypesManager({ initial }: { initial: ST[] }) {
                   {editId === it.id ? (<>
                     <td><input className="ei" value={eName} onChange={(e) => setEName(e.target.value)} placeholder={tr("serviceTypeName")} /></td>
                     <td><input className="ei" value={eLabel} onChange={(e) => setELabel(e.target.value)} placeholder={tr("activationLabel")} /></td>
-                    <td><div className="rowacts">
+                    <td className="act-c"><div className="rowacts">
                       <button className="rowbtn ok" onClick={() => saveEdit(it)} title={tr("save")}><IcOk /></button>
                       <button className="rowbtn cancel" onClick={cancelEdit} title={tr("cancel")}><IcX /></button>
                     </div></td>
                   </>) : (<>
-                    <td><span className="nm">{it.name}</span></td>
-                    <td><span className="sub">{it.activation_label}</span></td>
-                    <td><div className="rowacts">
+                    <td className="nm-c"><span className="nm">{it.name}</span></td>
+                    <td className="nm-c"><span className="sub" style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",display:"block"}}>{it.activation_label}</span></td>
+                    <td className="act-c"><div className="rowacts">
                       <button className="rowbtn edit" onClick={() => startEdit(it)} title={tr("edit")}><IcEdit /></button>
                       <button className="rowbtn del" onClick={() => del(it)} title={tr("delete")}><IcDel /></button>
                     </div></td>

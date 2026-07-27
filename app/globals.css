@@ -730,18 +730,20 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .setcard-h h3{font-size:16px;font-weight:800;color:var(--ink);margin:0}
 .setcard-h p{font-size:12px;color:var(--muted);margin:3px 0 0}
 .setcount{min-width:26px;height:24px;padding:0 9px;border-radius:20px;background:var(--brand-soft);color:var(--brand-d);font-size:12.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
-.setscroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;margin:14px -6px 0;padding:0 6px}
+.setscroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;margin:14px 0 0;padding:0 2px 0 10px}
 .setscroll::-webkit-scrollbar{width:8px}.setscroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
 .setempty{font-size:12.5px;color:var(--muted);font-style:italic;padding:14px 4px;display:block}
 
 /* جدول (للي فيه حقلين) */
-.settbl{width:100%;border-collapse:collapse}
+.settbl{width:100%;border-collapse:collapse;table-layout:fixed}
 .settbl thead th{text-align:start;font-size:10.5px;font-weight:800;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;padding:0 8px 9px;position:sticky;top:0;background:var(--surface);z-index:1}
-.settbl tbody td{padding:8px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink);vertical-align:middle}
+.settbl tbody td{padding:8px 8px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink);vertical-align:middle;overflow:hidden}
+.settbl td.nm-c{white-space:nowrap;text-overflow:ellipsis}
+.settbl td.act-c{overflow:visible}
 .settbl tbody tr:hover td{background:var(--muted-soft)}
-.settbl .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+.settbl .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .settbl .sub{color:var(--muted);font-weight:500;font-size:12px}
-.setpfx{width:100%;max-width:160px;padding:7px 9px;border:1.5px solid #d9dfea;border-radius:8px;background:#f1f4f9;color:var(--brand-d);font-size:12.5px;font-weight:700;text-align:center;direction:ltr}
+.setpfx{width:100%;max-width:none;padding:7px 8px;border:1.5px solid #d9dfea;border-radius:8px;background:#f1f4f9;color:var(--brand-d);font-size:12px;font-weight:700;text-align:center;direction:ltr}
 .setpfx:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 2px rgba(240,138,36,.14)}
 .setpfx::placeholder{color:var(--muted);font-weight:500}
 
@@ -753,8 +755,8 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .setrow .ei:focus,.settbl .ei:focus{outline:none;box-shadow:0 0 0 2px rgba(240,138,36,.14)}
 
 /* أزرار الإجراءات الواضحة */
-.rowacts{display:inline-flex;gap:6px;flex-shrink:0}
-.rowbtn{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:32px;min-width:34px;padding:0 10px;border-radius:8px;border:1.5px solid #d9dfea;background:#f1f4f9;font-size:12px;font-weight:700;cursor:pointer;color:#5b6472;transition:all .15s}
+.rowacts{display:inline-flex;gap:6px;flex-shrink:0;justify-content:flex-end}
+.rowbtn{display:inline-flex;align-items:center;justify-content:center;height:30px;width:32px;padding:0;border-radius:8px;border:1.5px solid #d9dfea;background:#f1f4f9;cursor:pointer;color:#5b6472;transition:all .15s}
 .rowbtn svg{width:15px;height:15px}
 .rowbtn.edit:hover{border-color:var(--brand);color:var(--brand-d);background:var(--brand-soft)}
 .rowbtn.del:hover{border-color:var(--red);color:var(--red);background:var(--red-soft)}

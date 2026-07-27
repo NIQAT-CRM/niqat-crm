@@ -86,11 +86,11 @@ export default function OptionsList({
               <tbody>
                 {items.map((it) => (
                   <tr key={it.id}>
-                    <td>{editId === it.id
+                    <td className="nm-c">{editId === it.id
                       ? <input className="ei" autoFocus value={editVal} onChange={(e) => setEditVal(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") saveEdit(it); if (e.key === "Escape") cancelEdit(); }} />
                       : <span className="nm">{it.label}</span>}</td>
                     <td><input className="setpfx" defaultValue={it.extra || ""} placeholder={tr("prefixShort")} dir="ltr" onBlur={(e) => saveExtra(it, e.target.value.trim())} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} /></td>
-                    <td><div className="rowacts">
+                    <td className="act-c"><div className="rowacts">
                       {editId === it.id ? (<>
                         <button className="rowbtn ok" onClick={() => saveEdit(it)} title={tr("save")}><IcOk /></button>
                         <button className="rowbtn cancel" onClick={cancelEdit} title={tr("cancel")}><IcX /></button>
