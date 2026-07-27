@@ -9,7 +9,7 @@ import FileDrop from "@/lib/ui/FileDrop";
 import SearchSelect from "../../SearchSelect";
 
 type Opt = { v: string; label: string; dip?: string; status?: string; done?: boolean; price?: number; currency?: string; price_egp?: number; price_usd?: number };
-type Enr = { id: string; diploma: string; batch: string; diplomaId: string; batchId: string };
+type Enr = { id: string; diploma: string; batch: string; diplomaId: string; batchId: string; transferCount: number };
 type Addon = { id: string; type: string; name: string; amount: number; free: boolean; note: string; paid: boolean; shot_url?: string };
 
 const SV_TYPES = [
@@ -21,11 +21,12 @@ const SV_TYPES = [
 const stMeta = (k: string) => SV_TYPES.find((t) => t.key === k) || { key: k, labelKey: "serviceWord", color: "#2F6BFF", icon: "🔧" };
 
 export default function ServicesPanel({
-  customerId, meId, enrolls, dipOpts, batchOpts, addons, accreditations, projects, libraries, canFinance, serviceTypes = [], serviceItemsByType = {},
+  customerId, meId, enrolls, dipOpts, batchOpts, addons, accreditations, projects, libraries, canFinance, serviceTypes = [], serviceItemsByType = {}, myTeam = "",
 }: {
   customerId: string; meId: string; enrolls: Enr[];
   dipOpts: Opt[]; batchOpts: Opt[]; addons: Addon[];
   accreditations: string[]; projects: string[]; libraries: string[]; canFinance: boolean;
+  myTeam?: string;
   serviceTypes?: { slug: string; name: string }[];
   serviceItemsByType?: Record<string, { code: string; price_egp: number; price_usd: number }[]>;
 }) {
@@ -176,6 +177,20 @@ export default function ServicesPanel({
     toast(tr("transferRequestSent")); router.refresh();
   }
 
+  // نقل مباشر مجاني (النقلة الأولى — الدعم/الأدمن فقط): يغيّر الباتش فوراً بدون رسوم/طلب/تذكرة.
+  // الحماية والعدّاد على مستوى قاعدة البيانات (trigger): لو حد غير الدعم/الأدمن → القاعدة بترفض.
+  async function doDirectTransfer(e: Enr) {
+    if (!moveTo || moveTo === e.batchId) { toast(tr("selectTargetBatch")); return; }
+    setBusy(true);
+    const fromLabel = e.batch || batchLabel(e.batchId);
+    const toLabel = batchLabel(moveTo);
+    const { error } = await supabase.from("enrollments").update({ batch_id: moveTo }).eq("id", e.id);
+    if (error) { setBusy(false); toast(tr("transferFailed")); return; }
+    await logAudit("batch_transfer_confirmed", `${e.diploma}: ${tr("auditBatchTransfer")} ${fromLabel} → ${toLabel} (${tr("firstFreeTransfer")})`);
+    setBusy(false); resetMove();
+    toast(tr("transferDone")); router.refresh();
+  }
+
   async function togglePaid(a: Addon) {
     const next = !a.paid;
     const { error } = await supabase.from("customer_addons").update({ paid: next }).eq("id", a.id);
@@ -293,56 +308,77 @@ export default function ServicesPanel({
                     {tr("moveTransfer")}
                   </button>
                 </div>
-                {moving && (
-                  <div style={{ marginTop: 10, padding: 12, border: "1px solid var(--line)", borderRadius: 10, background: "var(--muted-soft)", display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div>
-                      <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 4 }}>{tr("diplomaWord")}</label>
-                      <select className="inp" style={{ width: "100%", height: 38, opacity: 0.65, cursor: "not-allowed", background: "var(--bg)" }} value="__locked" disabled title={tr("diplomaNotTransferable")}>
-                        <option value="__locked">{e.diploma}</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 4 }}>{tr("targetBatch")}</label>
-                      {(() => {
-                        const openB = batchOpts.filter((b) => b.dip === e.diplomaId && b.status === "open" && !b.done && b.v !== e.batchId);
-                        return openB.length > 0 ? (
+                {moving && (() => {
+                  const isSupport = myTeam === "support" || myTeam === "admin";
+                  const isFirst = (e.transferCount || 0) === 0;
+                  const openB = batchOpts.filter((b) => b.dip === e.diplomaId && b.status === "open" && !b.done && b.v !== e.batchId);
+                  const batchPicker = (
+                    <>
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 4 }}>{tr("diplomaWord")}</label>
+                        <select className="inp" style={{ width: "100%", height: 38, opacity: 0.65, cursor: "not-allowed", background: "var(--bg)" }} value="__locked" disabled title={tr("diplomaNotTransferable")}>
+                          <option value="__locked">{e.diploma}</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 4 }}>{tr("targetBatch")}</label>
+                        {openB.length > 0 ? (
                           <select className="inp" style={{ width: "100%", height: 38 }} value={moveTo} onChange={(ev) => setMoveTo(ev.target.value)}>
                             <option value="">{tr("selectTargetBatch")}</option>
                             {openB.map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
                           </select>
                         ) : (
                           <div style={{ fontSize: 12.5, color: "var(--muted)", padding: "8px 10px", border: "1px dashed var(--line)", borderRadius: 8 }}>{tr("noOpenBatchesSameDip")}</div>
-                        );
-                      })()}
-                    </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                  const box = (children: React.ReactNode) => (
+                    <div style={{ marginTop: 10, padding: 12, border: "1px solid var(--line)", borderRadius: 10, background: "var(--muted-soft)", display: "flex", flexDirection: "column", gap: 10 }}>{children}</div>
+                  );
+                  const noteBox = (text: string) => box(<>
+                    <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.7 }}>{text}</div>
+                    <div><button className="btn ghost" onClick={resetMove} style={{ height: 36, padding: "0 14px" }}>{tr("close")}</button></div>
+                  </>);
 
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
-                      <input type="checkbox" checked={moveGift} onChange={(ev) => setMoveGift(ev.target.checked)} />
-                      <span>{tr("transferGift")}</span>
-                    </label>
-
-                    {!moveGift && (
-                      <>
-                        <div>
-                          <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 4 }}>{tr("transferFeeLabel")}</label>
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <input className="inp num" dir="ltr" placeholder="0" style={{ flex: 1, height: 38 }} value={moveFee} onChange={(ev) => setMoveFee(ev.target.value)} />
-                            <select className="inp" style={{ width: 84, height: 38 }} value={moveCur} onChange={(ev) => setMoveCur(ev.target.value)}>
-                              <option value="EGP">{tr("egpShort")}</option><option value="USD">$</option>
-                            </select>
-                          </div>
+                  // (١) أول نقلة + دعم/أدمن → نقل مباشر مجاني
+                  if (isFirst && isSupport) {
+                    return box(<>
+                      <div style={{ alignSelf: "flex-start", fontSize: 11.5, fontWeight: 800, color: "var(--green)", background: "var(--green-soft)", border: "1px solid var(--green)", borderRadius: 20, padding: "3px 11px" }}>{tr("firstFreeTransfer")}</div>
+                      {batchPicker}
+                      <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.6 }}>{tr("firstTransferFreeNote")}</div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button className="btn" onClick={() => doDirectTransfer(e)} disabled={busy || !moveTo} style={{ height: 38, flex: 1 }}>{busy ? "..." : tr("confirmFreeTransfer")}</button>
+                        <button className="btn ghost" onClick={resetMove} style={{ height: 38, padding: "0 14px" }}>{tr("cancel")}</button>
+                      </div>
+                    </>);
+                  }
+                  // (٢) أول نقلة + مبيعات → مش مسموح (الدعم بيعملها)
+                  if (isFirst && !isSupport) return noteBox(tr("salesCannotFirstTransfer"));
+                  // (٣) من التانية + مبيعات → طلب نقل مدفوع (المسار الحالي)
+                  if (!isFirst && !isSupport) {
+                    return box(<>
+                      {batchPicker}
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 4 }}>{tr("transferFeeLabel")}</label>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <input className="inp num" dir="ltr" placeholder="0" style={{ flex: 1, height: 38 }} value={moveFee} onChange={(ev) => setMoveFee(ev.target.value)} />
+                          <select className="inp" style={{ width: 84, height: 38 }} value={moveCur} onChange={(ev) => setMoveCur(ev.target.value)}>
+                            <option value="EGP">{tr("egpShort")}</option><option value="USD">$</option>
+                          </select>
                         </div>
-                        <FileDrop compact value={moveFile} onFile={setMoveFile} onClear={() => setMoveFile(null)} accept="image/*" label={tr("uploadTransferShot")} />
-                      </>
-                    )}
-
-                    <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.6 }}>{tr("transferHint")}</div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button className="btn" onClick={() => doMove(e)} disabled={busy} style={{ height: 38, flex: 1 }}>{busy ? "..." : tr("confirmTransfer")}</button>
-                      <button className="btn ghost" onClick={resetMove} style={{ height: 38, padding: "0 14px" }}>{tr("cancel")}</button>
-                    </div>
-                  </div>
-                )}
+                      </div>
+                      <FileDrop compact value={moveFile} onFile={setMoveFile} onClear={() => setMoveFile(null)} accept="image/*" label={tr("uploadTransferShot")} />
+                      <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.6 }}>{tr("transferHint")}</div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button className="btn" onClick={() => doMove(e)} disabled={busy} style={{ height: 38, flex: 1 }}>{busy ? "..." : tr("requestTransfer")}</button>
+                        <button className="btn ghost" onClick={resetMove} style={{ height: 38, padding: "0 14px" }}>{tr("cancel")}</button>
+                      </div>
+                    </>);
+                  }
+                  // (٤) من التانية + دعم → لازم طلب مدفوع من المبيعات، والتأكيد من صفحة التفعيل
+                  return noteBox(tr("supportPaidTransferNote"));
+                })()}
               </div>
             );
           })}

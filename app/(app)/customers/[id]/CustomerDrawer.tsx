@@ -51,6 +51,7 @@ export default function CustomerDrawer(props: {
   finEnrollments: any[];
   refunds: any[]; refundServices: any[]; allServicesClosed: boolean; refundTableMissing: boolean;
   canFinance: boolean; canMessage: boolean; canManageBatches: boolean; canEdit: boolean;
+  myTeam?: string;
   docs: any[]; docsMissing: boolean;
   waCtx: any; templates: any[];
   tasks: any[]; notes: any[];
@@ -185,7 +186,7 @@ export default function CustomerDrawer(props: {
             enrolls={props.enrolls} dipOpts={props.dipOpts} batchOpts={props.batchOpts}
             addons={props.addons} accreditations={props.accredList}
             projects={props.projList} libraries={props.libNames} canFinance={props.canFinance}
-            serviceTypes={props.serviceTypes || []} serviceItemsByType={props.serviceItemsByType || {}} />
+            serviceTypes={props.serviceTypes || []} serviceItemsByType={props.serviceItemsByType || {}} myTeam={props.myTeam || ""} />
         </div>
 
         <div id="panel-access">

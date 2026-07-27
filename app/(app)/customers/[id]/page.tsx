@@ -59,10 +59,10 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     { data: svcTypeRows },
     { data: svcItemRows },
   ] = await Promise.all([
-    supabase.from("profiles").select("can_see_finance,can_message,can_manage_batches,can_edit_customers").eq("id", user?.id || "").maybeSingle(),
+    supabase.from("profiles").select("can_see_finance,can_message,can_manage_batches,can_edit_customers,team").eq("id", user?.id || "").maybeSingle(),
     supabase.from("customers").select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,onhold_reason,created_at,terms_signed,terms_signed_at,handed_off,owner_id").eq("id", params.id).maybeSingle(),
     supabase.from("specialties").select("id,name_ar").order("name_ar"),
-    supabase.from("enrollments").select("id,status,diploma_id,batch_id, diplomas(name_ar), batches(code)").eq("customer_id", params.id),
+    supabase.from("enrollments").select("id,status,diploma_id,batch_id,transfer_count, diplomas(name_ar), batches(code)").eq("customer_id", params.id),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
     supabase.from("batches").select("id,code,status,diploma_id,done,price,currency,price_egp,price_usd").order("code"),
     supabase.from("profiles").select("id,full_name"),
@@ -87,12 +87,14 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const canMessage = !!meProf?.can_message;
   const canManageBatches = !!meProf?.can_manage_batches;
   const canEdit = !!meProf?.can_edit_customers;
+  const myTeam = String(meProf?.team || "").toLowerCase();
 
   if (!c) notFound();
 
   const enrolls = (enrRows || []).map((e: any) => ({
     id: e.id, diploma: e.diplomas?.name_ar || "—", batch: e.batches?.code || "—",
     diplomaId: e.diploma_id || "", batchId: e.batch_id || "",
+    transferCount: Number(e.transfer_count) || 0,
   }));
   const dipOpts = (allDips || []).map((d: any) => ({ v: d.id, label: d.name_ar }));
   const batchOpts = (allBatches || []).map((b: any) => ({ v: b.id, label: b.code, dip: b.diploma_id || "", status: b.status || "", done: !!b.done, price: Number(b.price) || 0, currency: b.currency || "EGP", price_egp: Number(b.price_egp) || 0, price_usd: Number(b.price_usd) || 0 }));
@@ -285,7 +287,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
             fuOpen={fuOpen} fuHistory={(fuAll || []).filter((x: any) => x.done).slice(0, 5)}
             finEnrollments={finEnrollments}
             refunds={refunds} refundServices={refundServices} allServicesClosed={allServicesClosed} refundTableMissing={refundTableMissing}
-            canFinance={canFinance} canMessage={canMessage} canManageBatches={canManageBatches} canEdit={canEdit}
+            canFinance={canFinance} canMessage={canMessage} canManageBatches={canManageBatches} canEdit={canEdit} myTeam={myTeam}
             docs={docs} docsMissing={docsMissing}
             waCtx={waCtx} templates={templates as any}
             tasks={tasks} notes={notes}
