@@ -28,6 +28,7 @@ const PERMS: [string, string][] = [
   ["can_view_support", "permViewSupport"],
   ["can_view_activations", "permViewActivations"],
   ["can_view_universities", "permViewUniversities"],
+  ["can_view_receipts", "permViewReceipts"],
 ];
 const PRESET: Record<string, string[]> = {
   sales: ["can_edit_customers", "can_message", "can_view_reports"],
