@@ -8,7 +8,7 @@ import { useT } from "@/lib/i18n/client";
 import FileDrop from "@/lib/ui/FileDrop";
 import SearchSelect from "../../SearchSelect";
 
-type Opt = { v: string; label: string; price?: number; currency?: string; price_egp?: number; price_usd?: number };
+type Opt = { v: string; label: string; dip?: string; status?: string; done?: boolean; price?: number; currency?: string; price_egp?: number; price_usd?: number };
 type Enr = { id: string; diploma: string; batch: string; diplomaId: string; batchId: string };
 type Addon = { id: string; type: string; name: string; amount: number; free: boolean; note: string; paid: boolean; shot_url?: string };
 
@@ -124,6 +124,14 @@ export default function ServicesPanel({
   }
 
   function resetMove() { setMoveFor(null); setMoveTo(""); setMoveFee(""); setMoveCur("EGP"); setMoveGift(false); setMoveFile(null); }
+
+  // كيبورد: ESC يقفل نافذة النقل أو نافذة إضافة الخدمة
+  useEffect(() => {
+    if (!moveFor && !open) return;
+    const onKey = (ev: KeyboardEvent) => { if (ev.key === "Escape") { if (moveFor) resetMove(); if (open) setOpen(false); } };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [moveFor, open]);
 
   async function doMove(e: Enr) {
     if (!moveTo || moveTo === e.batchId) { toast(tr("selectTargetBatch")); return; }
@@ -280,7 +288,7 @@ export default function ServicesPanel({
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", marginBottom: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.diploma}</div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                   <span style={{ color: "var(--muted)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tr("batchColon")} <span className="num">{e.batch}</span></span>
-                  <button onClick={() => { if (moveFor === e.id) { resetMove(); } else { resetMove(); setMoveFor(e.id); setMoveTo(e.batchId); } }}
+                  <button onClick={() => { if (moveFor === e.id) { resetMove(); } else { resetMove(); setMoveFor(e.id); setMoveTo(""); } }}
                     style={{ color: "var(--brand)", fontWeight: 700, fontSize: 12, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>
                     {tr("moveTransfer")}
                   </button>
@@ -288,10 +296,24 @@ export default function ServicesPanel({
                 {moving && (
                   <div style={{ marginTop: 10, padding: 12, border: "1px solid var(--line)", borderRadius: 10, background: "var(--muted-soft)", display: "flex", flexDirection: "column", gap: 10 }}>
                     <div>
-                      <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 4 }}>{tr("targetBatch")}</label>
-                      <select className="inp" style={{ width: "100%", height: 38 }} value={moveTo} onChange={(ev) => setMoveTo(ev.target.value)}>
-                        {batchOpts.map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
+                      <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 4 }}>{tr("diplomaWord")}</label>
+                      <select className="inp" style={{ width: "100%", height: 38, opacity: 0.65, cursor: "not-allowed", background: "var(--bg)" }} value="__locked" disabled title={tr("diplomaNotTransferable")}>
+                        <option value="__locked">{e.diploma}</option>
                       </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 4 }}>{tr("targetBatch")}</label>
+                      {(() => {
+                        const openB = batchOpts.filter((b) => b.dip === e.diplomaId && b.status === "open" && !b.done && b.v !== e.batchId);
+                        return openB.length > 0 ? (
+                          <select className="inp" style={{ width: "100%", height: 38 }} value={moveTo} onChange={(ev) => setMoveTo(ev.target.value)}>
+                            <option value="">{tr("selectTargetBatch")}</option>
+                            {openB.map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
+                          </select>
+                        ) : (
+                          <div style={{ fontSize: 12.5, color: "var(--muted)", padding: "8px 10px", border: "1px dashed var(--line)", borderRadius: 8 }}>{tr("noOpenBatchesSameDip")}</div>
+                        );
+                      })()}
                     </div>
 
                     <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>

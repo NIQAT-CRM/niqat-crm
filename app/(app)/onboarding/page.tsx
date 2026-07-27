@@ -3,6 +3,7 @@ import { hasPerm } from "@/lib/authz";
 import NoAccess from "../NoAccess";
 import { createClient } from "@/lib/supabase/server";
 import OnboardingCards from "./OnboardingCards";
+import RealtimeRefresh from "../RealtimeRefresh";
 export const dynamic = "force-dynamic";
 
 export default async function Onboarding() {
@@ -76,6 +77,7 @@ export default async function Onboarding() {
 
   return (
     <div>
+      <RealtimeRefresh tables={["handoffs","handoff_items"]} />
       <div className="page-h">
         <div>
           <h1>{tr("onboarding")}</h1>

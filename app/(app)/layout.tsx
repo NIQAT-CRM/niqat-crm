@@ -10,6 +10,7 @@ import Toaster from "./Toaster";
 import ConfirmHost from "./ConfirmHost";
 import DailyGreeting from "./DailyGreeting";
 import SidebarRail from "./SidebarRail";
+import RealtimeRefresh from "./RealtimeRefresh";
 import InternalChat from "./InternalChat";
 // import AnimatedMain from "./AnimatedMain";
 import { LangProvider } from "@/lib/i18n/client";
@@ -110,6 +111,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <LangProvider lang={lang}>
     <div className="app rail">
+      <RealtimeRefresh tables={["handoffs", "tasks", "refunds"]} />
       <aside className="sb" id="sb">
         <div className="sb-logo">
           <img src="/icon.png" alt="N" />
