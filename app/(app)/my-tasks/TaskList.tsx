@@ -19,6 +19,7 @@ export default function TaskList({ initial, meId, people = [] }: { initial: T[];
   const router = useRouter();
   const supabase = createClient();
   const [tasks, setTasks] = useState<T[]>(initial);
+  useEffect(() => { setTasks(initial); }, [initial]); // مزامنة الداتا الجديدة (Realtime/refresh)
   const [nt, setNt] = useState("");
   const [ntDue, setNtDue] = useState("");
   const [adding, setAdding] = useState(false);

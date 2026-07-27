@@ -1,6 +1,6 @@
 "use client";
 import { toast } from "@/lib/toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/lib/i18n/client";
 
@@ -16,6 +16,8 @@ export default function CustomerActivity({
   const supabase = createClient();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [notes, setNotes] = useState<Note[]>(initialNotes);
+  useEffect(() => { setTasks(initialTasks); }, [initialTasks]); // مزامنة (Realtime/refresh)
+  useEffect(() => { setNotes(initialNotes); }, [initialNotes]); // مزامنة (Realtime/refresh)
   const [tTitle, setTTitle] = useState("");
   const [tDue, setTDue] = useState(today());
   const [noteText, setNoteText] = useState("");

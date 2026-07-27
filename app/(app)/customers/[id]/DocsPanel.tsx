@@ -1,6 +1,6 @@
 "use client";
 import { confirmDialog } from "@/lib/confirm";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
@@ -19,6 +19,7 @@ export default function DocsPanel({
   const router = useRouter();
   const supabase = createClient();
   const [docs, setDocs] = useState<Doc[]>(initial);
+  useEffect(() => { setDocs(initial); }, [initial]); // مزامنة الداتا الجديدة (Realtime/refresh)
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<Doc | null>(null);

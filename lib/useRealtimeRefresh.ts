@@ -19,7 +19,7 @@ export function useRealtimeRefresh(
   opts?: { debounceMs?: number; enabled?: boolean }
 ) {
   const router = useRouter();
-  const debounceMs = opts?.debounceMs ?? 400;
+  const debounceMs = opts?.debounceMs ?? 150;
   const enabled = opts?.enabled ?? true;
 
   // مفتاح ثابت للاعتمادية (يمنع إعادة الاشتراك بلا داعي)

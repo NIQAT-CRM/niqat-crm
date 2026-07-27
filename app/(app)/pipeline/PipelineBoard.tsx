@@ -1,7 +1,7 @@
 "use client";
 import { confirmDialog } from "@/lib/confirm";
 import { toast } from "@/lib/toast";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -45,6 +45,7 @@ export default function PipelineBoard({ initial, canFinance = false }: { initial
   const downRef = useRef<{ x: number; y: number } | null>(null);
   const supabase = createClient();
   const [custs, setCusts] = useState<Cust[]>(initial);
+  useEffect(() => { setCusts(initial); }, [initial]); // مزامنة الداتا الجديدة (Realtime/refresh)
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
   const [colSort, setColSort] = useState<Record<string, string>>({});

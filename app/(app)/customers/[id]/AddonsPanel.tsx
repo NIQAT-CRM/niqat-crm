@@ -1,6 +1,6 @@
 "use client";
 import { confirmDialog } from "@/lib/confirm";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
@@ -24,6 +24,7 @@ export default function AddonsPanel({
   const supabase = createClient();
   const typeMeta = (t: string) => TYPES.find((x) => x.key === t) || TYPES[0];
   const [list, setList] = useState<Addon[]>(initial);
+  useEffect(() => { setList(initial); }, [initial]); // مزامنة الداتا الجديدة (Realtime/refresh)
   const [open, setOpen] = useState(false);
   const [type, setType] = useState("accred");
   const [name, setName] = useState("");
