@@ -4,6 +4,8 @@ import { useT } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { BarRow, CountUp } from "../Charts";
 import ExportButton from "../ExportButton";
+import { postExport } from "@/lib/export/download";
+import { toast } from "@/lib/toast";
 
 type Opt = { v: string; label: string };
 type Aff = { code: string; name: string; rate?: number; discount?: number };
@@ -47,6 +49,26 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
   const [loading, setLoading] = useState(false);
   const [sumRows, setSumRows] = useState<SumRow[]>([]);
   const [custRows, setCustRows] = useState<CustRow[]>([]);
+  const [selCodes, setSelCodes] = useState<Set<string>>(new Set());
+  const [onlySel, setOnlySel] = useState(false);
+
+  function toggleSel(code: string) {
+    setSelCodes((prev) => { const n = new Set(prev); n.has(code) ? n.delete(code) : n.add(code); return n; });
+  }
+  function toggleAll() {
+    setSelCodes((prev) => prev.size === sumRows.length ? new Set() : new Set(sumRows.map((r) => r.code)));
+  }
+  const selRows = sumRows.filter((r) => selCodes.has(r.code));
+  async function exportSelected() {
+    const headers = [tr("code"), tr("affiliate"), tr("commissionPct"), tr("salesBaseCol"), tr("commissionCol"), tr("collected"), tr("customerCount"), tr("refundWord")];
+    const rows = selRows.map((r) => [r.code, r.name, r.rate + "%", money(r.base), money(r.commission), money(r.collected), r.customers, r.refunded]);
+    const rr = await postExport({ type: "generic", title: tr("affiliateCommissions"), filename: "affiliate-commissions-selected", headers, rows }, "affiliate-commissions-selected");
+    if (!rr.ok) toast(tr("exportFailed"));
+  }
+  async function copyCodes() {
+    try { await navigator.clipboard.writeText(selRows.map((r) => r.code).join(", ")); toast(tr("copiedCodes").replace("{n}", String(selRows.length))); }
+    catch { toast(selRows.map((r) => r.code).join(", ")); }
+  }
 
   const affByCode = new Map(affiliates.map((a) => [a.code.toUpperCase(), a]));
   const dipName = new Map(diplomas.map((d) => [d.v, d.label]));
@@ -132,12 +154,14 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
     setLoading(false);
   }
 
-  function onBatch(v: string) { setBatchId(v); load(v, dip); }
+  function onBatch(v: string) { setBatchId(v); setSelCodes(new Set()); setOnlySel(false); load(v, dip); }
   function onDip(v: string) { setDip(v); load(batchId, v); }
 
   const statusLabel = (s: string) => s === "paid" ? tr("payFullyPaid") : s === "partial" ? tr("payPartial") : tr("unpaid");
   const statusColor = (s: string) => s === "paid" ? "#18A957" : s === "partial" ? "#E6A700" : "#E0483B";
-  const shownCust = pay ? custRows.filter((c) => c.status === pay) : custRows;
+  const shownCust = custRows
+    .filter((c) => (pay ? c.status === pay : true))
+    .filter((c) => (onlySel && selCodes.size > 0 ? selCodes.has(c.code.toUpperCase()) || selCodes.has(c.code) : true));
 
   const sel: React.CSSProperties = { height: 38, borderRadius: 10, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", padding: "0 10px", fontSize: 13 };
 
@@ -178,7 +202,8 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
               </div>
               {[...affRows].sort((a, b) => b.enrolled - a.enrolled).slice(0, 10).map((r) => (
                 <BarRow key={r.code}
-                  label={<span style={{ fontWeight: 700 }}>{r.name} <span style={{ color: "var(--muted)", fontWeight: 600, fontSize: 12 }}>({r.code}) · {r.customers} {tr("customerCount")}</span></span>}
+                  labelMin={170} labelMax={300}
+                  label={<span style={{ fontWeight: 800, color: "var(--brand)" }}>{r.code}{r.name && r.name !== "—" ? <span style={{ color: "var(--ink)", fontWeight: 700 }}> — {r.name}</span> : null}<span style={{ color: "var(--muted)", fontWeight: 600, fontSize: 11.5 }}> · {r.customers} {tr("customerCount")}</span></span>}
                   value={r.enrolled} max={Math.max(1, ...affRows.map((x) => x.enrolled))} color="var(--brand)" />
               ))}
             </div>
@@ -230,9 +255,20 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
                   rows={sumRows.map((r) => [r.code, r.name, r.rate + "%", money(r.base), money(r.commission), money(r.collected), r.customers, r.refunded])} />
               ) : undefined} />
             {!canFinance && <p style={{ fontSize: 12.5, color: "#E6A700", margin: "6px 0 0" }}>{tr("commissionNeedsFinance")}</p>}
+            {selCodes.size > 0 && (
+              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 12, padding: "9px 12px", background: "var(--brand-soft, #FFF4E8)", border: "1px solid var(--line)", borderRadius: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "var(--brand)" }}>{tr("selectedWord")}: {selCodes.size}</span>
+                <span style={{ flex: 1 }} />
+                <button onClick={exportSelected} className="btn ghost" style={{ height: 32, padding: "0 12px", fontSize: 12.5 }}>{tr("exportXlsx")}</button>
+                <button onClick={copyCodes} className="btn ghost" style={{ height: 32, padding: "0 12px", fontSize: 12.5 }}>{tr("copyCodes")}</button>
+                <button onClick={() => setOnlySel((s) => !s)} className="btn ghost" style={{ height: 32, padding: "0 12px", fontSize: 12.5, ...(onlySel ? { background: "var(--brand)", color: "#fff", borderColor: "var(--brand)" } : {}) }}>{tr("showTheirCustomers")}</button>
+                <button onClick={() => { setSelCodes(new Set()); setOnlySel(false); }} className="btn ghost" style={{ height: 32, padding: "0 12px", fontSize: 12.5, color: "var(--red)" }}>{tr("clearSelection")}</button>
+              </div>
+            )}
             <div className="tbl-wrap" style={{ marginTop: 12 }}>
               <table style={{ minWidth: 640 }}>
                 <thead><tr>
+                  <th className="px-4 py-3" style={{ width: 36 }}><input type="checkbox" checked={sumRows.length > 0 && selCodes.size === sumRows.length} onChange={toggleAll} style={{ width: 16, height: 16, cursor: "pointer" }} /></th>
                   <th className="text-start px-4 py-3 font-bold">{tr("code")}</th>
                   <th className="text-start px-4 py-3 font-bold">{tr("affiliate")}</th>
                   <th className="text-start px-4 py-3 font-bold">{tr("commissionPct")}</th>
@@ -243,9 +279,10 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
                   <th className="text-start px-4 py-3 font-bold">{tr("refundWord")}</th>
                 </tr></thead>
                 <tbody>
-                  {sumRows.length === 0 && <tr><td colSpan={8} className="px-4 py-6 text-center" style={{ color: "var(--muted)" }}>{tr("noAffiliateCustomers")}</td></tr>}
+                  {sumRows.length === 0 && <tr><td colSpan={9} className="px-4 py-6 text-center" style={{ color: "var(--muted)" }}>{tr("noAffiliateCustomers")}</td></tr>}
                   {sumRows.map((r) => (
-                    <tr key={r.code} className="border-t border-line">
+                    <tr key={r.code} className="border-t border-line" style={selCodes.has(r.code) ? { background: "var(--brand-soft, #FFF7EF)" } : undefined}>
+                      <td className="px-4 py-3"><input type="checkbox" checked={selCodes.has(r.code)} onChange={() => toggleSel(r.code)} style={{ width: 16, height: 16, cursor: "pointer" }} /></td>
                       <td className="px-4 py-3 font-bold text-brand">{r.code}</td>
                       <td className="px-4 py-3">{r.name}</td>
                       <td className="px-4 py-3 num">{r.rate}%</td>

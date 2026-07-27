@@ -66,15 +66,15 @@ export function Donut({ data, size = 140, thickness = 22 }: {
 }
 
 // ===== بار أفقي مع حركة =====
-export function BarRow({ label, value, max, color, prefix = "" }: {
-  label: React.ReactNode; value: number; max: number; color: string; prefix?: string;
+export function BarRow({ label, value, max, color, prefix = "", labelMin = 92, labelMax = 150 }: {
+  label: React.ReactNode; value: number; max: number; color: string; prefix?: string; labelMin?: number; labelMax?: number;
 }) {
   const [w, setW] = useState(0);
   const pct = max ? Math.round((value / max) * 100) : 0;
   useEffect(() => { const t = setTimeout(() => setW(pct), 60); return () => clearTimeout(t); }, [pct]);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <span style={{ minWidth: 92, maxWidth: 150, fontSize: 12.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 7 }}>
+      <span style={{ minWidth: labelMin, maxWidth: labelMax, fontSize: 12.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
       <div style={{ flex: 1, height: 8, background: "var(--muted-soft)", borderRadius: 20, overflow: "hidden" }}>
         <div style={{ width: w + "%", height: "100%", background: color, borderRadius: 20, transition: "width .8s cubic-bezier(.22,1,.36,1)" }} />
       </div>
