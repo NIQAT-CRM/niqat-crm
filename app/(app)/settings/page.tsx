@@ -117,7 +117,6 @@ export default async function Settings() {
   }
 
   const tabs: SettingsTab[] = [];
-  let tablesMissing = false;
 
   // ===== تبويبات الإعدادات (تكاملات/كتالوج/أفيلييت) — تظهر لمن عنده can_manage_settings =====
   if (canSettings) {
@@ -142,7 +141,6 @@ export default async function Settings() {
       sender_support: wRaw.sender_support || "",
     };
     const affiliates = Array.isArray(affRow.data?.value) ? (affRow.data!.value as any[]) : [];
-    tablesMissing = uni.missing;
 
     tabs.push({
       key: "integrations",
@@ -197,12 +195,6 @@ export default async function Settings() {
   return (
     <div className="settings-page">
       <div className="page-h"><div><h1>{tr("settings")}</h1><p>{tr("settingsDesc")}</p></div></div>
-
-      {tablesMissing && (
-        <div className="banner settings-anim" style={{ marginBottom: 16 }}>
-          ⚠️ {tr("featuresUnderPrep")}
-        </div>
-      )}
 
       <SettingsTabs tabs={tabs} />
     </div>

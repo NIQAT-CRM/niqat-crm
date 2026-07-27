@@ -3,7 +3,6 @@ import { useState, useRef, useEffect } from "react";
 import { useT } from "@/lib/i18n/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/lib/toast";
-import { getSegmentPhones } from "./segmentPhones";
 import { postExport } from "@/lib/export/download";
 import SmartActions from "../SmartActions";
 import { useLogUsage } from "../AiFlags";
@@ -66,8 +65,8 @@ function MultiSel({ label, paramKey, opts, onApply }: { label: string; paramKey:
 }
 
 export default function CustomersTools({
-  stages, owners, diplomas, specialties, batches, services = [], serviceTypes = [], companies, canFinance, canMessage,
-  filters, templates, sortBy, sortDir, sortOpts,
+  stages, owners, diplomas, specialties, batches, services = [], serviceTypes = [], companies, canFinance,
+  filters, sortBy, sortDir, sortOpts,
 }: {
   stages: Opt[]; owners: Opt[]; diplomas: Opt[]; specialties: Opt[]; batches: Opt[]; services?: Opt[]; serviceTypes?: { v: string; label: string }[]; companies: Opt[];
   canFinance: boolean; canMessage: boolean; filters: Filters; templates: Tpl[];
@@ -77,7 +76,6 @@ export default function CustomersTools({
   const router = useRouter();
   const sp = useSearchParams();
   const log = useLogUsage();
-  const [openBulk, setOpenBulk] = useState(false);
 
   // بارامترات الفلتر المعتبرة + خرائط القيمة→التسمية لتسمية مفاتيح الفلتر
   const FILTER_KEYS = ["stage", "dip", "spec", "batch", "svctype", "svc", "owner", "company", "pay"] as const;
@@ -131,8 +129,6 @@ export default function CustomersTools({
     else if (name === "export") { log("action", "action:export", "customers"); const r = await postExport({ type: "customers", filter: filters as any }, "niqat-customers"); if (!r.ok) toast(tr("exportFailed")); }
   }
   const listActionLabels: Record<string, string> = { new_customer: tr("addCust"), export: tr("export") };
-  const [loading, setLoading] = useState(false);
-  const [nums, setNums] = useState<string[]>([]);
 
   function setSort(v: string) {
     const p = new URLSearchParams(sp.toString());
@@ -143,25 +139,6 @@ export default function CustomersTools({
     router.push("/customers" + (p.toString() ? "?" + p.toString() : ""));
   }
   const sortVal = (sortBy || "") + ":" + (sortDir ? "asc" : "desc");
-
-  async function openBulkSend() {
-    if (loading) return;
-    setLoading(true);
-    try {
-      const list = await getSegmentPhones(filters);
-      if (!list.length) { toast(tr("noResultsTable")); return; }
-      setNums(list);
-      setOpenBulk(true);
-    } catch {
-      toast(tr("errorOccurred"));
-    } finally {
-      setLoading(false);
-    }
-  }
-  function copyNums() {
-    if (navigator.clipboard) navigator.clipboard.writeText(nums.join("\n"));
-    toast(tr("copied"));
-  }
 
   // فلترة الباتشات حسب الدبلومة/الدبلومات المختارة في الفلتر
   const selDips = (sp.get("dip") || "").split(",").map((x) => x.trim()).filter(Boolean);
@@ -198,33 +175,7 @@ export default function CustomersTools({
         {(sp.toString()) && (
           <button className="btn ghost" style={{ height: 36, padding: "0 12px", fontSize: 12.5 }} onClick={() => router.push("/customers")}>{tr("clearFilters")}</button>
         )}
-        {canMessage && (
-          <button className="btn wa" disabled={loading} style={{ height: 36, padding: "0 12px", fontSize: 12.5, marginInlineStart: "auto", opacity: loading ? 0.7 : 1 }} onClick={openBulkSend}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ width: 15, height: 15 }}><path d="M21 11.5a8.5 8.5 0 0 1-12.5 7.5L3 21l2-5.5A8.5 8.5 0 1 1 21 11.5z" /></svg>
-            {tr("bulkSend")}{loading ? " …" : ""}
-          </button>
-        )}
       </div>
-
-      {openBulk && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(15,27,48,.45)", zIndex: 60, display: "grid", placeItems: "center", padding: 16 }} onClick={() => setOpenBulk(false)}>
-          <div className="card" style={{ padding: 20, width: "min(460px,100%)" }} onClick={(e) => e.stopPropagation()}>
-            <div className="sec-t" style={{ marginTop: 0 }}>{tr("bulkSend")} — {nums.length}</div>
-            <div className="fld"><label>{tr("chooseTpl")}</label>
-              <select className="inp" id="bulk_tpl">
-                {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                {templates.length === 0 && <option>{tr("noTemplates")}</option>}
-              </select></div>
-            <div className="fld"><label>{tr("numbers")}</label>
-              <textarea className="inp num" dir="ltr" rows={4} readOnly value={nums.join("\n")} /></div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn ghost" onClick={copyNums}>{tr("copyNums")}</button>
-              <button className="btn" onClick={() => { toast(tr("copied")); setOpenBulk(false); }}>{tr("done")}</button>
-            </div>
-            <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10 }}>{tr("watiHint")}</p>
-          </div>
-        </div>
-      )}
     </>
   );
 }
