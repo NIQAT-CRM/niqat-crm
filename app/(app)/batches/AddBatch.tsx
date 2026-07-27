@@ -5,23 +5,35 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 
-export default function AddBatch({ diplomas = [], kind = "diploma" }: { diplomas?: { id: string; name: string }[]; kind?: string }) {
+function isServiceKind(k: string) { return k !== "diploma"; }
+
+export default function AddBatch({ diplomas = [], kind = "diploma" }: { diplomas?: { id: string; name: string; prefix?: string }[]; kind?: string }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [open, setOpen] = useState(false);
   const [f, setF] = useState({ code: "", diploma_id: "", start_date: "", end_date: "", capacity: "", notes: "", price_egp: "", price_usd: "" });
+  const [suffix, setSuffix] = useState("");
   const [busy, setBusy] = useState(false);
+  const selPrefix = (diplomas.find((d) => d.id === f.diploma_id)?.prefix || "").trim();
+  const usePrefix = !isServiceKind(kind) && !!selPrefix;
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
   const isService = kind !== "diploma";
 
   async function save() {
-    if (!f.code.trim()) { toast(tr("enterBatchNo")); return; }
+    let finalCode = f.code.trim();
+    if (usePrefix) {
+      const sfx = suffix.trim().toUpperCase();
+      if (!sfx) { toast(tr("enterBatchNo")); return; }
+      if (!/^[A-Z0-9]+$/.test(sfx)) { toast(tr("suffixLettersDigits")); return; }
+      finalCode = selPrefix + sfx;
+    }
+    if (!finalCode) { toast(tr("enterBatchNo")); return; }
     const pe = Number(f.price_egp), pu = Number(f.price_usd);
     if (!(pe > 0) || !(pu > 0)) { toast(tr("enterBothPrices")); return; }
     setBusy(true);
     const base: any = {
-      code: f.code.trim(), start_date: isService ? null : (f.start_date || null),
+      code: finalCode, start_date: isService ? null : (f.start_date || null),
       capacity: !isService && f.capacity ? Number(f.capacity) : null, notes: f.notes.trim(), status: "open", kind,
     };
     const priceFields = { price_egp: pe, price_usd: pu, price: pe, currency: "EGP" };
@@ -32,7 +44,7 @@ export default function AddBatch({ diplomas = [], kind = "diploma" }: { diplomas
     }
     setBusy(false);
     if (error) { toast((error as any).code === "23505" ? tr("codeExists") : tr("saveFailed")); return; }
-    setF({ code: "", diploma_id: "", start_date: "", end_date: "", capacity: "", notes: "", price_egp: "", price_usd: "" }); setOpen(false);
+    setF({ code: "", diploma_id: "", start_date: "", end_date: "", capacity: "", notes: "", price_egp: "", price_usd: "" }); setSuffix(""); setOpen(false);
     toast(tr("batchAdded")); router.refresh();
   }
 
@@ -55,7 +67,19 @@ export default function AddBatch({ diplomas = [], kind = "diploma" }: { diplomas
             </select></div>
         )}
         <div className="frow">
-          <div className="fld"><label>{isService ? tr("serviceName") : tr("batchNo")}</label><input className="inp" dir={isService ? "rtl" : "ltr"} placeholder={isService ? tr("serviceNamePh") : "B22"} value={f.code} onChange={(e) => set("code", e.target.value)} /></div>
+          {usePrefix ? (
+            <div className="fld"><label>{tr("batchNo")}</label>
+              <div style={{ display: "flex", alignItems: "stretch", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", background: "var(--surface)" }} dir="ltr">
+                <span style={{ padding: "0 10px", display: "flex", alignItems: "center", background: "var(--muted-soft)", color: "var(--muted-d)", fontWeight: 700, fontSize: 13, whiteSpace: "nowrap" }}>{selPrefix}</span>
+                <input style={{ flex: 1, border: "none", background: "transparent", color: "var(--ink)", padding: "0 10px", fontSize: 13, outline: "none", minWidth: 60 }}
+                  placeholder="0023" value={suffix}
+                  onChange={(e) => setSuffix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} />
+              </div>
+              <span style={{ fontSize: 11, color: "var(--muted)", marginTop: 4, display: "block" }}>{tr("finalCode")}: <b dir="ltr">{selPrefix}{suffix || "…"}</b></span>
+            </div>
+          ) : (
+            <div className="fld"><label>{isService ? tr("serviceName") : tr("batchNo")}</label><input className="inp" dir={isService ? "rtl" : "ltr"} placeholder={isService ? tr("serviceNamePh") : "B22"} value={f.code} onChange={(e) => set("code", e.target.value)} /></div>
+          )}
           {!isService && <div className="fld"><label>{tr("capacity")}</label><input className="inp num" dir="ltr" value={f.capacity} onChange={(e) => set("capacity", e.target.value)} /></div>}
         </div>
         {!isService && (

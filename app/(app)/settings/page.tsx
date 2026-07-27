@@ -16,10 +16,11 @@ export const dynamic = "force-dynamic";
 const TEAM_AR: Record<string, string> = { sales: "المبيعات", support: "الدعم", admin: "الإدارة", ops: "العمليات", operations: "العمليات" };
 const USER_COLS = "id,full_name,team,phone,can_edit_customers,can_see_finance,can_view_reports,can_manage_tickets,can_manage_batches,can_grant_access,can_message,can_export,can_manage_settings,can_manage_users,can_see_daily_sales,can_use_ai,ai_options,can_add_customers,can_view_pipeline,can_view_support,can_view_activations,can_view_universities";
 
-async function safeList(supabase: any, table: string, col: string) {
-  const { data, error } = await supabase.from(table).select(`id,${col}`).order(col);
+async function safeList(supabase: any, table: string, col: string, extraCol?: string) {
+  const sel = extraCol ? `id,${col},${extraCol}` : `id,${col}`;
+  const { data, error } = await supabase.from(table).select(sel).order(col);
   if (error) return { items: [] as any[], missing: true };
-  return { items: (data || []).map((r: any) => ({ id: r.id, label: r[col] })), missing: false };
+  return { items: (data || []).map((r: any) => ({ id: r.id, label: r[col], extra: extraCol ? (r[extraCol] || "") : undefined })), missing: false };
 }
 
 // ============ تبويب المستخدمين والصلاحيات ============
@@ -128,7 +129,7 @@ export default async function Settings() {
       supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
       safeList(supabase, "access_options", "label"),
       safeList(supabase, "specialties", "name_ar"),
-      safeList(supabase, "diplomas", "name_ar"),
+      safeList(supabase, "diplomas", "name_ar", "batch_code_prefix"),
       safeList(supabase, "universities", "name"),
       safeList(supabase, "sources", "name"),
     ]);
@@ -163,7 +164,7 @@ export default async function Settings() {
           <div className="sec-t" style={{ marginTop: 8, marginBottom: 4 }}>{tr("manageLists")}</div>
           <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>{tr("manageListsHint")} {tr("servicesInBatchesHint")}</p>
           <div className="settings-grid">
-            <OptionsList title={tr("manageDiplomas")} hint={tr("manageDiplomasHint")} table="diplomas" labelCol="name_ar" initial={dip.items} />
+            <OptionsList title={tr("manageDiplomas")} hint={tr("manageDiplomasHint")} table="diplomas" labelCol="name_ar" initial={dip.items} extraCol="batch_code_prefix" extraPlaceholder={tr("batchCodePrefixPh")} />
             <OptionsList title={tr("manageSpecialties")} hint={tr("manageSpecialtiesHint")} table="specialties" labelCol="name_ar" initial={spec.items} />
             <OptionsList title={tr("manageAccessOptions")} hint={tr("manageAccessOptionsHint")} table="access_options" labelCol="label" initial={access.items} />
             <OptionsList title={tr("manageSources")} hint={tr("manageSourcesHint")} table="sources" labelCol="name" initial={src.items} />

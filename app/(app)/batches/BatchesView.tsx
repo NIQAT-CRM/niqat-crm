@@ -19,7 +19,7 @@ function statusMeta(tr: (k: string) => string, status: string) {
 }
 
 export default function BatchesView({ batches, canManage, diplomaOpts, diplomas = [], serviceTypes = [] }: {
-  batches: B[]; canManage: boolean; diplomaOpts: Opt[]; diplomas?: { id: string; name: string }[];
+  batches: B[]; canManage: boolean; diplomaOpts: Opt[]; diplomas?: { id: string; name: string; prefix?: string }[];
   serviceTypes?: { slug: string; name: string }[];
 }) {
   const tr = useT();

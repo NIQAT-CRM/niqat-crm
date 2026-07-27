@@ -6,32 +6,43 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 
-type Item = { id: string; label: string };
+type Item = { id: string; label: string; extra?: string };
 
 export default function OptionsList({
-  title, hint, table, labelCol, initial,
+  title, hint, table, labelCol, initial, extraCol, extraPlaceholder,
 }: {
   title: string; hint: string; table: string; labelCol: string; initial: Item[];
+  extraCol?: string; extraPlaceholder?: string;
 }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [items, setItems] = useState<Item[]>(initial);
   const [val, setVal] = useState("");
+  const [extraVal, setExtraVal] = useState("");
   const [busy, setBusy] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editVal, setEditVal] = useState("");
+
+  async function saveExtra(it: Item, value: string) {
+    if (!extraCol || value === (it.extra || "")) return;
+    setItems((s) => s.map((x) => (x.id === it.id ? { ...x, extra: value } : x)));
+    const { error } = await (supabase.from(table) as any).update({ [extraCol]: value }).eq("id", it.id);
+    if (error) toast(tr("updateFailedShort"));
+  }
 
   async function add() {
     const v = val.trim();
     if (!v) return;
     if (items.some((i) => i.label === v)) { toast(tr("alreadyExists")); return; }
     setBusy(true);
-    const { data, error } = await (supabase.from(table) as any).insert({ [labelCol]: v }).select("id").single();
+    const payload: any = { [labelCol]: v };
+    if (extraCol) payload[extraCol] = extraVal.trim();
+    const { data, error } = await (supabase.from(table) as any).insert(payload).select("id").single();
     setBusy(false);
     if (error) { toast(tr("addFailedShort")); return; }
-    setItems((s) => [...s, { id: data!.id, label: v }]);
-    setVal(""); toast(tr("added"));
+    setItems((s) => [...s, { id: data!.id, label: v, extra: extraCol ? extraVal.trim() : undefined }]);
+    setVal(""); setExtraVal(""); toast(tr("added"));
   }
 
   function startEdit(it: Item) { setEditId(it.id); setEditVal(it.label); }
@@ -85,6 +96,13 @@ export default function OptionsList({
           ) : (
             <div key={it.id} className="optrow">
               <span className="lbl">{it.label}</span>
+              {extraCol && (
+                <input defaultValue={it.extra || ""} placeholder={extraPlaceholder || ""} dir="ltr"
+                  onBlur={(e) => saveExtra(it, e.target.value.trim())}
+                  onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                  title={extraPlaceholder}
+                  style={{ width: 130, padding: "5px 8px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--brand)", fontSize: 12, fontWeight: 700, marginInlineEnd: 8 }} />
+              )}
               <div className="acts">
                 <button className="ed" onClick={() => startEdit(it)} title={tr("edit")}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
@@ -100,6 +118,11 @@ export default function OptionsList({
       <div className="withadd">
         <input className="inp" value={val} placeholder={tr("addNewItem")}
           onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") add(); }} />
+        {extraCol && (
+          <input className="inp" value={extraVal} placeholder={extraPlaceholder || ""} dir="ltr"
+            onChange={(e) => setExtraVal(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") add(); }}
+            style={{ maxWidth: 150 }} />
+        )}
         <button className="addbtn" onClick={add} disabled={busy} type="button" title={tr("add")}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M12 5v14M5 12h14" /></svg>
         </button>
