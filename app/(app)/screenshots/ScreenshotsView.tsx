@@ -1,22 +1,22 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useT, useLang } from "@/lib/i18n/client";
 
 export type Receipt = {
-  receiptUrl: string; // path داخل bucket receipts
+  receiptUrl: string;
   customerId: string;
   customerName: string;
   phone1: string;
-  amount: number;
+  amount: number | null;
+  hasAmount: boolean;
   currency: string;
-  uploadedAt: string; // ISO
+  uploadedAt: string;
   ownerName: string;
 };
-type Totals = { egp: number; usd: number; count: number };
 
-// تاريخ/وقت بتوقيت القاهرة (يطابق فلترة الـ RPC)
+// تاريخ/وقت بتوقيت القاهرة (تقفيل الشهور صح — كل إيصال تحت يومه/شهره/سنته الحقيقية)
 function cairoDayKey(iso: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
 }
@@ -28,58 +28,58 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
   const tr = useT();
   const lang = useLang();
   const supabase = createClient();
-  const [level, setLevel] = useState<"months" | "days" | "gallery">("months");
+  const [level, setLevel] = useState<"years" | "months" | "days" | "gallery">("years");
+  const [selYear, setSelYear] = useState<string>("");
   const [selMonth, setSelMonth] = useState<string>(""); // YYYY-MM
   const [selDay, setSelDay] = useState<string>("");      // YYYY-MM-DD
-  const [totals, setTotals] = useState<Totals | null>(null);
   const [signed, setSigned] = useState<Record<string, string>>({});
   const [lightbox, setLightbox] = useState<Receipt | null>(null);
 
   const nf = useMemo(() => new Intl.NumberFormat(lang === "ar" ? "ar-EG" : "en-US"), [lang]);
   const fmtMoney = (v: number, cur: string) => `${nf.format(v)} ${cur === "USD" ? tr("usd") : tr("egp")}`;
 
-  // تجميع هرمي: شهر → يوم → إيصالات
+  // تجميع هرمي: سنة → شهر → يوم
   const tree = useMemo(() => {
-    const months = new Map<string, { days: Map<string, Receipt[]>; count: number }>();
+    const years = new Map<string, { months: Map<string, Map<string, Receipt[]>>; count: number }>();
     for (const r of rows) {
-      if (!r.receiptUrl) continue;
+      if (!r.receiptUrl || !r.uploadedAt) continue;
       const day = cairoDayKey(r.uploadedAt);
+      const year = day.slice(0, 4);
       const month = day.slice(0, 7);
-      if (!months.has(month)) months.set(month, { days: new Map(), count: 0 });
-      const M = months.get(month)!;
-      if (!M.days.has(day)) M.days.set(day, []);
-      M.days.get(day)!.push(r);
-      M.count++;
+      if (!years.has(year)) years.set(year, { months: new Map(), count: 0 });
+      const Y = years.get(year)!;
+      if (!Y.months.has(month)) Y.months.set(month, new Map());
+      const M = Y.months.get(month)!;
+      if (!M.has(day)) M.set(day, []);
+      M.get(day)!.push(r);
+      Y.count++;
     }
-    return months;
+    return years;
   }, [rows]);
 
-  const monthKeys = useMemo(() => Array.from(tree.keys()).sort().reverse(), [tree]);
+  const yearKeys = useMemo(() => Array.from(tree.keys()).sort().reverse(), [tree]);
 
-  // إجماليات كل نطاق من receipts_totals حسب المستوى الحالي
-  useEffect(() => {
-    let from: string, to: string;
-    if (level === "gallery" && selDay) { from = selDay; to = selDay; }
-    else if (level === "days" && selMonth) {
-      const [y, m] = selMonth.split("-").map(Number);
-      const last = new Date(y, m, 0).getDate();
-      from = `${selMonth}-01`; to = `${selMonth}-${String(last).padStart(2, "0")}`;
-    } else { from = "2000-01-01"; to = "2100-01-01"; }
-    let alive = true;
-    (async () => {
-      const { data } = await supabase.rpc("receipts_totals", { p_from: from, p_to: to });
-      if (!alive) return;
-      const row = Array.isArray(data) ? data[0] : data;
-      setTotals(row ? { egp: Number(row.total_egp) || 0, usd: Number(row.total_usd) || 0, count: Number(row.count) || 0 } : { egp: 0, usd: 0, count: 0 });
-    })();
-    return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [level, selMonth, selDay]);
+  // إجماليات النطاق الحالي (محسوبة من الإيصالات المعروضة فعلاً)
+  function totalsOf(list: Receipt[]) {
+    let egp = 0, usd = 0;
+    for (const r of list) {
+      if (!r.hasAmount || r.amount == null) continue;
+      if (r.currency === "USD") usd += r.amount; else egp += r.amount;
+    }
+    return { egp, usd, count: list.length };
+  }
+  const scopeRows = useMemo(() => {
+    if (level === "gallery" && selYear && selMonth && selDay) return tree.get(selYear)?.months.get(selMonth)?.get(selDay) || [];
+    if (level === "days" && selYear && selMonth) return Array.from(tree.get(selYear)?.months.get(selMonth)?.values() || []).flat();
+    if (level === "months" && selYear) return Array.from(tree.get(selYear)?.months.values() || []).flatMap((m) => Array.from(m.values()).flat());
+    return rows;
+  }, [level, selYear, selMonth, selDay, tree, rows]);
+  const totals = totalsOf(scopeRows);
 
   // توقيع صور اليوم المفتوح فقط (lazy)
   useEffect(() => {
-    if (level !== "gallery" || !selDay || !selMonth) return;
-    const dayRows = tree.get(selMonth)?.days.get(selDay) || [];
+    if (level !== "gallery" || !selDay) return;
+    const dayRows = tree.get(selYear)?.months.get(selMonth)?.get(selDay) || [];
     const paths = dayRows.map((r) => r.receiptUrl).filter(Boolean);
     if (!paths.length) return;
     let alive = true;
@@ -94,11 +94,15 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
     })();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [level, selDay, selMonth]);
+  }, [level, selDay, selMonth, selYear]);
 
   function monthLabel(m: string) {
     const [y, mm] = m.split("-").map(Number);
     return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-US", { year: "numeric", month: "long" }).format(new Date(y, mm - 1, 15));
+  }
+  function monthShort(m: string) {
+    const [y, mm] = m.split("-").map(Number);
+    return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-US", { month: "long" }).format(new Date(y, mm - 1, 15));
   }
   function dayLabel(d: string) {
     const [y, m, dd] = d.split("-").map(Number);
@@ -115,9 +119,9 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
 
   const Totals = () => (
     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
-      <div style={{ ...pill, background: "var(--brand-soft)", borderColor: "var(--brand-soft)", color: "var(--brand-d)" }}>{tr("total")}: <b className="n">{nf.format(totals?.egp || 0)}</b> {tr("egp")}</div>
-      <div style={{ ...pill, background: "var(--blue-soft, var(--bg))" }}>{tr("total")}: <b className="n">{nf.format(totals?.usd || 0)}</b> {tr("usd")}</div>
-      <div style={pill}>{tr("count")}: <b className="n">{nf.format(totals?.count || 0)}</b></div>
+      <div style={{ ...pill, background: "var(--brand-soft)", borderColor: "var(--brand-soft)", color: "var(--brand-d)" }}>{tr("total")}: <b className="n">{nf.format(totals.egp)}</b> {tr("egp")}</div>
+      <div style={pill}>{tr("total")}: <b className="n">{nf.format(totals.usd)}</b> {tr("usd")}</div>
+      <div style={pill}>{tr("count")}: <b className="n">{nf.format(totals.count)}</b></div>
     </div>
   );
 
@@ -127,46 +131,65 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
 
   return (
     <div>
-      {/* مسار التنقل */}
+      {/* مسار التنقل: كل السنين › سنة › شهر › يوم */}
       <div style={crumb}>
-        <button style={crumbBtn} onClick={() => { setLevel("months"); setSelMonth(""); setSelDay(""); }}>{tr("allMonths")}</button>
-        {selMonth && <>›<button style={crumbBtn} onClick={() => { setLevel("days"); setSelDay(""); }}>{monthLabel(selMonth)}</button></>}
+        <button style={crumbBtn} onClick={() => { setLevel("years"); setSelYear(""); setSelMonth(""); setSelDay(""); }}>{tr("allYears")}</button>
+        {selYear && <>›<button style={crumbBtn} onClick={() => { setLevel("months"); setSelMonth(""); setSelDay(""); }}>{selYear}</button></>}
+        {selMonth && <>›<button style={crumbBtn} onClick={() => { setLevel("days"); setSelDay(""); }}>{monthShort(selMonth)}</button></>}
         {level === "gallery" && selDay && <>›<span style={{ color: "var(--ink)", fontWeight: 700 }}>{dayLabel(selDay)}</span></>}
       </div>
 
       <Totals />
 
-      {/* المستوى ١: الشهور */}
-      {level === "months" && (
+      {/* المستوى ١: السنين */}
+      {level === "years" && (
         <div style={grid}>
-          {monthKeys.map((m) => (
-            <div key={m} style={card} onClick={() => { setSelMonth(m); setLevel("days"); }}>
+          {yearKeys.map((y) => (
+            <div key={y} style={card} onClick={() => { setSelYear(y); setLevel("months"); }}>
               <div>
-                <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 15 }}>{monthLabel(m)}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{tree.get(m)!.days.size} {tr("daysWord")}</div>
+                <div className="n" style={{ fontWeight: 800, color: "var(--ink)", fontSize: 18 }}>{y}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{tree.get(y)!.months.size} {tr("monthsWord")}</div>
               </div>
-              <span style={pill}><span className="n">{tree.get(m)!.count}</span> {tr("receiptsWord")}</span>
+              <span style={pill}><span className="n">{tree.get(y)!.count}</span> {tr("receiptsWord")}</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* المستوى ٢: أيام الشهر */}
-      {level === "days" && selMonth && (
+      {/* المستوى ٢: شهور السنة */}
+      {level === "months" && selYear && (
         <div style={grid}>
-          {Array.from(tree.get(selMonth)!.days.keys()).sort().reverse().map((d) => (
+          {Array.from(tree.get(selYear)!.months.keys()).sort().reverse().map((m) => {
+            const cnt = Array.from(tree.get(selYear)!.months.get(m)!.values()).reduce((s, arr) => s + arr.length, 0);
+            return (
+              <div key={m} style={card} onClick={() => { setSelMonth(m); setLevel("days"); }}>
+                <div>
+                  <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 15 }}>{monthLabel(m)}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{tree.get(selYear)!.months.get(m)!.size} {tr("daysWord")}</div>
+                </div>
+                <span style={pill}><span className="n">{cnt}</span> {tr("receiptsWord")}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* المستوى ٣: أيام الشهر */}
+      {level === "days" && selYear && selMonth && (
+        <div style={grid}>
+          {Array.from(tree.get(selYear)!.months.get(selMonth)!.keys()).sort().reverse().map((d) => (
             <div key={d} style={card} onClick={() => { setSelDay(d); setLevel("gallery"); }}>
               <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 14 }}>{dayLabel(d)}</div>
-              <span style={pill}><span className="n">{tree.get(selMonth)!.days.get(d)!.length}</span> {tr("receiptsWord")}</span>
+              <span style={pill}><span className="n">{tree.get(selYear)!.months.get(selMonth)!.get(d)!.length}</span> {tr("receiptsWord")}</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* المستوى ٣: معرض إيصالات اليوم */}
-      {level === "gallery" && selDay && selMonth && (
+      {/* المستوى ٤: معرض إيصالات اليوم */}
+      {level === "gallery" && selDay && (
         <div style={gGrid}>
-          {(tree.get(selMonth)!.days.get(selDay) || []).map((r, i) => (
+          {(tree.get(selYear)?.months.get(selMonth)?.get(selDay) || []).map((r, i) => (
             <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, overflow: "hidden", boxShadow: "var(--sh)" }}>
               <div onClick={() => setLightbox(r)} style={{ cursor: "zoom-in", height: 150, background: "var(--bg)", display: "grid", placeItems: "center", overflow: "hidden" }}>
                 {signed[r.receiptUrl]
@@ -177,7 +200,9 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
                 <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.customerName}</div>
                 <div className="n" style={{ fontSize: 12, color: "var(--muted)", direction: "ltr", textAlign: lang === "ar" ? "right" : "left" }}>{r.phone1}</div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 7, gap: 6 }}>
-                  <b style={{ color: "var(--green)", fontSize: 13 }} className="n">{fmtMoney(r.amount, r.currency)}</b>
+                  {r.hasAmount && r.amount != null
+                    ? <b style={{ color: "var(--green)", fontSize: 13 }} className="n">{fmtMoney(r.amount, r.currency)}</b>
+                    : <span style={{ fontSize: 11, color: "var(--muted)" }}>—</span>}
                   <span style={{ fontSize: 11, color: "var(--muted)" }}>{cairoTime(r.uploadedAt, lang)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
@@ -197,7 +222,7 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--line)" }}>
               <div>
                 <div style={{ fontWeight: 800, color: "var(--ink)" }}>{lightbox.customerName}</div>
-                <div className="n" style={{ fontSize: 12, color: "var(--muted)", direction: "ltr" }}>{lightbox.phone1} · {fmtMoney(lightbox.amount, lightbox.currency)}</div>
+                <div className="n" style={{ fontSize: 12, color: "var(--muted)", direction: "ltr" }}>{lightbox.phone1}{lightbox.hasAmount && lightbox.amount != null ? ` · ${fmtMoney(lightbox.amount, lightbox.currency)}` : ""}</div>
               </div>
               <button onClick={() => setLightbox(null)} style={{ background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 9, width: 32, height: 32, cursor: "pointer", color: "var(--muted)", fontSize: 18, lineHeight: 1 }}>×</button>
             </div>
