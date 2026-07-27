@@ -253,7 +253,7 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
       {/* ===== مودال قايمة التفعيل ===== */}
       {actEnr && (
         <div onClick={() => !actBusy && setActEnr(null)}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          style={{ position: "fixed", top: 0, bottom: 0, insetInlineEnd: 0, width: "min(560px,100%)", background: "rgba(0,0,0,.45)", zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} className="card"
             style={{ padding: 20, width: "100%", maxWidth: 440, maxHeight: "90vh", overflow: "auto" }}>
             <div className="sec-t" style={{ marginBottom: 4 }}>{tr("activationChecklistTitle")}</div>

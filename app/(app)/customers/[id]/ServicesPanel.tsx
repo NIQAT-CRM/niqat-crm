@@ -334,7 +334,7 @@ export default function ServicesPanel({
                     </>
                   );
                   const box = (children: React.ReactNode) => (
-                    <div onClick={resetMove} style={{ position: "fixed", inset: 0, background: "rgba(4,10,22,.55)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
+                    <div onClick={resetMove} style={{ position: "fixed", top: 0, bottom: 0, insetInlineEnd: 0, width: "min(560px,100%)", background: "rgba(4,10,22,.55)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
                       <div onClick={(ev) => ev.stopPropagation()} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,.4)", width: "min(440px,100%)", maxHeight: "88vh", overflow: "auto", padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 15 }}>{tr("moveTransfer")}</div>
