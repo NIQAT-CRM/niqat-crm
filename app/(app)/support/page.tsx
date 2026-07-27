@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import RealtimeRefresh from "../RealtimeRefresh";
 import { hasPerm } from "@/lib/authz";
 import NoAccess from "../NoAccess";
 import SupportBoard from "./SupportBoard";
@@ -52,5 +53,5 @@ export default async function Support({ searchParams }: { searchParams: { q?: st
     date: t.created_at ? String(t.created_at).slice(0, 10) : "",
   }));
 
-  return <SupportBoard key={q || "all"} initial={items} assignees={assignees} subjects={subjects} meId={user?.id || ""} />;
+  return (<><RealtimeRefresh tables={["tickets"]} /><SupportBoard key={q || "all"} initial={items} assignees={assignees} subjects={subjects} meId={user?.id || ""} /></>);
 }

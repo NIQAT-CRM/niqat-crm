@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import RealtimeRefresh from "../RealtimeRefresh";
 import TaskList from "./TaskList";
 export const dynamic = "force-dynamic";
 
@@ -31,5 +32,5 @@ export default async function MyTasks() {
 
   const people = (profs || []).map((p) => ({ id: p.id as string, name: (p.full_name as string) || "—" }));
 
-  return <TaskList initial={tasks} meId={user?.id || ""} people={people} />;
+  return (<><RealtimeRefresh tables={["tasks","follow_ups"]} /><TaskList initial={tasks} meId={user?.id || ""} people={people} /></>);
 }

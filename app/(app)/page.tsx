@@ -1,4 +1,5 @@
 import Link from "next/link";
+import RealtimeRefresh from "./RealtimeRefresh";
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import BatchesByDiploma from "./BatchesByDiploma";
@@ -360,6 +361,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
 
   return (
     <div>
+      <RealtimeRefresh tables={["tickets","follow_ups","handoffs","tasks","customers"]} />
       <div className="page-h"><div><h1>{tr("dash")}</h1><p>{tr("dashDesc")}</p></div></div>
       <PeriodFilter />
 

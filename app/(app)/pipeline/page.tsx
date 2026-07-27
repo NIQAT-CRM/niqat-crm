@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import RealtimeRefresh from "../RealtimeRefresh";
 import { hasPerm } from "@/lib/authz";
 import NoAccess from "../NoAccess";
 import PipelineBoard from "./PipelineBoard";
@@ -70,5 +71,5 @@ export default async function Pipeline({ searchParams }: { searchParams: { q?: s
     value: valByCust.get(c.id as string) || 0,
   }));
 
-  return <PipelineBoard key={q || "all"} initial={items} canFinance={canFinance} />;
+  return (<><RealtimeRefresh tables={["customers"]} /><PipelineBoard key={q || "all"} initial={items} canFinance={canFinance} /></>);
 }

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import RealtimeRefresh from "../../RealtimeRefresh";
 import { createClient } from "@/lib/supabase/server";
 import CustomerDrawer from "./CustomerDrawer";
 import CopyNumbers from "./CopyNumbers";
@@ -222,6 +223,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
   return (
     <>
+      <RealtimeRefresh tables={["customers","enrollments","installments","tickets","tasks","follow_ups","communications","customer_addons","refunds","handoffs","handoff_items"]} />
       <DrawerScrim label={tr("close")} />
       <aside className="drawer-panel">
         <div className="dr-h">

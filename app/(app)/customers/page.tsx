@@ -1,4 +1,5 @@
 import Link from "next/link";
+import RealtimeRefresh from "../RealtimeRefresh";
 import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import ExportButton from "./ExportButton";
@@ -288,6 +289,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
 
   return (
     <div>
+      <RealtimeRefresh tables={["customers","enrollments"]} />
       <div className="page-h">
         <div><h1>{tr("customers")}</h1><p>{shownCount} {tr("customersPl")}{q ? <> · {tr("searchColon")} «{q}»</> : null}</p></div>
         <div style={{ display: "flex", gap: 8 }}>
