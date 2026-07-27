@@ -162,7 +162,7 @@ export default async function Settings() {
         <>
           <div className="sec-t" style={{ marginTop: 8, marginBottom: 4 }}>{tr("manageLists")}</div>
           <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>{tr("manageListsHint")} {tr("servicesInBatchesHint")}</p>
-          <div className="settings-grid">
+          <div className="setgrid">
             <OptionsList title={tr("manageDiplomas")} hint={tr("manageDiplomasHint")} table="diplomas" labelCol="name_ar" initial={dip.items} extraCol="batch_code_prefix" extraPlaceholder={tr("batchCodePrefixPh")} />
             <ServiceTypesManager initial={(stRow.data as any[]) || []} />
             <OptionsList title={tr("manageSpecialties")} hint={tr("manageSpecialtiesHint")} table="specialties" labelCol="name_ar" initial={spec.items} />
