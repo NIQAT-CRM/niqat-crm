@@ -8,6 +8,7 @@ import { COUNTRIES, DEFAULT_DIAL, combineDialAndNumber, phoneKey } from "@/lib/p
 import FileDrop from "@/lib/ui/FileDrop";
 import SearchSelect from "../../SearchSelect";
 import { useLogUsage } from "../../AiFlags";
+import { receiptFileName, receiptDisplayName } from "@/lib/supabase/receipts";
 
 type Opt = { id: string; name: string };
 type BatchOpt = { id: string; name: string; price?: number; currency?: string; price_egp?: number; price_usd?: number; diploma_id?: string };
@@ -229,11 +230,12 @@ export default function NewCustomerForm({
     // (نتخطّاها لو الإيصال هيتربط بالقسط الأول في وضع التقسيط)
     const receiptGoesToInstallment = payMode === "installment" && payFirstNow;
     if (payFile && !receiptGoesToInstallment) {
-      const path = `docs/${cid}/${Date.now()}-${payFile.name}`;
+      const recName = receiptDisplayName(f.name, phone1);
+      const path = `docs/${cid}/${Date.now()}-${receiptFileName(f.name, phone1, payFile.name)}`;
       const up = await supabase.storage.from("receipts").upload(path, payFile, { upsert: false });
       if (!up.error) {
         const url = path; // نخزّن الـ path ونوقّعه وقت العرض
-        await supabase.from("customer_docs").insert({ customer_id: cid, url, name: `${tr("transferShot")} — ${tr("agreedWord")} (${payFile.name})` });
+        await supabase.from("customer_docs").insert({ customer_id: cid, url, name: recName });
       }
     }
     if (hasSub) {
@@ -260,11 +262,11 @@ export default function NewCustomerForm({
             // لو دفع أول قسط دلوقتي: القسط الأول paid + نربط بيه الإيصال المرفوع
             let firstShot: string | null = null;
             if (payFirstNow && payFile) {
-              const p = `installments/${cid}/${Date.now()}-${payFile.name}`;
+              const p = `installments/${cid}/${Date.now()}-${receiptFileName(f.name, phone1, payFile.name)}`;
               const u = await supabase.storage.from("receipts").upload(p, payFile, { upsert: false });
               if (!u.error) {
                 firstShot = p; // نخزّن الـ path ونوقّعه وقت العرض
-                await supabase.from("customer_docs").insert({ customer_id: cid, url: firstShot, name: `${tr("instReceipt")} #1 (${payFile.name})` });
+                await supabase.from("customer_docs").insert({ customer_id: cid, url: firstShot, name: receiptDisplayName(f.name, phone1) });
               }
             }
             await supabase.from("installments").insert(
