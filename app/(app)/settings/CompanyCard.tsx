@@ -11,6 +11,7 @@ export default function CompanyCard({ initial }: { initial: { name?: string; cur
   const supabase = createClient();
   const [name, setName] = useState(initial?.name || "");
   const [logo, setLogo] = useState(initial?.logo || "");
+  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function onFile(f: File | null) {
@@ -22,27 +23,37 @@ export default function CompanyCard({ initial }: { initial: { name?: string; cur
     if (up.error) { toast(tr("imgUploadFailed")); return; }
     setLogo(path); toast(tr("uploaded" as any) || "OK");
   }
-
   async function save() {
     setBusy(true);
     const { error } = await supabase.from("app_settings").upsert({ key: "company", value: { name: name.trim(), logo } }, { onConflict: "key" });
     setBusy(false);
     if (error) { toast(tr("saveFailed") + error.message); return; }
-    toast(tr("saved2")); router.refresh();
+    toast(tr("saved2")); setEditing(false); router.refresh();
   }
+  function cancel() { setName(initial?.name || ""); setLogo(initial?.logo || ""); setEditing(false); }
 
   return (
-    <div className="card settings-anim" style={{ padding: 18, marginBottom: 18 }}>
-      <div className="card-h" style={{ padding: 0, border: "none" }}><h3>{tr("companyTitle")}</h3></div>
-      <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "2px 0 14px" }}>{tr("companyHint")}</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12, alignItems: "end" }}>
-        <div className="fld" style={{ marginBottom: 0 }}><label>{tr("companyName")}</label>
-          <input className="inp" value={name} onChange={(e) => setName(e.target.value)} placeholder="NIQAT" /></div>
-        <div className="fld" style={{ marginBottom: 0 }}><label>{tr("companyLogo")}</label>
-          <input className="inp" type="file" accept="image/*" onChange={(e) => onFile(e.target.files?.[0] || null)} /></div>
-        <button className="btn" onClick={save} disabled={busy} style={{ height: 40 }}>{busy ? "..." : tr("save")}</button>
+    <div className="intcard settings-anim">
+      <div className="intcard-h">
+        <div><h3>{tr("companyTitle")}</h3><p>{tr("companyHint")}</p></div>
+        <div className="acts">
+          {!editing ? (
+            <button className="rowbtn edit" onClick={() => setEditing(true)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>{tr("edit")}
+            </button>
+          ) : (<>
+            <button className="btn sm" onClick={save} disabled={busy}>{busy ? "..." : tr("save")}</button>
+            <button className="rowbtn cancel" onClick={cancel}>{tr("cancel")}</button>
+          </>)}
+        </div>
       </div>
-      {logo && <div style={{ fontSize: 11.5, color: "var(--green)", marginTop: 8 }}>✓ {tr("companyLogo")}: {logo.split("/").pop()}</div>}
+      <div className="fldgrid">
+        <div className="fld" style={{ marginBottom: 0 }}><label>{tr("companyName")}</label>
+          <input className="inp" disabled={!editing} value={name} onChange={(e) => setName(e.target.value)} placeholder="NIQAT" /></div>
+        <div className="fld" style={{ marginBottom: 0 }}><label>{tr("companyLogo")}</label>
+          <input className="inp" type="file" accept="image/*" disabled={!editing} onChange={(e) => onFile(e.target.files?.[0] || null)} /></div>
+      </div>
+      {logo && <div style={{ fontSize: 11.5, color: "var(--green)", marginTop: 10 }}>✓ {tr("companyLogo")}: {logo.split("/").pop()}</div>}
     </div>
   );
 }

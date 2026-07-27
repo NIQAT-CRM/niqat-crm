@@ -148,11 +148,11 @@ export default async function Settings() {
       key: "integrations",
       label: "⚙️ " + tr("tabIntegrations"),
       content: (
-        <>
-          <div className="settings-anim" style={{ marginBottom: 18 }}><WatiCard initial={wati} /></div>
+        <div className="intgrid">
+          <WatiCard initial={wati} />
           <DefaultsCard initial={(defRow.data?.value as any) || {}} />
           <CompanyCard initial={(coRow.data?.value as any) || {}} />
-        </>
+        </div>
       ),
     });
     tabs.push({
@@ -194,15 +194,16 @@ export default async function Settings() {
   // ===== تبويب سجل الشات — للأدمن فقط =====
   if (isAdmin) tabs.push(await buildChatLogTab(supabase));
 
+  // ترتيب التبويبات النهائي المطلوب
+  const TAB_ORDER = ["users", "catalog", "team", "integrations", "chatlog"];
+  tabs.sort((a, b) => {
+    const ia = TAB_ORDER.indexOf(a.key), ib = TAB_ORDER.indexOf(b.key);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+
   return (
     <div className="settings-page">
       <div className="page-h"><div><h1>{tr("settings")}</h1><p>{tr("settingsDesc")}</p></div></div>
-
-      {tablesMissing && (
-        <div className="banner settings-anim" style={{ marginBottom: 16 }}>
-          ⚠️ {tr("featuresUnderPrep")}
-        </div>
-      )}
 
       <SettingsTabs tabs={tabs} />
     </div>

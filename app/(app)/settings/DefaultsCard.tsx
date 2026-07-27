@@ -11,6 +11,7 @@ export default function DefaultsCard({ initial }: { initial: { inst_count?: numb
   const supabase = createClient();
   const [count, setCount] = useState(String(initial?.inst_count ?? 3));
   const [gap, setGap] = useState(String(initial?.inst_gap ?? 1));
+  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function save() {
@@ -19,19 +20,30 @@ export default function DefaultsCard({ initial }: { initial: { inst_count?: numb
     const { error } = await supabase.from("app_settings").upsert({ key: "defaults", value }, { onConflict: "key" });
     setBusy(false);
     if (error) { toast(tr("saveFailed") + error.message); return; }
-    toast(tr("saved2")); router.refresh();
+    toast(tr("saved2")); setEditing(false); router.refresh();
   }
+  function cancel() { setCount(String(initial?.inst_count ?? 3)); setGap(String(initial?.inst_gap ?? 1)); setEditing(false); }
 
   return (
-    <div className="card settings-anim" style={{ padding: 18, marginBottom: 18 }}>
-      <div className="card-h" style={{ padding: 0, border: "none" }}><h3>{tr("defaultInstTitle")}</h3></div>
-      <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "2px 0 14px" }}>{tr("defaultInstHint")}</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12, alignItems: "end" }}>
+    <div className="intcard settings-anim">
+      <div className="intcard-h">
+        <div><h3>{tr("defaultInstTitle")}</h3><p>{tr("defaultInstHint")}</p></div>
+        <div className="acts">
+          {!editing ? (
+            <button className="rowbtn edit" onClick={() => setEditing(true)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>{tr("edit")}
+            </button>
+          ) : (<>
+            <button className="btn sm" onClick={save} disabled={busy}>{busy ? "..." : tr("save")}</button>
+            <button className="rowbtn cancel" onClick={cancel}>{tr("cancel")}</button>
+          </>)}
+        </div>
+      </div>
+      <div className="fldgrid">
         <div className="fld" style={{ marginBottom: 0 }}><label>{tr("installmentCount")}</label>
-          <input className="inp num" dir="ltr" inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value)} /></div>
+          <input className="inp num" dir="ltr" inputMode="numeric" disabled={!editing} value={count} onChange={(e) => setCount(e.target.value)} /></div>
         <div className="fld" style={{ marginBottom: 0 }}><label>{tr("installmentGap")}</label>
-          <input className="inp num" dir="ltr" inputMode="numeric" value={gap} onChange={(e) => setGap(e.target.value)} /></div>
-        <button className="btn" onClick={save} disabled={busy} style={{ height: 40 }}>{busy ? "..." : tr("save")}</button>
+          <input className="inp num" dir="ltr" inputMode="numeric" disabled={!editing} value={gap} onChange={(e) => setGap(e.target.value)} /></div>
       </div>
     </div>
   );

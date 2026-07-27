@@ -724,7 +724,7 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 /* ===== إعدادات القوائم — تصميم احترافي (v2) ===== */
 .setgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(470px,1fr));gap:18px;align-items:start}
 @media(max-width:1000px){.setgrid{grid-template-columns:1fr}}
-.setcard{display:flex;flex-direction:column;max-height:660px;padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--surface);transition:border-color .18s ease,box-shadow .18s ease}
+.setcard{display:flex;flex-direction:column;height:660px;padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--surface);transition:border-color .18s ease,box-shadow .18s ease}
 .setcard:hover{box-shadow:0 6px 22px rgba(15,27,48,.06)}
 .setcard-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .setcard-h h3{font-size:16px;font-weight:800;color:var(--ink);margin:0}
@@ -766,3 +766,17 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .setadd .inp{flex:1;min-width:120px;height:40px}
 .setaddbtn{height:40px;width:46px;flex-shrink:0;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--brand);display:grid;place-items:center;cursor:pointer}
 .setaddbtn:hover{border-color:var(--brand);background:var(--brand-soft)}.setaddbtn svg{width:19px;height:19px}
+
+/* ===== كروت التكاملات (v2) ===== */
+.intgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:16px;align-items:start}
+@media(max-width:980px){.intgrid{grid-template-columns:1fr}}
+.intcard{padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.intcard-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:16px}
+.intcard-h h3{font-size:16px;font-weight:800;color:var(--ink);margin:0}
+.intcard-h p{font-size:12px;color:var(--muted);margin:3px 0 0}
+.intcard-h .acts{display:inline-flex;gap:8px;flex-shrink:0}
+.fldgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.fldgrid{grid-template-columns:1fr}}
+.fldgrid .full{grid-column:1/-1}
+.inp:disabled{background:var(--muted-soft);color:var(--muted-d);cursor:not-allowed;border-style:dashed}
+.btn.sm{height:34px;padding:0 16px;font-size:13px}
