@@ -12,11 +12,10 @@ export default async function Pipeline({ searchParams }: { searchParams: { q?: s
   const q = (searchParams?.q || "").trim().toLowerCase();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // موجة متوازية: العملاء + الملفات + التسجيلات + صلاحية المالية
-  const [rowsRes0, { data: profs }, { data: enr }, { data: me }] = await Promise.all([
+  // موجة متوازية: العملاء + الملفات + صلاحية المالية
+  const [rowsRes0, { data: profs }, { data: me }] = await Promise.all([
     supabase.from("customers").select("id,name,company,phone1,phone2,email,stage,owner_id,created_at").eq("deleted", false).eq("archived", false).eq("board_done", false).order("created_at", { ascending: false }).limit(500),
     supabase.from("profiles").select("id,full_name"),
-    supabase.from("enrollments").select("customer_id, diplomas(name_ar), batches(code)").order("enrolled_at", { ascending: true }),
     supabase.from("profiles").select("can_see_finance").eq("id", user?.id || "").maybeSingle(),
   ]);
   const canFinance = !!me?.can_see_finance;
@@ -30,7 +29,13 @@ export default async function Pipeline({ searchParams }: { searchParams: { q?: s
       .order("created_at", { ascending: false })
       .limit(500);
   }
-  const rows = rowsRes.data;
+  const rows = rowsRes.data || [];
+  const boardIds = (rows as any[]).map((c) => c.id);
+
+  // اشتراكات عملاء البورد فقط (تجنّب حد الـ 1000 صف اللي كان بيخفي دبلومات)
+  const { data: enr } = boardIds.length
+    ? await supabase.from("enrollments").select("customer_id, diplomas(name_ar), batches(code)").in("customer_id", boardIds).order("enrolled_at", { ascending: true })
+    : { data: [] as any[] };
 
   const pName = new Map((profs || []).map((p) => [p.id, p.full_name]));
 
@@ -52,13 +57,14 @@ export default async function Pipeline({ searchParams }: { searchParams: { q?: s
   // القيمة المالية (مجموع التعاقدات) لكل عميل — محجوبة خلف صلاحية المالية
   const valByCust = new Map<string, number>();
   const paidByCust = new Map<string, number>();
-  if (canFinance) {
-    const [{ data: enr2 }, { data: fin }, { data: insts }] = await Promise.all([
-      supabase.from("enrollments").select("id,customer_id"),
-      supabase.from("enrollment_finance").select("enrollment_id,agreed_amount"),
-      supabase.from("installments").select("enrollment_id,amount,status,paid_at"),
-    ]);
+  if (canFinance && boardIds.length) {
+    const { data: enr2 } = await supabase.from("enrollments").select("id,customer_id").in("customer_id", boardIds);
+    const enrIds = ((enr2 as any[]) || []).map((e) => e.id);
     const enrToCust = new Map(((enr2 as any[]) || []).map((e) => [e.id, e.customer_id]));
+    const [{ data: fin }, { data: insts }] = enrIds.length ? await Promise.all([
+      supabase.from("enrollment_finance").select("enrollment_id,agreed_amount").in("enrollment_id", enrIds),
+      supabase.from("installments").select("enrollment_id,amount,status,paid_at").in("enrollment_id", enrIds),
+    ]) : [{ data: [] as any[] }, { data: [] as any[] }];
     const agreedByEnr = new Map(((fin as any[]) || []).map((f) => [f.enrollment_id, Number(f.agreed_amount) || 0]));
     for (const e of (enr2 as any[]) || []) {
       const v = agreedByEnr.get(e.id) || 0;
