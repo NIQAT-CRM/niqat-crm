@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
@@ -75,6 +75,11 @@ export default function NewCustomerForm({
   const [saving, setSaving] = useState(false);
   const [payFile, setPayFile] = useState<File | null>(null);
   const [transferAmount, setTransferAmount] = useState<string>("");
+  const [transferCurrency, setTransferCurrency] = useState<string>("");
+  const [payPreviewOpen, setPayPreviewOpen] = useState(false);
+  const payUrl = useMemo(() => (payFile && payFile.type.startsWith("image/") ? URL.createObjectURL(payFile) : ""), [payFile]);
+  useEffect(() => () => { if (payUrl) URL.revokeObjectURL(payUrl); }, [payUrl]);
+  const transferCur = transferCurrency || f.currency;
   const [payMode, setPayMode] = useState<"cash" | "installment">("cash");
   const [instCount, setInstCount] = useState(String(defaultInst.count || 3));
   const [instGap, setInstGap] = useState(String(defaultInst.gap || 1));
@@ -237,7 +242,7 @@ export default function NewCustomerForm({
       const up = await supabase.storage.from("receipts").upload(path, payFile, { upsert: false });
       if (!up.error) {
         const url = path; // نخزّن الـ path ونوقّعه وقت العرض
-        await supabase.from("customer_docs").insert({ customer_id: cid, url, name: recName, amount: transferAmt, currency: f.currency });
+        await supabase.from("customer_docs").insert({ customer_id: cid, url, name: recName, amount: transferAmt, currency: transferCur });
       }
     }
     if (hasSub) {
@@ -268,7 +273,7 @@ export default function NewCustomerForm({
               const u = await supabase.storage.from("receipts").upload(p, payFile, { upsert: false });
               if (!u.error) {
                 firstShot = p; // نخزّن الـ path ونوقّعه وقت العرض
-                await supabase.from("customer_docs").insert({ customer_id: cid, url: firstShot, name: receiptDisplayName(f.name, phone1), amount: transferAmt, currency: f.currency });
+                await supabase.from("customer_docs").insert({ customer_id: cid, url: firstShot, name: receiptDisplayName(f.name, phone1), amount: transferAmt, currency: transferCur });
               }
             }
             await supabase.from("installments").insert(
@@ -677,15 +682,26 @@ export default function NewCustomerForm({
             {!f.free && (
               <div className="fld" style={{ marginTop: 8 }}>
                 <label>{tr("agreedTransferShot")}</label>
-                <FileDrop value={payFile} onFile={(file) => { setPayFile(file); if (file && !transferAmount) setTransferAmount(String(net)); }} onClear={() => { setPayFile(null); setTransferAmount(""); }} accept="image/*" label={tr("uploadTransferShot")} />
+                <FileDrop value={payFile} onFile={(file) => { setPayFile(file); if (file && !transferAmount) setTransferAmount(String(net)); }} onClear={() => { setPayFile(null); setTransferAmount(""); setTransferCurrency(""); }} accept="image/*" label={tr("uploadTransferShot")} />
                 <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>{tr("shotStoredHint")}</div>
                 {payFile && (
                   <div style={{ marginTop: 10, padding: 12, background: "var(--brand-soft)", borderRadius: 10, border: "1px solid var(--line)" }}>
+                    {payUrl && (
+                      <div style={{ marginBottom: 10 }}>
+                        <button type="button" onClick={() => setPayPreviewOpen(true)} title={tr("clickToEnlarge")} style={{ display: "block", width: "100%", maxWidth: 300, border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", cursor: "zoom-in", padding: 0, background: "var(--surface)" }}>
+                          <img src={payUrl} alt="receipt" style={{ width: "100%", maxHeight: 260, objectFit: "contain", display: "block" }} />
+                        </button>
+                        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>{tr("clickToEnlarge")}</div>
+                      </div>
+                    )}
                     <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>{tr("transferAmountLabel")}</label>
                     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                      <input className="inp num" dir="ltr" inputMode="numeric" value={transferAmount} placeholder={String(net)} onChange={(e) => setTransferAmount(e.target.value)} style={{ maxWidth: 170 }} />
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>{f.currency === "USD" ? "$" : tr("egpShort")}</span>
-                      <button type="button" onClick={() => setTransferAmount(String(net))} className="rowbtn edit" style={{ height: 36, padding: "0 12px", fontSize: 12.5 }}>{tr("useAgreed")}</button>
+                      <input className="inp num" dir="ltr" inputMode="numeric" value={transferAmount} placeholder={String(net)} onChange={(e) => setTransferAmount(e.target.value)} style={{ maxWidth: 150 }} />
+                      <select className="inp" value={transferCur} onChange={(e) => setTransferCurrency(e.target.value)} style={{ maxWidth: 90 }}>
+                        <option value="EGP">{tr("egpShort")}</option>
+                        <option value="USD">$</option>
+                      </select>
+                      <button type="button" onClick={() => { setTransferAmount(String(net)); setTransferCurrency(f.currency); }} className="rowbtn edit" style={{ height: 36, padding: "0 12px", fontSize: 12.5 }}>{tr("useAgreed")}</button>
                     </div>
                     <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>{tr("transferAmountHint").replace("{n}", `${net} ${f.currency === "USD" ? "$" : tr("egpShort")}`)}</div>
                   </div>
@@ -754,6 +770,15 @@ export default function NewCustomerForm({
               </button>
               <button onClick={dismissActivation} disabled={actBusy} className="btn ghost">{tr("cancel")}</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {payPreviewOpen && payUrl && (
+        <div onClick={() => setPayPreviewOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(4,10,22,.8)", display: "grid", placeItems: "center", zIndex: 100, padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", maxWidth: "92vw", maxHeight: "92vh" }}>
+            <button onClick={() => setPayPreviewOpen(false)} style={{ position: "absolute", top: -14, insetInlineEnd: -14, width: 36, height: 36, borderRadius: "50%", background: "#fff", border: "none", cursor: "pointer", fontSize: 20, boxShadow: "0 4px 12px rgba(0,0,0,.3)", zIndex: 1 }}>×</button>
+            <img src={payUrl} alt="receipt" style={{ maxWidth: "92vw", maxHeight: "92vh", borderRadius: 12, display: "block" }} />
           </div>
         </div>
       )}

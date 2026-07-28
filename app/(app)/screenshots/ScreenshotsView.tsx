@@ -152,7 +152,7 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
       {/* ===== إجماليات اليوم ===== */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
         <div style={{ ...pill, background: "var(--brand-soft)", borderColor: "var(--brand-soft)", color: "var(--brand-d)" }}>{tr("total")}: <b className="n">{nf.format(totals.egp)}</b> {tr("egp")}</div>
-        {totals.usd > 0 && <div style={pill}>{tr("total")}: <b className="n">{nf.format(totals.usd)}</b> {tr("usd")}</div>}
+        <div style={pill}>{tr("total")}: <b className="n">{nf.format(totals.usd)}</b> {tr("usd")}</div>
         <div style={pill}>{tr("count")}: <b className="n">{nf.format(totals.count)}</b></div>
       </div>
 
