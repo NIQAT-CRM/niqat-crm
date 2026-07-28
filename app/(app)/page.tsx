@@ -316,39 +316,23 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
     { label: tr("openTk"), value: tkRes.count ?? 0, color: "#E0483B", icon: "ticket" },
   ];
 
-  // تحويلات النهاردة الفعلية (أقساط + إضافات مدفوعة) — جنيه ودولار منفصلين
+  // تحصيلات النهاردة = نفس مصدر صفحة الإيصالات (receipts_all) — أدق لأن المبالغ اتراجعت
   let todayEgp = 0, todayUsd = 0, todayCount = 0;
   if (canDailySales) {
-    const cairoOffsetMs = (() => {
-      const now = new Date();
-      const cairoParts = new Intl.DateTimeFormat("en-US", {
-        timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit",
-        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
-      }).formatToParts(now).reduce((acc: any, p) => { acc[p.type] = p.value; return acc; }, {});
-      const asUtc = Date.UTC(+cairoParts.year, +cairoParts.month - 1, +cairoParts.day,
-        +cairoParts.hour === 24 ? 0 : +cairoParts.hour, +cairoParts.minute, +cairoParts.second);
-      return asUtc - now.getTime();
-    })();
-    const nowCairo = new Date(Date.now() + cairoOffsetMs);
-    const y = nowCairo.getUTCFullYear(), m = nowCairo.getUTCMonth(), d = nowCairo.getUTCDate();
-    const startUtc = new Date(Date.UTC(y, m, d, 0, 0, 0) - cairoOffsetMs);
-    const endUtc = new Date(Date.UTC(y, m, d, 23, 59, 59, 999) - cairoOffsetMs);
-    const iso = startUtc.toISOString();
-    const isoEnd = endUtc.toISOString();
-    const [instToday, addonToday] = await Promise.all([
-      supabase.from("installments").select("amount,currency,paid_at,status").gte("paid_at", iso).lte("paid_at", isoEnd),
-      supabase.from("customer_addons").select("amount,currency,paid,created_at").eq("paid", true).gte("created_at", iso).lte("created_at", isoEnd),
-    ]);
-    for (const i of (instToday.data || []) as any[]) {
-      if (i.status === "paid" || i.paid_at) {
-        const amt = Number(i.amount) || 0;
-        if (i.currency === "USD") todayUsd += amt; else todayEgp += amt;
-        todayCount++;
-      }
-    }
-    for (const a of (addonToday.data || []) as any[]) {
-      const amt = Number(a.amount) || 0;
-      if (a.currency === "USD") todayUsd += amt; else todayEgp += amt;
+    const cairoKey = (isoV: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(isoV));
+    const cairoToday = cairoKey(new Date().toISOString());
+    const base = new Date(cairoToday + "T12:00:00Z");
+    const dFrom = new Date(base.getTime() - 86400000).toISOString().slice(0, 10);
+    const dTo = new Date(base.getTime() + 86400000).toISOString().slice(0, 10);
+    const { data: rec } = await supabase.rpc("receipts_all", { p_from: dFrom, p_to: dTo });
+    const seen = new Set<string>();
+    for (const r of ((rec as any[]) || [])) {
+      if (!r.receipt_url || r.amount == null) continue;
+      if (cairoKey(r.uploaded_at) !== cairoToday) continue;
+      if (seen.has(r.receipt_url)) continue;
+      seen.add(r.receipt_url);
+      const amt = Number(r.amount) || 0;
+      if (r.currency === "USD") todayUsd += amt; else todayEgp += amt;
       todayCount++;
     }
   }
