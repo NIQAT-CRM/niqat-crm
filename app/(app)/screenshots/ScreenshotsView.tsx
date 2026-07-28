@@ -1,22 +1,14 @@
 "use client";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useT, useLang } from "@/lib/i18n/client";
 
 export type Receipt = {
-  receiptUrl: string;
-  customerId: string;
-  customerName: string;
-  phone1: string;
-  amount: number | null;
-  hasAmount: boolean;
-  currency: string;
-  uploadedAt: string;
-  ownerName: string;
+  receiptUrl: string; customerId: string; customerName: string; phone1: string;
+  amount: number | null; hasAmount: boolean; currency: string; uploadedAt: string; ownerName: string;
 };
 
-// تاريخ/وقت بتوقيت القاهرة (تقفيل الشهور صح — كل إيصال تحت يومه/شهره/سنته الحقيقية)
 function cairoDayKey(iso: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
 }
@@ -28,58 +20,49 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
   const tr = useT();
   const lang = useLang();
   const supabase = createClient();
-  const [level, setLevel] = useState<"years" | "months" | "days" | "gallery">("years");
-  const [selYear, setSelYear] = useState<string>("");
-  const [selMonth, setSelMonth] = useState<string>(""); // YYYY-MM
-  const [selDay, setSelDay] = useState<string>("");      // YYYY-MM-DD
+  const [selDay, setSelDay] = useState<string>("");
   const [signed, setSigned] = useState<Record<string, string>>({});
-  const [lightbox, setLightbox] = useState<Receipt | null>(null);
+  const [lbIdx, setLbIdx] = useState<number | null>(null);
 
   const nf = useMemo(() => new Intl.NumberFormat(lang === "ar" ? "ar-EG" : "en-US"), [lang]);
   const fmtMoney = (v: number, cur: string) => `${nf.format(v)} ${cur === "USD" ? tr("usd") : tr("egp")}`;
 
-  // تجميع هرمي: سنة → شهر → يوم
+  // شجرة: سنة → شهر(YYYY-MM) → يوم(YYYY-MM-DD) → إيصالات
   const tree = useMemo(() => {
-    const years = new Map<string, { months: Map<string, Map<string, Receipt[]>>; count: number }>();
+    const y = new Map<string, Map<string, Map<string, Receipt[]>>>();
     for (const r of rows) {
       if (!r.receiptUrl || !r.uploadedAt) continue;
-      const day = cairoDayKey(r.uploadedAt);
-      const year = day.slice(0, 4);
-      const month = day.slice(0, 7);
-      if (!years.has(year)) years.set(year, { months: new Map(), count: 0 });
-      const Y = years.get(year)!;
-      if (!Y.months.has(month)) Y.months.set(month, new Map());
-      const M = Y.months.get(month)!;
-      if (!M.has(day)) M.set(day, []);
+      const day = cairoDayKey(r.uploadedAt), year = day.slice(0, 4), month = day.slice(0, 7);
+      if (!y.has(year)) y.set(year, new Map());
+      const Y = y.get(year)!; if (!Y.has(month)) Y.set(month, new Map());
+      const M = Y.get(month)!; if (!M.has(day)) M.set(day, []);
       M.get(day)!.push(r);
-      Y.count++;
     }
-    return years;
+    return y;
   }, [rows]);
 
-  const yearKeys = useMemo(() => Array.from(tree.keys()).sort().reverse(), [tree]);
+  const years = useMemo(() => Array.from(tree.keys()).sort().reverse(), [tree]);
+  const allDaysDesc = useMemo(() => {
+    const days: string[] = [];
+    for (const Y of tree.values()) for (const M of Y.values()) for (const d of M.keys()) days.push(d);
+    return days.sort().reverse();
+  }, [tree]);
 
-  // إجماليات النطاق الحالي (محسوبة من الإيصالات المعروضة فعلاً)
-  function totalsOf(list: Receipt[]) {
-    let egp = 0, usd = 0;
-    for (const r of list) {
-      if (!r.hasAmount || r.amount == null) continue;
-      if (r.currency === "USD") usd += r.amount; else egp += r.amount;
-    }
-    return { egp, usd, count: list.length };
-  }
-  const scopeRows = useMemo(() => {
-    if (level === "gallery" && selYear && selMonth && selDay) return tree.get(selYear)?.months.get(selMonth)?.get(selDay) || [];
-    if (level === "days" && selYear && selMonth) return Array.from(tree.get(selYear)?.months.get(selMonth)?.values() || []).flat();
-    if (level === "months" && selYear) return Array.from(tree.get(selYear)?.months.values() || []).flatMap((m) => Array.from(m.values()).flat());
-    return rows;
-  }, [level, selYear, selMonth, selDay, tree, rows]);
-  const totals = totalsOf(scopeRows);
+  // افتراضي: أحدث يوم
+  useEffect(() => { if (!selDay && allDaysDesc.length) setSelDay(allDaysDesc[0]); }, [allDaysDesc, selDay]);
 
-  // توقيع صور اليوم المفتوح فقط (lazy)
+  const selYear = selDay.slice(0, 4);
+  const selMonth = selDay.slice(0, 7);
+  const monthsOfYear = useMemo(() => selYear && tree.get(selYear) ? Array.from(tree.get(selYear)!.keys()).sort().reverse() : [], [tree, selYear]);
+  const daysOfMonth = useMemo(() => selMonth && tree.get(selYear)?.get(selMonth) ? Array.from(tree.get(selYear)!.get(selMonth)!.keys()).sort().reverse() : [], [tree, selYear, selMonth]);
+  const dayRows = useMemo(() => tree.get(selYear)?.get(selMonth)?.get(selDay) || [], [tree, selYear, selMonth, selDay]);
+
+  function latestDayOfMonth(m: string) { const dd = Array.from(tree.get(m.slice(0, 4))?.get(m)?.keys() || []).sort().reverse(); return dd[0] || ""; }
+  function onYear(y: string) { const m = Array.from(tree.get(y)?.keys() || []).sort().reverse()[0]; if (m) setSelDay(latestDayOfMonth(m)); }
+  function onMonth(m: string) { const d = latestDayOfMonth(m); if (d) setSelDay(d); }
+
+  // توقيع صور اليوم المفتوح
   useEffect(() => {
-    if (level !== "gallery" || !selDay) return;
-    const dayRows = tree.get(selYear)?.months.get(selMonth)?.get(selDay) || [];
     const paths = dayRows.map((r) => r.receiptUrl).filter(Boolean);
     if (!paths.length) return;
     let alive = true;
@@ -94,104 +77,93 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
     })();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [level, selDay, selMonth, selYear]);
+  }, [selDay]);
+
+  // إجماليات اليوم
+  const totals = useMemo(() => {
+    let egp = 0, usd = 0;
+    for (const r of dayRows) { if (r.hasAmount && r.amount != null) { if (r.currency === "USD") usd += r.amount; else egp += r.amount; } }
+    return { egp, usd, count: dayRows.length };
+  }, [dayRows]);
+
+  // ===== lightbox: تنقّل بين صور نفس اليوم =====
+  const closeLb = useCallback(() => setLbIdx(null), []);
+  const prevImg = useCallback(() => setLbIdx((i) => (i != null && i > 0 ? i - 1 : i)), []);
+  const nextImg = useCallback(() => setLbIdx((i) => (i != null && i < dayRows.length - 1 ? i + 1 : i)), [dayRows.length]);
+  useEffect(() => {
+    if (lbIdx == null) return;
+    const h = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeLb();
+      else if (e.key === "ArrowRight") prevImg();   // RTL: يمين = السابقة
+      else if (e.key === "ArrowLeft") nextImg();    // RTL: شمال = التالية
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [lbIdx, prevImg, nextImg, closeLb]);
 
   function monthLabel(m: string) {
     const [y, mm] = m.split("-").map(Number);
-    return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-US", { year: "numeric", month: "long" }).format(new Date(y, mm - 1, 15));
-  }
-  function monthShort(m: string) {
-    const [y, mm] = m.split("-").map(Number);
-    return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-US", { month: "long" }).format(new Date(y, mm - 1, 15));
+    const nm = new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-US", { month: "long" }).format(new Date(y, mm - 1, 15));
+    return `${nm} (${mm})`;
   }
   function dayLabel(d: string) {
     const [y, m, dd] = d.split("-").map(Number);
     return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-US", { weekday: "long", day: "numeric", month: "long" }).format(new Date(y, m - 1, dd));
   }
 
-  // ===== ستايلات (theme tokens فقط) =====
-  const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, boxShadow: "var(--sh)", padding: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 };
-  const grid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 };
-  const gGrid: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 14 };
-  const crumb: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14, fontSize: 13, color: "var(--muted)" };
-  const crumbBtn: React.CSSProperties = { background: "none", border: "none", color: "var(--brand-d)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, padding: 0 };
-  const pill: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 20, padding: "3px 11px", fontSize: 12, fontWeight: 700, color: "var(--muted)" };
-
-  const Totals = () => (
-    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
-      <div style={{ ...pill, background: "var(--brand-soft)", borderColor: "var(--brand-soft)", color: "var(--brand-d)" }}>{tr("total")}: <b className="n">{nf.format(totals.egp)}</b> {tr("egp")}</div>
-      <div style={pill}>{tr("total")}: <b className="n">{nf.format(totals.usd)}</b> {tr("usd")}</div>
-      <div style={pill}>{tr("count")}: <b className="n">{nf.format(totals.count)}</b></div>
-    </div>
-  );
+  // ستايلات
+  const wrap: React.CSSProperties = { position: "relative" };
+  const selBox: React.CSSProperties = { position: "relative", display: "inline-flex" };
+  const sel: React.CSSProperties = { appearance: "none", WebkitAppearance: "none", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "11px 38px 11px 14px", fontSize: 14, fontWeight: 700, color: "var(--ink)", cursor: "pointer", minWidth: 150, fontFamily: "inherit", boxShadow: "var(--sh)" };
+  const chev: React.CSSProperties = { position: "absolute", insetInlineStart: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--muted)" };
+  const pill: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 20, padding: "7px 14px", fontSize: 13, fontWeight: 700, color: "var(--muted)" };
+  const arrowBtn = (disabled: boolean): React.CSSProperties => ({ width: 40, height: 40, borderRadius: 11, border: "1px solid var(--line)", background: disabled ? "var(--bg)" : "var(--surface)", color: disabled ? "var(--line)" : "var(--brand-d)", cursor: disabled ? "not-allowed" : "pointer", display: "grid", placeItems: "center", boxShadow: disabled ? "none" : "var(--sh)", transition: "all .15s" });
 
   if (rows.length === 0) {
-    return <div style={{ padding: "40px 18px", textAlign: "center", color: "var(--muted)" }}>{tr("noReceiptsYet")}</div>;
+    return <div style={{ padding: "60px 18px", textAlign: "center", color: "var(--muted)" }}>{tr("noReceiptsYet")}</div>;
   }
 
+  const Chevron = () => <svg style={chev} viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M6 9l6 6 6-6" /></svg>;
+
   return (
-    <div>
-      {/* مسار التنقل: كل السنين › سنة › شهر › يوم */}
-      <div style={crumb}>
-        <button style={crumbBtn} onClick={() => { setLevel("years"); setSelYear(""); setSelMonth(""); setSelDay(""); }}>{tr("allYears")}</button>
-        {selYear && <>›<button style={crumbBtn} onClick={() => { setLevel("months"); setSelMonth(""); setSelDay(""); }}>{selYear}</button></>}
-        {selMonth && <>›<button style={crumbBtn} onClick={() => { setLevel("days"); setSelDay(""); }}>{monthShort(selMonth)}</button></>}
-        {level === "gallery" && selDay && <>›<span style={{ color: "var(--ink)", fontWeight: 700 }}>{dayLabel(selDay)}</span></>}
+    <div style={wrap}>
+      {/* ===== شريط التحكّم: 3 قوائم ===== */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 18 }}>
+        <div style={selBox}>
+          <select style={sel} value={selYear} onChange={(e) => onYear(e.target.value)}>
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select><Chevron />
+        </div>
+        <div style={selBox}>
+          <select style={sel} value={selMonth} onChange={(e) => onMonth(e.target.value)}>
+            {monthsOfYear.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
+          </select><Chevron />
+        </div>
+        <div style={selBox}>
+          <select style={{ ...sel, minWidth: 200 }} value={selDay} onChange={(e) => setSelDay(e.target.value)}>
+            {daysOfMonth.map((d) => {
+              const c = tree.get(selYear)?.get(selMonth)?.get(d)?.length || 0;
+              return <option key={d} value={d}>{dayLabel(d)} · {c}</option>;
+            })}
+          </select><Chevron />
+        </div>
       </div>
 
-      <Totals />
+      {/* ===== إجماليات اليوم ===== */}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
+        <div style={{ ...pill, background: "var(--brand-soft)", borderColor: "var(--brand-soft)", color: "var(--brand-d)" }}>{tr("total")}: <b className="n">{nf.format(totals.egp)}</b> {tr("egp")}</div>
+        {totals.usd > 0 && <div style={pill}>{tr("total")}: <b className="n">{nf.format(totals.usd)}</b> {tr("usd")}</div>}
+        <div style={pill}>{tr("count")}: <b className="n">{nf.format(totals.count)}</b></div>
+      </div>
 
-      {/* المستوى ١: السنين */}
-      {level === "years" && (
-        <div style={grid}>
-          {yearKeys.map((y) => (
-            <div key={y} style={card} onClick={() => { setSelYear(y); setLevel("months"); }}>
-              <div>
-                <div className="n" style={{ fontWeight: 800, color: "var(--ink)", fontSize: 18 }}>{y}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{tree.get(y)!.months.size} {tr("monthsWord")}</div>
-              </div>
-              <span style={pill}><span className="n">{tree.get(y)!.count}</span> {tr("receiptsWord")}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* المستوى ٢: شهور السنة */}
-      {level === "months" && selYear && (
-        <div style={grid}>
-          {Array.from(tree.get(selYear)!.months.keys()).sort().reverse().map((m) => {
-            const cnt = Array.from(tree.get(selYear)!.months.get(m)!.values()).reduce((s, arr) => s + arr.length, 0);
-            return (
-              <div key={m} style={card} onClick={() => { setSelMonth(m); setLevel("days"); }}>
-                <div>
-                  <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 15 }}>{monthLabel(m)}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{tree.get(selYear)!.months.get(m)!.size} {tr("daysWord")}</div>
-                </div>
-                <span style={pill}><span className="n">{cnt}</span> {tr("receiptsWord")}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* المستوى ٣: أيام الشهر */}
-      {level === "days" && selYear && selMonth && (
-        <div style={grid}>
-          {Array.from(tree.get(selYear)!.months.get(selMonth)!.keys()).sort().reverse().map((d) => (
-            <div key={d} style={card} onClick={() => { setSelDay(d); setLevel("gallery"); }}>
-              <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 14 }}>{dayLabel(d)}</div>
-              <span style={pill}><span className="n">{tree.get(selYear)!.months.get(selMonth)!.get(d)!.length}</span> {tr("receiptsWord")}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* المستوى ٤: معرض إيصالات اليوم */}
-      {level === "gallery" && selDay && (
-        <div style={gGrid}>
-          {(tree.get(selYear)?.months.get(selMonth)?.get(selDay) || []).map((r, i) => (
+      {/* ===== معرض إيصالات اليوم ===== */}
+      {dayRows.length === 0 ? (
+        <div style={{ padding: "40px 18px", textAlign: "center", color: "var(--muted)" }}>{tr("noReceiptsYet")}</div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(190px,1fr))", gap: 14 }}>
+          {dayRows.map((r, i) => (
             <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, overflow: "hidden", boxShadow: "var(--sh)" }}>
-              <div onClick={() => setLightbox(r)} style={{ cursor: "zoom-in", height: 150, background: "var(--bg)", display: "grid", placeItems: "center", overflow: "hidden" }}>
+              <div onClick={() => setLbIdx(i)} style={{ cursor: "zoom-in", height: 160, background: "var(--bg)", display: "grid", placeItems: "center", overflow: "hidden" }}>
                 {signed[r.receiptUrl]
                   ? <img src={signed[r.receiptUrl]} alt={r.customerName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   : <span style={{ fontSize: 11, color: "var(--muted)" }}>…</span>}
@@ -215,29 +187,50 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
         </div>
       )}
 
-      {/* Lightbox */}
-      {lightbox && (
-        <div onClick={() => setLightbox(null)} style={{ position: "fixed", inset: 0, background: "rgba(4,10,22,.72)", display: "grid", placeItems: "center", zIndex: 90, padding: 20 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface)", borderRadius: 16, overflow: "hidden", maxWidth: 560, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,.4)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--line)" }}>
-              <div>
-                <div style={{ fontWeight: 800, color: "var(--ink)" }}>{lightbox.customerName}</div>
-                <div className="n" style={{ fontSize: 12, color: "var(--muted)", direction: "ltr" }}>{lightbox.phone1}{lightbox.hasAmount && lightbox.amount != null ? ` · ${fmtMoney(lightbox.amount, lightbox.currency)}` : ""}</div>
+      {/* ===== Lightbox مع أسهم بين صور اليوم ===== */}
+      {lbIdx != null && dayRows[lbIdx] && (() => {
+        const r = dayRows[lbIdx];
+        const atFirst = lbIdx === 0, atLast = lbIdx === dayRows.length - 1;
+        return (
+          <div onClick={closeLb} style={{ position: "fixed", inset: 0, background: "rgba(4,10,22,.75)", display: "grid", placeItems: "center", zIndex: 90, padding: 20 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface)", borderRadius: 16, overflow: "hidden", maxWidth: 600, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,.4)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--line)" }}>
+                <div>
+                  <div style={{ fontWeight: 800, color: "var(--ink)" }}>{r.customerName}</div>
+                  <div className="n" style={{ fontSize: 12, color: "var(--muted)", direction: "ltr" }}>{r.phone1}{r.hasAmount && r.amount != null ? ` · ${fmtMoney(r.amount, r.currency)}` : ""}</div>
+                </div>
+                <button onClick={closeLb} style={{ background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 9, width: 32, height: 32, cursor: "pointer", color: "var(--muted)", fontSize: 18, lineHeight: 1 }}>×</button>
               </div>
-              <button onClick={() => setLightbox(null)} style={{ background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 9, width: 32, height: 32, cursor: "pointer", color: "var(--muted)", fontSize: 18, lineHeight: 1 }}>×</button>
-            </div>
-            <div style={{ background: "var(--bg)", display: "grid", placeItems: "center", maxHeight: "62vh", overflow: "auto" }}>
-              {signed[lightbox.receiptUrl]
-                ? <img src={signed[lightbox.receiptUrl]} alt={lightbox.customerName} style={{ maxWidth: "100%", display: "block" }} />
-                : <span style={{ padding: 40, color: "var(--muted)" }}>…</span>}
-            </div>
-            <div style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>{lightbox.ownerName || "—"} · {cairoTime(lightbox.uploadedAt, lang)}</span>
-              <Link href={`/customers/${lightbox.customerId}`} className="btn" style={{ fontSize: 13 }}>{tr("openCustomerCard")}</Link>
+
+              <div style={{ position: "relative", background: "var(--bg)", display: "grid", placeItems: "center", maxHeight: "60vh", overflow: "auto" }}>
+                {signed[r.receiptUrl]
+                  ? <img src={signed[r.receiptUrl]} alt={r.customerName} style={{ maxWidth: "100%", display: "block" }} />
+                  : <span style={{ padding: 40, color: "var(--muted)" }}>…</span>}
+              </div>
+
+              {/* شريط التنقّل بين الصور */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderTop: "1px solid var(--line)", gap: 10 }}>
+                <button onClick={prevImg} disabled={atFirst} title={tr("prevImage")} style={arrowBtn(atFirst)}>
+                  <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M9 6l6 6-6 6" /></svg>
+                </button>
+                <div style={{ textAlign: "center", fontSize: 12.5, color: "var(--muted)", fontWeight: 700 }}>
+                  <span className="n">{lbIdx + 1}</span> / <span className="n">{dayRows.length}</span>
+                  {atLast && <div style={{ fontSize: 11, color: "var(--brand-d)", marginTop: 2 }}>{tr("lastImage")}</div>}
+                  {atFirst && dayRows.length > 1 && <div style={{ fontSize: 11, color: "var(--brand-d)", marginTop: 2 }}>{tr("firstImage")}</div>}
+                </div>
+                <button onClick={nextImg} disabled={atLast} title={tr("nextImage")} style={arrowBtn(atLast)}>
+                  <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M15 6l-6 6 6 6" /></svg>
+                </button>
+              </div>
+
+              <div style={{ padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)" }}>
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>{r.ownerName || "—"} · {cairoTime(r.uploadedAt, lang)}</span>
+                <Link href={`/customers/${r.customerId}`} className="btn" style={{ fontSize: 13 }}>{tr("openCustomerCard")}</Link>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
