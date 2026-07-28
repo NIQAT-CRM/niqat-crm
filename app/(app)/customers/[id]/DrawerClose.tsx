@@ -5,10 +5,9 @@ import { useRouter } from "next/navigation";
 function useClose() {
   const router = useRouter();
   return () => {
-    // في وضع الـ modal: back بيقفل الطبقة ويرجّع القائمة تحتها.
-    // في الفتح المباشر (بدون تاريخ): نروح للقائمة.
-    if (typeof window !== "undefined" && window.history.length > 1) router.back();
-    else router.push("/customers");
+    // نرجّع دايماً لقائمة العملاء بشكل حاسم — الدفع لـ /customers بيخلّي الراوت المعترض
+    // ما يطابقش فيتقفل المودال ويرجّع القائمة (بدل back اللي بيتلغبط بعد سلسلة list→new→[id]).
+    router.push("/customers");
   };
 }
 

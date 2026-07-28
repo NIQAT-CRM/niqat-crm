@@ -349,7 +349,7 @@ export default function NewCustomerForm({
     }
 
     toast(tr("customerRegistered"));
-    router.push(`/customers/${cid}`); router.refresh();
+    router.replace(`/customers/${cid}`);
   }
 
   // تحويل خدمة (اعتماد/مشروع) للدعم مباشرة بالمسمّى الصح
@@ -360,7 +360,7 @@ export default function NewCustomerForm({
     let hoId = (existingHo as any)?.id as string | undefined;
     if (!hoId) {
       const { data: h, error } = await supabase.from("handoffs").insert({ customer_id: cid, created_by: meId || null, note: "", status: "pending" }).select("id").single();
-      if (error || !h) { toast(tr("createHandoffFailed") + (error?.message || "")); router.push(`/customers/${cid}`); return; }
+      if (error || !h) { toast(tr("createHandoffFailed") + (error?.message || "")); router.replace(`/customers/${cid}`); return; }
       hoId = (h as any).id;
     } else {
       await supabase.from("handoffs").update({ status: "pending" }).eq("id", hoId);
@@ -370,7 +370,7 @@ export default function NewCustomerForm({
     if (!already.has(label)) await supabase.from("handoff_items").insert({ handoff_id: hoId, label, done: false });
     await supabase.from("audit_log").insert({ customer_id: cid, actor_id: meId || null, action: "handoff_requested", detail: label });
     toast(tr("sentToActivation"));
-    router.push(`/customers/${cid}`); router.refresh();
+    router.replace(`/customers/${cid}`);
   }
 
   // تأكيد التفعيل: يبني handoff + بنوده (الدبلومة + المكتبة لو مفعّلة) — نفس منطق كارت العميل بالظبط
@@ -405,7 +405,7 @@ export default function NewCustomerForm({
     setActBusy(false);
     setActOpen(false);
     toast(tr("sentToActivation"));
-    router.push(`/customers/${ctx.cid}`); router.refresh();
+    router.replace(`/customers/${ctx.cid}`);
   }
 
   // إغلاق المودال من غير تأكيد → العميل محفوظ بدون تحويل (يتحوّل لاحقاً من كارت العميل)
@@ -413,7 +413,7 @@ export default function NewCustomerForm({
     setActOpen(false);
     const cid = actCtx?.cid;
     toast(tr("customerRegistered"));
-    if (cid) { router.push(`/customers/${cid}`); router.refresh(); }
+    if (cid) { router.replace(`/customers/${cid}`); }
   }
 
   const I = (label: string, k: string, ltr = false) => (
