@@ -83,10 +83,11 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
     supabase.from("batches").select("id,code").neq("kind", "diploma"),
     supabase.from("enrollments").select("batch_id").not("batch_id", "is", null),
     supabase.from("app_settings").select("value").eq("key", "reports_reset_at").maybeSingle(),
+    supabase.from("handoff_items").select("done_by,done").eq("done", true),
   ]);
   const [
     insRes,
-    [affRes, profRes, dipRes, refundRes, batchRes, tkRes, scRes, edRes, acRes, occRes, svcBatchesRes, svcEnrRes, resetRowRes],
+    [affRes, profRes, dipRes, refundRes, batchRes, tkRes, scRes, edRes, acRes, occRes, svcBatchesRes, svcEnrRes, resetRowRes, hiRes],
   ] = await Promise.all([insightsP, mainP]);
 
   const emptyInsights: InsightsData = {
@@ -204,18 +205,34 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
     };
   }).filter((r) => r.customers > 0).sort((a, b) => b.customers - a.customers);
 
-  // ==== أداء الدعم (من التذاكر) ====
-  const supAgg: Record<string, { total: number; open: number; closed: number }> = {};
-  ((tkRes.data as any[]) || []).forEach((t) => {
-    const id = t.assignee_id; if (!id) return;
-    if (!supAgg[id]) supAgg[id] = { total: 0, open: 0, closed: 0 };
-    supAgg[id].total++;
-    if (t.status === "closed" || t.status === "resolved") supAgg[id].closed++;
-    else supAgg[id].open++;
+  // ==== أداء الدعم — قياس كل الشغل: التفعيلات (بنود handoff تمّت) + التذاكر ====
+  // التفعيلات لكل شخص = عدد بنود handoff_items اللي علّمها done (done_by).
+  const actAgg: Record<string, number> = {};
+  let actTeamTotal = 0;
+  ((hiRes.data as any[]) || []).forEach((it) => {
+    actTeamTotal++;
+    if (it.done_by) actAgg[it.done_by] = (actAgg[it.done_by] || 0) + 1;
   });
-  const supportRows = Object.entries(supAgg).map(([id, v]) => ({
-    name: pName.get(id) || "—", total: v.total, open: v.open, closed: v.closed,
-  })).sort((a, b) => b.total - a.total);
+  // التذاكر لكل شخص + إجمالي الفريق (بيضم كمان التذاكر غير المُسنَدة لأي حد)
+  const tkAgg: Record<string, { total: number; open: number; closed: number }> = {};
+  const tkTeam = { total: 0, open: 0, closed: 0 };
+  ((tkRes.data as any[]) || []).forEach((t) => {
+    const closed = t.status === "closed" || t.status === "resolved";
+    tkTeam.total++; if (closed) tkTeam.closed++; else tkTeam.open++;
+    const id = t.assignee_id; if (!id) return;
+    if (!tkAgg[id]) tkAgg[id] = { total: 0, open: 0, closed: 0 };
+    tkAgg[id].total++; if (closed) tkAgg[id].closed++; else tkAgg[id].open++;
+  });
+  // نسرد كل أفراد الدعم + أي حد عمل تفعيلات/اتسندله تذاكر (عشان مايضيعش أي أداء)
+  const supIds = Array.from(new Set<string>([
+    ...profiles.filter((p) => p.team === "support").map((p) => p.id),
+    ...Object.keys(actAgg), ...Object.keys(tkAgg),
+  ]));
+  const supportRows = supIds.map((id) => {
+    const t = tkAgg[id] || { total: 0, open: 0, closed: 0 };
+    return { name: pName.get(id) || "—", activations: actAgg[id] || 0, total: t.total, open: t.open, closed: t.closed };
+  }).sort((a, b) => (b.activations + b.total) - (a.activations + a.total));
+  const supportTotals = { activations: actTeamTotal, total: tkTeam.total, open: tkTeam.open, closed: tkTeam.closed };
 
   // ==== الأفيلييت (دالة القاعدة) ====
   const affList: any[] = Array.isArray(affRes.data?.value) ? (affRes.data!.value as any[]) : [];
@@ -278,7 +295,7 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
       agreed={Math.round(agreed)} collected={Math.round(collected)} overdueN={overdueN}
       agreedUsd={Math.round(agreedUsd)} collectedUsd={Math.round(collectedUsd)}
       stageRows={stageRows} totalCust={totalCust} affRows={affRows}
-      salesRows={salesRows} supportRows={supportRows} monthly={monthly} byDiploma={byDiploma} byService={byService}
+      salesRows={salesRows} supportRows={supportRows} supportTotals={supportTotals} monthly={monthly} byDiploma={byDiploma} byService={byService}
       batchOpts={batchOpts} diplomaOpts={diplomaOpts} affiliates={affiliatesList}
       resetAt={resetAt}
       insights={insights}

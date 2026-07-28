@@ -14,7 +14,7 @@ import InsightsSection, { type InsightsData } from "./InsightsSection";
 type StageRow = { key: string; label: string; color: string; n: number };
 type AffRow = { code: string; name: string; discount: number | null; customers: number; enrolled: number; interested: number; refunded: number };
 type SalesRow = { name: string; customers: number; enrolled: number; conv: number; collectedEgp: number; collectedUsd: number };
-type SupportRow = { name: string; total: number; open: number; closed: number };
+type SupportRow = { name: string; activations: number; total: number; open: number; closed: number };
 type Monthly = { key: string; value: number };
 
 /* ===== أيقونات خط (ستايل lucide) ===== */
@@ -76,7 +76,7 @@ function Lead({ rank, name, sub, value, valueColor }: { rank: number; name: stri
 
 export default function ReportsView({
   canFinance, agreed, collected, overdueN, collectedUsd, agreedUsd, refundReport = null,
-  stageRows, totalCust, affRows, salesRows, supportRows, monthly, byDiploma, byService = [],
+  stageRows, totalCust, affRows, salesRows, supportRows, supportTotals, monthly, byDiploma, byService = [],
   batchOpts, diplomaOpts, affiliates, resetAt = "", insights, showInsights = false,
 }: {
   canFinance: boolean;
@@ -85,7 +85,7 @@ export default function ReportsView({
   agreed: number; collected: number; overdueN: number; collectedUsd: number; agreedUsd: number;
   refundReport?: any;
   stageRows: StageRow[]; totalCust: number; affRows: AffRow[];
-  salesRows: SalesRow[]; supportRows: SupportRow[]; monthly: Monthly[];
+  salesRows: SalesRow[]; supportRows: SupportRow[]; supportTotals?: { activations: number; total: number; open: number; closed: number }; monthly: Monthly[];
   byDiploma: { label: string; value: number; color: string }[];
   byService?: { label: string; value: number; color: string }[];
   batchOpts: { v: string; label: string }[];
@@ -125,13 +125,15 @@ export default function ReportsView({
     enrolled: salesRows.reduce((a, s) => a + s.enrolled, 0),
   };
   const salesConv = salesTot.customers ? Math.round((salesTot.enrolled / salesTot.customers) * 100) : 0;
-  const supTot = {
+  const supTot = supportTotals || {
+    activations: supportRows.reduce((a, s) => a + (s.activations || 0), 0),
     total: supportRows.reduce((a, s) => a + s.total, 0),
     open: supportRows.reduce((a, s) => a + s.open, 0),
     closed: supportRows.reduce((a, s) => a + s.closed, 0),
   };
+  const supScore = (s: SupportRow) => (s.activations || 0) + s.total;
   const salesRanked = [...salesRows].sort((a, b) => (canFinance ? b.collectedEgp - a.collectedEgp : b.enrolled - a.enrolled) || b.customers - a.customers);
-  const supRanked = [...supportRows].sort((a, b) => b.total - a.total);
+  const supRanked = [...supportRows].sort((a, b) => supScore(b) - supScore(a));
 
   const TABS = [
     { k: "performance", label: tr("tabPerformance") },
@@ -312,10 +314,11 @@ export default function ReportsView({
           <div className="card" style={{ padding: 18 }}>
             <SecHead icon="headset" tint="#18A957" title={tr("supportTeamPerf")} count={supportRows.length}
               extra={<ExportButton filename="support-team"
-                headers={[tr("teamMember"), tr("ticketsTotal"), tr("ticketsOpen"), tr("ticketsClosed")]}
-                rows={supportRows.map((s) => [s.name, s.total, s.open, s.closed])} />} />
+                headers={[tr("teamMember"), tr("activationsDone"), tr("ticketsTotal"), tr("ticketsOpen"), tr("ticketsClosed")]}
+                rows={supportRows.map((s) => [s.name, s.activations || 0, s.total, s.open, s.closed])} />} />
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 20, margin: "14px 0 6px" }}>
+              <MiniStat label={tr("activationsDone")} value={supTot.activations} color="#18A957" />
               <MiniStat label={tr("ticketsTotal")} value={supTot.total} color="var(--ink)" />
               <MiniStat label={tr("ticketsOpen")} value={supTot.open} color="#E6A700" />
               <MiniStat label={tr("ticketsClosed")} value={supTot.closed} color="#18A957" />
@@ -327,14 +330,14 @@ export default function ReportsView({
               <>
                 <div style={{ marginTop: 8 }}>
                   <ApexStageBar labels={supRanked.map((s) => s.name)}
-                    data={supRanked.map((s) => s.total)}
+                    data={supRanked.map((s) => supScore(s))}
                     colors={supRanked.map((_, i) => ["#18A957", "#2F6BFF", "#F08A24", "#7B61FF", "#0FA3A3", "#E6A700"][i % 6])} />
                 </div>
                 <div style={{ marginTop: 6 }}>
                   {supRanked.map((s, i) => (
                     <Lead key={s.name} rank={i + 1} name={s.name}
-                      sub={`${s.closed} ${tr("ticketsClosed")} · ${s.open} ${tr("ticketsOpen")}`}
-                      value={String(s.total)} valueColor="#18A957" />
+                      sub={`${s.activations || 0} ${tr("activationsDone")} · ${s.closed} ${tr("ticketsClosed")} · ${s.open} ${tr("ticketsOpen")}`}
+                      value={String(supScore(s))} valueColor="#18A957" />
                   ))}
                 </div>
               </>
