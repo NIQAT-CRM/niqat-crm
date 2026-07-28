@@ -23,6 +23,7 @@ export default function WhatsAppPanel({
   const [customVals, setCustomVals] = useState<Record<string, string>>({});
 
   const selParams = watiTpls.find((t) => t.name === tplName)?.params || [];
+  const selBody = watiTpls.find((t) => t.name === tplName)?.body || "";
   useEffect(() => {
     const m: Record<string, string> = {};
     selParams.forEach((p, idx) => { m[p] = idx === 0 ? "name" : "custom"; });
@@ -38,6 +39,19 @@ export default function WhatsAppPanel({
     if (f === "batch") return ctx.batch || "";
     if (f === "remaining") return ctx.remaining || "";
     return "";
+  }
+
+  // بريفيو نص التمبلت مع تعبئة المتغيّرات بقيم العميل (زي ما الرسالة هتتبعت)
+  function renderPreview(body: string) {
+    const parts = body.split(/(\{\{\s*[\w\d_]+\s*\}\})/g);
+    return parts.map((part, i) => {
+      const m = part.match(/\{\{\s*([\w\d_]+)\s*\}\}/);
+      if (m) {
+        const val = resolveField(m[1]) || `{{${m[1]}}}`;
+        return <mark key={i} style={{ background: "var(--brand-soft)", color: "var(--brand-d)", padding: "0 4px", borderRadius: 4, fontWeight: 700 }}>{val}</mark>;
+      }
+      return <span key={i}>{part}</span>;
+    });
   }
 
   useEffect(() => {
@@ -117,6 +131,12 @@ export default function WhatsAppPanel({
               ))}
             </select>
             <button className="btn" disabled={busy || !tplName} onClick={sendTemplate} style={{ height: 36, flexShrink: 0 }}>{tr("sendTemplateBtn")}</button>
+          </div>
+        )}
+        {tplName && selBody && (
+          <div dir="auto" style={{ marginTop: 10, padding: 12, border: "1px solid var(--line)", borderRadius: 10, background: "var(--surface)", whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.75, color: "var(--ink)" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", marginBottom: 6, letterSpacing: ".02em" }}>{tr("tplPreview")}</div>
+            {renderPreview(selBody)}
           </div>
         )}
         {selParams.length > 0 && (
