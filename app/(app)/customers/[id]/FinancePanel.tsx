@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -45,9 +45,33 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
   const [actBatchId, setActBatchId] = useState("");
   const [actAddons, setActAddons] = useState<Record<string, boolean>>({});
   const [actBusy, setActBusy] = useState(false);
+  const [actAnchor, setActAnchor] = useState<DOMRect | null>(null);
+  const actPopRef = useRef<HTMLDivElement>(null);
+  const [actPos, setActPos] = useState<{ top: number; left: number } | null>(null);
 
-  function openActivation(e: Enr) {
+  // تموضع النافذة عند الزر اللي فتحها (فوقه/جنبه) بدل نص الشاشة
+  useLayoutEffect(() => {
+    if (!actEnr) { setActPos(null); return; }
+    const el = actPopRef.current;
+    if (!el) return;
+    const pw = el.offsetWidth, ph = el.offsetHeight, m = 12;
+    const r = actAnchor;
+    let left: number, top: number;
+    if (r) {
+      left = r.left + r.width / 2 - pw / 2;      // متمركز أفقياً على الزر
+      top = r.top - ph - 8;                       // فوق الزر
+      if (top < m) top = r.bottom + 8;            // مفيش مكان فوق → تحته
+    } else {
+      left = (window.innerWidth - pw) / 2; top = (window.innerHeight - ph) / 2;
+    }
+    left = Math.min(Math.max(m, left), window.innerWidth - pw - m);
+    top = Math.min(Math.max(m, top), window.innerHeight - ph - m);
+    setActPos({ top, left });
+  }, [actEnr, actAnchor]);
+
+  function openActivation(e: Enr, anchor?: DOMRect) {
     setActEnr(e);
+    setActAnchor(anchor || null);
     setActBatchId(e.batchId || "");
     const preset: Record<string, boolean> = {};
     addons.forEach((a) => { preset[a.id] = true; });   // كل الإضافات المدفوعة معلّمة افتراضياً
@@ -202,7 +226,7 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
               {fullyPaid && !handedOff && (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "rgba(24,169,87,.08)", border: "1px solid var(--green)", borderRadius: 8, padding: "8px 12px", marginTop: 10 }}>
                   <span style={{ fontSize: 12.5, color: "var(--green)", fontWeight: 700 }}>✓ {tr("fullyPaidReady")}</span>
-                  <button onClick={() => openActivation(e)} className="btn" style={{ marginInlineStart: "auto", height: 32, padding: "0 14px", fontSize: 12.5 }}>
+                  <button onClick={(ev) => openActivation(e, ev.currentTarget.getBoundingClientRect())} className="btn" style={{ marginInlineStart: "auto", height: 32, padding: "0 14px", fontSize: 12.5 }}>
                     {tr("sendToActivationBtn")}
                   </button>
                 </div>
@@ -260,9 +284,9 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
       {/* ===== مودال قايمة التفعيل (Portal لـ body عشان يثبت ولا يتحرك مع الدرور) ===== */}
       {actEnr && typeof document !== "undefined" && createPortal(
         <div onClick={() => !actBusy && setActEnr(null)}
-          style={{ position: "fixed", inset: 0, background: "rgba(15,27,48,.55)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} className="card"
-            style={{ padding: 20, width: "100%", maxWidth: 440, maxHeight: "90vh", overflow: "auto" }}>
+          style={{ position: "fixed", inset: 0, background: "rgba(15,27,48,.35)", zIndex: 200 }}>
+          <div ref={actPopRef} onClick={(e) => e.stopPropagation()} className="card"
+            style={{ position: "fixed", top: actPos?.top ?? -9999, left: actPos?.left ?? -9999, visibility: actPos ? "visible" : "hidden", padding: 20, width: "min(440px,calc(100vw - 24px))", maxHeight: "88vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,.35)" }}>
             <div className="sec-t" style={{ marginBottom: 4 }}>{tr("activationChecklistTitle")}</div>
             <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 14 }}>{tr("activationChecklistHint")}</div>
 

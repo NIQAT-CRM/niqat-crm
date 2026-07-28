@@ -1,7 +1,7 @@
 "use client";
 import { confirmDialog } from "@/lib/confirm";
 import { createPortal } from "react-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
@@ -48,6 +48,20 @@ export default function ServicesPanel({
   const [svNeedsAct, setSvNeedsAct] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [moveFor, setMoveFor] = useState<string | null>(null);
+  const [moveAnchor, setMoveAnchor] = useState<DOMRect | null>(null);
+  const movePopRef = useRef<HTMLDivElement>(null);
+  const [movePos, setMovePos] = useState<{ top: number; left: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!moveFor) { setMovePos(null); return; }
+    const el = movePopRef.current; if (!el) return;
+    const pw = el.offsetWidth, ph = el.offsetHeight, m = 12; const r = moveAnchor;
+    let left: number, top: number;
+    if (r) { left = r.left + r.width / 2 - pw / 2; top = r.top - ph - 8; if (top < m) top = r.bottom + 8; }
+    else { left = (window.innerWidth - pw) / 2; top = (window.innerHeight - ph) / 2; }
+    left = Math.min(Math.max(m, left), window.innerWidth - pw - m);
+    top = Math.min(Math.max(m, top), window.innerHeight - ph - m);
+    setMovePos({ top, left });
+  }, [moveFor, moveAnchor]);
   const [moveTo, setMoveTo] = useState("");
   const [moveFee, setMoveFee] = useState("");
   const [moveCur, setMoveCur] = useState("EGP");
@@ -304,7 +318,7 @@ export default function ServicesPanel({
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", marginBottom: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.diploma}</div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                   <span style={{ color: "var(--muted)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tr("batchColon")} <span className="num">{e.batch}</span></span>
-                  <button onClick={() => { if (moveFor === e.id) { resetMove(); } else { resetMove(); setMoveFor(e.id); setMoveTo(""); } }}
+                  <button onClick={(ev) => { if (moveFor === e.id) { resetMove(); } else { const r = ev.currentTarget.getBoundingClientRect(); resetMove(); setMoveFor(e.id); setMoveAnchor(r); setMoveTo(""); } }}
                     style={{ color: "var(--brand)", fontWeight: 700, fontSize: 12, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>
                     {tr("moveTransfer")}
                   </button>
@@ -335,8 +349,8 @@ export default function ServicesPanel({
                     </>
                   );
                   const box = (children: React.ReactNode) => (typeof document === "undefined" ? null : createPortal(
-                    <div onClick={resetMove} style={{ position: "fixed", inset: 0, background: "rgba(4,10,22,.55)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)", display: "grid", placeItems: "center", zIndex: 200, padding: 16 }}>
-                      <div onClick={(ev) => ev.stopPropagation()} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,.4)", width: "min(440px,100%)", maxHeight: "88vh", overflow: "auto", padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div onClick={resetMove} style={{ position: "fixed", inset: 0, background: "rgba(4,10,22,.35)", zIndex: 200 }}>
+                      <div ref={movePopRef} onClick={(ev) => ev.stopPropagation()} style={{ position: "fixed", top: movePos?.top ?? -9999, left: movePos?.left ?? -9999, visibility: movePos ? "visible" : "hidden", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,.35)", width: "min(440px,calc(100vw - 24px))", maxHeight: "88vh", overflow: "auto", padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 15 }}>{tr("moveTransfer")}</div>
                           <button type="button" onClick={resetMove} aria-label={tr("close")} style={{ background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 9, width: 30, height: 30, cursor: "pointer", color: "var(--muted)", fontSize: 18, lineHeight: 1 }}>×</button>

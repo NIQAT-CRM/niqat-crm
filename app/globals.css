@@ -194,7 +194,7 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 @media(max-width:1400px){.onb-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:1050px){.onb-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:680px){.onb-grid{grid-template-columns:1fr}}
-.onb-card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;height:470px;display:flex;flex-direction:column}
+.onb-card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;height:515px;display:flex;flex-direction:column}
 .onb-card .oh{padding:13px 15px;border-bottom:1px solid var(--line);display:flex;gap:11px;align-items:center;flex-shrink:0}
 .onb-card .ob{padding:0;flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
 .onb-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding:14px 15px}
