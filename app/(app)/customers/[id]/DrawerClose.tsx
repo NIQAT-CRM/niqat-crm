@@ -5,9 +5,17 @@ import { useRouter } from "next/navigation";
 function useClose() {
   const router = useRouter();
   return () => {
-    // نرجّع دايماً لقائمة العملاء بشكل حاسم — الدفع لـ /customers بيخلّي الراوت المعترض
-    // ما يطابقش فيتقفل المودال ويرجّع القائمة (بدل back اللي بيتلغبط بعد سلسلة list→new→[id]).
-    router.push("/customers");
+    if (typeof window === "undefined") return;
+    const stillOpen = () => window.location.pathname.startsWith("/customers/")
+      && window.location.pathname !== "/customers/new";
+    // من القائمة (modal): back للحفاظ على مكان القائمة وفلاترها
+    if (window.history.length > 1) {
+      router.back();
+      // ضمان الإغلاق: لو back() ما قفلش الـ modal (مشكلة parallel routes) → ادفع للقائمة
+      setTimeout(() => { if (stillOpen()) { router.push("/customers"); router.refresh(); } }, 160);
+    } else {
+      router.push("/customers");
+    }
   };
 }
 
