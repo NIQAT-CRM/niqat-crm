@@ -121,7 +121,7 @@ export default async function Settings() {
 
   // ===== تبويبات الإعدادات (تكاملات/كتالوج/أفيلييت) — تظهر لمن عنده can_manage_settings =====
   if (canSettings) {
-    const [watiRow, defRow, coRow, stRow, affRow, access, spec, dip, uni, src] = await Promise.all([
+    const [watiRow, defRow, coRow, stRow, affRow, access, spec, dip, uni, src, cty] = await Promise.all([
       supabase.from("app_settings").select("value").eq("key", "wati").maybeSingle(),
       supabase.from("app_settings").select("value").eq("key", "defaults").maybeSingle(),
       supabase.from("app_settings").select("value").eq("key", "company").maybeSingle(),
@@ -132,6 +132,7 @@ export default async function Settings() {
       safeList(supabase, "diplomas", "name_ar", "batch_code_prefix"),
       safeList(supabase, "universities", "name"),
       safeList(supabase, "sources", "name"),
+      safeList(supabase, "countries", "name"),
     ]);
 
     const wRaw = (watiRow.data?.value as any) || {};
@@ -168,6 +169,7 @@ export default async function Settings() {
             <OptionsList title={tr("manageSpecialties")} hint={tr("manageSpecialtiesHint")} table="specialties" labelCol="name_ar" initial={spec.items} />
             <OptionsList title={tr("manageAccessOptions")} hint={tr("manageAccessOptionsHint")} table="access_options" labelCol="label" initial={access.items} />
             <OptionsList title={tr("manageSources")} hint={tr("manageSourcesHint")} table="sources" labelCol="name" initial={src.items} />
+            <OptionsList title={tr("manageCountries")} hint={tr("manageCountriesHint")} table="countries" labelCol="name" initial={cty.items} />
             <OptionsList title={tr("manageUniversities")} hint={tr("manageUniversitiesHint")} table="universities" labelCol="name" initial={uni.items} />
           </div>
         </>

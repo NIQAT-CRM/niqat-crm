@@ -55,12 +55,17 @@ function Head({ icon, tint, title }: { icon: string; tint: string; title: string
 }
 
 export default function NewCustomerForm({
-  specialties, diplomas, batches, services = [], meId, affiliates = [], serviceTypes = [], sources = [], defaultInst = { count: 3, gap: 1 }, frequentDiplomas = [],
-}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[]; serviceTypes?: { slug: string; name: string; activation_label: string }[]; sources?: string[]; defaultInst?: { count: number; gap: number }; frequentDiplomas?: string[] }) {
+  specialties, diplomas, batches, services = [], meId, affiliates = [], serviceTypes = [], sources = [], defaultInst = { count: 3, gap: 1 }, frequentDiplomas = [], countries = [],
+}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[]; serviceTypes?: { slug: string; name: string; activation_label: string }[]; sources?: string[]; defaultInst?: { count: number; gap: number }; frequentDiplomas?: string[]; countries?: string[] }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const log = useLogUsage();
+  // قائمة البلاد: من الإعدادات (جدول countries) لو موجودة، وإلا القائمة الثابتة (دول عربية)
+  const countryOpts = useMemo(
+    () => (countries.length ? countries : ARAB_COUNTRIES).map((c) => ({ value: c, label: c })),
+    [countries]
+  );
   const [subMode, setSubMode] = useState<"diploma" | "service">("diploma");
   const [serviceId, setServiceId] = useState("");
   const [serviceKind, setServiceKind] = useState<string>(serviceTypes[0]?.slug || "accreditation");
@@ -463,6 +468,14 @@ export default function NewCustomerForm({
               <input className="inp" value={f.name} onChange={(e) => setName(e.target.value)} placeholder={tr("nameEnOnlyPh")} dir="ltr" /></div>
             <div className="frow">{PhoneField(tr("phone1"), "phone1", dial1, setDial1)}{PhoneField(tr("phone2"), "phone2", dial2, setDial2)}</div>
             <div className="frow">{I(tr("email"), "email", true)}{I(tr("company"), "company")}</div>
+            <div className="fld"><label>{tr("country")}</label>
+              <SearchSelect
+                options={countryOpts}
+                value={f.residency} onChange={(v) => set("residency", v)}
+                placeholder={tr("selectDash")} searchPlaceholder={tr("countrySearchPh")}
+                frequentValues={FREQUENT_COUNTRIES} frequentLabel={tr("mostUsed")}
+                allowCustom addPrefix={tr("add")} allowEmpty />
+            </div>
 
             {/* بند 3: تحذير تكرار فوري أثناء الكتابة */}
             {liveDup && (
@@ -500,24 +513,14 @@ export default function NewCustomerForm({
                 </select></div>
             </div>
             <div className="frow">
-              <div className="fld"><label>{tr("country")}</label>
-                <SearchSelect
-                  options={ARAB_COUNTRIES.map((c) => ({ value: c, label: c }))}
-                  value={f.residency} onChange={(v) => set("residency", v)}
-                  placeholder={tr("selectDash")} searchPlaceholder={tr("countrySearchPh")}
-                  frequentValues={FREQUENT_COUNTRIES} frequentLabel={tr("mostUsed")}
-                  allowCustom addPrefix={tr("add")} allowEmpty />
-              </div>
               {I(tr("gradYear"), "grad_year", true)}
-            </div>
-            <div className="frow">
               <div className="fld"><label>{tr("source")}</label>
                 <input className="inp" list="src-list" value={f.source} onChange={(e) => set("source", e.target.value)} placeholder={tr("sourcePlaceholder")} />
                 <datalist id="src-list">{sources.map((x) => <option key={x} value={x} />)}</datalist>
               </div>
-              <div className="fld"><label>{tr("followUpDate")}</label>
-                <input className="inp num" type="datetime-local" dir="ltr" value={f.follow} onChange={(e) => set("follow", e.target.value)} /></div>
             </div>
+            <div className="fld"><label>{tr("followUpDate")}</label>
+              <input className="inp num" type="datetime-local" dir="ltr" value={f.follow} onChange={(e) => set("follow", e.target.value)} /></div>
 
             <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
               <button type="button" onClick={() => setStep(2)} className="btn" style={{ flex: 1, justifyContent: "center" }}>{tr("nextStep")} ←</button>

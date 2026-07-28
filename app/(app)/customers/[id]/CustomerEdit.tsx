@@ -29,10 +29,11 @@ const sel = "inp appearance-none cursor-pointer";
 const lbl = "text-[11px] font-bold uppercase tracking-wider mb-2 block";
 const lblStyle = { color: "var(--muted)" } as const;
 
-const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: Spec[]; canEdit?: boolean }>(({ customer, specialties, canEdit = true }, ref) => {
+const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: Spec[]; canEdit?: boolean; countries?: string[] }>(({ customer, specialties, canEdit = true, countries = [] }, ref) => {
   const router = useRouter();
   const supabase = createClient();
   const tr = useT();
+  const countryOpts = (countries.length ? countries : ARAB_COUNTRIES).map((c) => ({ value: c, label: c }));
   const [activeTab, setActiveTab] = useState<string>("basic");
   const [f, setF] = useState({
     name: customer.name || "", phone1: customer.phone1 || "", phone2: customer.phone2 || "",
@@ -134,7 +135,7 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
               <div className={fld}>
                 <label className={lbl} style={lblStyle}>{tr("country")}</label>
                 <SearchSelect
-                  options={ARAB_COUNTRIES.map((c) => ({ value: c, label: c }))}
+                  options={countryOpts}
                   value={f.residency} onChange={(v) => set("residency", v)}
                   placeholder={tr("selectDash")} searchPlaceholder={tr("countrySearchPh")}
                   frequentValues={FREQUENT_COUNTRIES} frequentLabel={tr("mostUsed")}

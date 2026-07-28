@@ -43,7 +43,7 @@ function Sec({ icon, bg, color, title, count, mt }: { icon: string; bg: string; 
 }
 
 export default function CustomerDrawer(props: {
-  user: any; c: any; specs: any[];
+  user: any; c: any; specs: any[]; countries?: string[];
   enrolls: any[]; dipOpts: any[]; batchOpts: any[]; serviceTypes?: any[]; serviceItemsByType?: any; addons: any[];
   accredList: string[]; projList: string[]; libNames: string[];
   handoff: any; accessItems: any[]; accOpts: any[]; libOpts: any[];
@@ -158,7 +158,7 @@ export default function CustomerDrawer(props: {
       tab={tab} onTab={setTab} quickBar={quickBar} showOps={showOps}
       basic={<div className="px-5 py-5">
         <Sec icon="user" bg="var(--brand-soft)" color="var(--brand)" title={tr("basicData")} />
-        <CustomerEdit ref={editRef} customer={props.c as any} specialties={props.specs || []} canEdit={props.canEdit} />
+        <CustomerEdit ref={editRef} customer={props.c as any} specialties={props.specs || []} canEdit={props.canEdit} countries={props.countries || []} />
       </div>}
       sales={<>
         {props.canFinance && (

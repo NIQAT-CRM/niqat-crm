@@ -15,7 +15,7 @@ export default async function NewCustomerPage() {
   if (!meProf?.can_edit_customers) {
     return (<div className="page-h"><div><h1>{tr("addCust")}</h1><p>{tr("noEditCustomersPerm")}</p></div></div>);
   }
-  const [{ data: specs }, { data: dips }, { data: bts }, { data: affRow }, { data: svcTypes }, { data: srcs }, { data: defRow }, { data: edRows }] = await Promise.all([
+  const [{ data: specs }, { data: dips }, { data: bts }, { data: affRow }, { data: svcTypes }, { data: srcs }, { data: defRow }, { data: edRows }, { data: ctry }] = await Promise.all([
     supabase.from("specialties").select("id,name_ar").order("name_ar"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
     supabase.from("batches").select("id,code,price,currency,price_egp,price_usd,diploma_id,status,kind").order("start_date", { ascending: false }),
@@ -24,6 +24,7 @@ export default async function NewCustomerPage() {
     supabase.from("sources").select("name").order("name"),
     supabase.from("app_settings").select("value").eq("key", "defaults").maybeSingle(),
     supabase.rpc("dash_enrollment_diploma"),
+    supabase.from("countries").select("name").order("name"),   // جدول اختياري — بيرجع null لو لسه مش متعمل
   ]);
   const frequentDiplomas = ((edRows as any[]) || [])
     .filter((r) => r.diploma_id)
@@ -47,6 +48,7 @@ export default async function NewCustomerPage() {
         sources={((srcs as any[]) || []).map((x) => x.name)}
         defaultInst={{ count: Number((defRow as any)?.value?.inst_count) || 3, gap: Number((defRow as any)?.value?.inst_gap) || 1 }}
         frequentDiplomas={frequentDiplomas}
+        countries={((ctry as any[]) || []).map((x) => x.name).filter(Boolean)}
       />
     </div>
   );

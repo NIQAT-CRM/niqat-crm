@@ -25,10 +25,12 @@ export const ARAB_COUNTRIES: string[] = [
   "Comoros",
 ];
 
-// الأكثر شيوعاً لعملاء نقاط — تظهر في أعلى القائمة
+// الأكثر استخداماً لعملاء نقاط (مبني على الداتا الفعلية) — تظهر في أعلى القائمة
 export const FREQUENT_COUNTRIES: string[] = [
   "Egypt",
   "Saudi Arabia",
   "United Arab Emirates",
   "Kuwait",
+  "Sudan",
+  "Jordan",
 ];
