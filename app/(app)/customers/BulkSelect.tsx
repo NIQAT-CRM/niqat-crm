@@ -97,7 +97,7 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
   const [menu, setMenu] = useState<"" | "owner" | "stage" | "follow">("");
   const [waNums, setWaNums] = useState<string[] | null>(null);
   const [waChannel, setWaChannel] = useState<"sales" | "support">("sales");
-  const [waTpls, setWaTpls] = useState<{ name: string; vars: number; params: string[] }[]>([]);
+  const [waTpls, setWaTpls] = useState<{ name: string; vars: number; params: string[]; body: string }[]>([]);
   const [waTpl, setWaTpl] = useState("");
   const [waTplErr, setWaTplErr] = useState("");
   const [waSending, setWaSending] = useState(false);
@@ -171,6 +171,21 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
   }
 
   const waSelParams = waTpls.find((t) => t.name === waTpl)?.params || [];
+  const waSelBody = waTpls.find((t) => t.name === waTpl)?.body || "";
+  function waFieldLabel(p: string): string {
+    const f = waVarMap[p] || "name";
+    if (f === "custom") return waCustom[p] || tr("varCustom");
+    if (f === "phone") return tr("varPhone");
+    return tr("varName");
+  }
+  function renderWaPreview(body: string) {
+    const parts = body.split(/(\{\{\s*[\w\d_]+\s*\}\})/g);
+    return parts.map((part, i) => {
+      const m = part.match(/\{\{\s*([\w\d_]+)\s*\}\}/);
+      if (m) return <mark key={i} style={{ background: "var(--brand-soft)", color: "var(--brand-d)", padding: "0 4px", borderRadius: 4, fontWeight: 700 }}>«{waFieldLabel(m[1])}»</mark>;
+      return <span key={i}>{part}</span>;
+    });
+  }
 
   async function doBulkSend() {
     if (!waTpl) { toast(tr("enterTplName")); return; }
@@ -313,6 +328,13 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
                   <option value="">{waTpls.length ? tr("chooseTpl") : tr("loadingTpls")}</option>
                   {waTpls.map((t) => <option key={t.name} value={t.name}>{t.name}{t.vars > 0 ? ` (${t.vars})` : ""}</option>)}
                 </select>
+              </div>
+            )}
+
+            {waTpl && waSelBody && (
+              <div dir="auto" style={{ marginBottom: 12, padding: 12, border: "1px solid var(--line)", borderRadius: 10, background: "var(--surface)", whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.75, color: "var(--ink)" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", marginBottom: 6 }}>{tr("tplPreview")}</div>
+                {renderWaPreview(waSelBody)}
               </div>
             )}
 
