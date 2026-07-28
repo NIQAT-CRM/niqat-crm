@@ -55,6 +55,7 @@ const CardView = memo(function CardView({
           <span className="chip" style={{ background: "rgba(47,107,255,.12)", color: "#2F6BFF" }}>{tr("batchTransferChip")}</span>
         </div>
         <div className="ob">
+          <div className="onb-scroll">
           <div style={{ fontSize: 13, color: "var(--ink)", marginBottom: 10, fontWeight: 700 }}>
             {m.diploma ? m.diploma + " — " : ""}
             <span dir="ltr" style={{ color: "var(--muted)" }}>{m.from_label || "?"}</span>
@@ -63,6 +64,8 @@ const CardView = memo(function CardView({
           </div>
           {c.note && <div className="onb-note" style={{ marginBottom: 12 }}>📝 {c.note}</div>}
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 12 }}>{tr("batchTransferHint")}</div>
+          </div>
+          <div className="onb-foot">
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <a className="btn wa sm" style={{ textDecoration: "none" }} href={waLink(c.phone)} target="_blank" rel="noreferrer">
               <svg viewBox="0 0 24 24" width={15} height={15} fill="currentColor"><path d="M12 2a10 10 0 00-8.5 15.3L2 22l4.8-1.5A10 10 0 1012 2z" /></svg>
@@ -82,6 +85,7 @@ const CardView = memo(function CardView({
                 </button>
               )
             )}
+          </div>
           </div>
         </div>
       </div>
@@ -112,6 +116,7 @@ const CardView = memo(function CardView({
         </span>
       </div>
       <div className="ob">
+        <div className="onb-scroll">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 11.5, color: "var(--muted)", marginBottom: 10 }}>
           {c.assignee && <span>👤 {tr("activationOwner")}: <b style={{ color: "var(--ink)" }}>{c.assignee}</b></span>}
           {c.createdAt && <span className="num" dir="ltr">🗓 {String(c.createdAt).slice(0, 10)}</span>}
@@ -148,9 +153,11 @@ const CardView = memo(function CardView({
             </div>
           ))}
         </div>
+        </div>
 
+        <div className="onb-foot">
         {holding && (
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          <div style={{ display: "flex", gap: 8 }}>
             <input className="inp" autoFocus placeholder={tr("onHoldReasonPh")} value={holdReason}
               onChange={(e) => setHoldReason(e.target.value)} style={{ flex: 1, height: 36 }} />
             <button className="btn sm" onClick={() => onHold(c.handoffId)} style={{ background: "#E6A700" }}>{tr("save")}</button>
@@ -159,7 +166,7 @@ const CardView = memo(function CardView({
         )}
 
         {!holding && (
-          <div style={{ display: "flex", gap: 8, marginTop: 4, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <a className="btn wa sm" style={{ textDecoration: "none" }} href={waLink(c.phone)} target="_blank" rel="noreferrer">
               <svg viewBox="0 0 24 24" width={15} height={15} fill="currentColor"><path d="M12 2a10 10 0 00-8.5 15.3L2 22l4.8-1.5A10 10 0 1012 2z" /></svg>
             </a>
@@ -190,6 +197,7 @@ const CardView = memo(function CardView({
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
