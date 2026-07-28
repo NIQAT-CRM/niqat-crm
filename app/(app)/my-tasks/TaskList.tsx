@@ -7,19 +7,20 @@ import EmptyState from "../EmptyState";
 
 type T = {
   id: string; title: string; due: string; done: boolean;
-  custId: string; custName: string; phone: string; assignee: string;
+  custId: string; custName: string; phone: string; assignee: string; assigneeId: string;
 };
 type Person = { id: string; name: string };
 type Cust = { id: string; name: string; phone1?: string; phone2?: string; email?: string };
 const today = () => new Date().toISOString().slice(0, 10);
 const waLink = (p: string) => "https://wa.me/" + (p || "").replace(/[^\d]/g, "");
 
-export default function TaskList({ initial, meId, people = [] }: { initial: T[]; meId: string; people?: Person[] }) {
+export default function TaskList({ initial, meId, people = [], isAdmin = false }: { initial: T[]; meId: string; people?: Person[]; isAdmin?: boolean }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [tasks, setTasks] = useState<T[]>(initial);
   useEffect(() => { setTasks(initial); }, [initial]); // مزامنة الداتا الجديدة (Realtime/refresh)
+  const [filterUser, setFilterUser] = useState(""); // فلتر الأدمن بالمستخدم (فاضي = الكل)
   const [nt, setNt] = useState("");
   const [ntDue, setNtDue] = useState("");
   const [adding, setAdding] = useState(false);
@@ -76,6 +77,7 @@ export default function TaskList({ initial, meId, people = [] }: { initial: T[];
       id: data.id as string, title, due: ntDue || "", done: false,
       custId: custId || "", custName: cust?.name || "", phone: cust?.phone1 || "",
       assignee: people.find((p) => p.id === (assigneeId || meId))?.name || "",
+      assigneeId: assigneeId || meId,
     }, ...l]);
     setNt(""); setNtDue(""); setCustId(""); setCustSearch(""); setCustResults([]); setAssigneeId(meId);
   }
@@ -90,11 +92,12 @@ export default function TaskList({ initial, meId, people = [] }: { initial: T[];
   }
 
   const t0 = today();
-  const od = tasks.filter((k) => !k.done && k.due && k.due < t0);
-  const td = tasks.filter((k) => !k.done && k.due === t0);
-  const up = tasks.filter((k) => !k.done && (!k.due || k.due > t0));
-  const dn = tasks.filter((k) => k.done);
-  const openCount = tasks.filter((k) => !k.done).length;
+  const shown = isAdmin && filterUser ? tasks.filter((k) => k.assigneeId === filterUser) : tasks;
+  const od = shown.filter((k) => !k.done && k.due && k.due < t0);
+  const td = shown.filter((k) => !k.done && k.due === t0);
+  const up = shown.filter((k) => !k.done && (!k.due || k.due > t0));
+  const dn = shown.filter((k) => k.done);
+  const openCount = shown.filter((k) => !k.done).length;
 
   const Row = (k: T) => (
     <div key={k.id} className={"task" + (k.done ? " done" : "")}>
@@ -182,7 +185,16 @@ export default function TaskList({ initial, meId, people = [] }: { initial: T[];
         <input className="inp num" type="date" dir="ltr" style={{ width: 150 }} value={ntDue} onChange={(e) => setNtDue(e.target.value)} />
         <button className="btn" onClick={addMine} disabled={adding} style={{ height: 40 }}>{adding ? "..." : tr("add")}</button>
       </div>
-      {tasks.length === 0 ? (
+      {isAdmin && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 2px 10px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>{tr("filterOwner")}:</span>
+          <select className="inp" style={{ height: 36, width: "auto", minWidth: 180 }} value={filterUser} onChange={(e) => setFilterUser(e.target.value)}>
+            <option value="">{tr("allWord")}</option>
+            {people.map((p) => <option key={p.id} value={p.id}>{p.id === meId ? (p.name + " (" + tr("me") + ")") : p.name}</option>)}
+          </select>
+        </div>
+      )}
+      {shown.length === 0 ? (
         <EmptyState text={tr("funNoTasks")} />
       ) : (
         <>
