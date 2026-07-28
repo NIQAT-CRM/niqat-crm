@@ -26,7 +26,7 @@ function payMode(e: Enr): "cash" | "installment" | "none" {
   return "installment";
 }
 
-export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], addons = [], handedOff = false }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; addons?: Addon[]; handedOff?: boolean }) {
+export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], addons = [], handedOff = false, stage = "" }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; addons?: Addon[]; handedOff?: boolean; stage?: string }) {
   const tr = useT();
   const supabase = createClient();
   const router = useRouter();
@@ -112,6 +112,12 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
     const { error } = await supabase.from("installments").update(patch).eq("id", id);
     if (error) { setBusy(null); return toast(tr("updateFailed") + error.message); }
     await logAudit("installment_paid", tr("auditInstallmentPaid") + (shotUrl ? " + " + tr("receipt") : ""));
+
+    // تحويل العميل لـ «مسجّل / دفع» (enrolled) أول ما يتأكّد أي دفع — لو مش كده بالفعل
+    if (stage !== "enrolled") {
+      await supabase.from("customers").update({ stage: "enrolled" }).eq("id", customerId);
+      await logAudit("stage_change", tr("dashStageEnrolled"));
+    }
 
     // لو الدفعة دي كمّلت المبلغ المتفق عليه → افتح قايمة التفعيل (بدل التحويل الصامت)
     if (enr && Number(enr.agreed) > 0) {
