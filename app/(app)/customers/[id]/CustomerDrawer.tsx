@@ -110,6 +110,7 @@ export default function CustomerDrawer(props: {
     else if (name === "followup") goTo("sales", "panel-followup");
     else if (name === "handoff") goTo("sales", "panel-access");
     else if (name === "service") goTo("sales", "panel-services");
+    else if (name === "payment") goTo("sales", "panel-finance");
     else if (name === "note") goTo("docs", "panel-activity");
   }
   // تشغيل عنصر من SmartActions (كلها أكشنز في سياق الكارت)
@@ -118,7 +119,7 @@ export default function CustomerDrawer(props: {
   }
   const cardActionLabels: Record<string, string> = {
     whatsapp: tr("qaWhatsapp"), followup: tr("qaFollow"), handoff: tr("qaHandoff"),
-    service: tr("qaService"), note: tr("addNote"),
+    service: tr("qaService"), payment: tr("qaPayment"), note: tr("addNote"),
   };
 
   const qbtn: React.CSSProperties = {
@@ -148,6 +149,12 @@ export default function CustomerDrawer(props: {
         <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
         {tr("qaService")}
       </button>
+      {props.canFinance && (
+        <button type="button" style={{ ...qbtn, background: "rgba(24,169,87,.12)", color: "var(--green)", borderColor: "rgba(24,169,87,.4)" }} onClick={() => cardAction("payment")}>
+          <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>
+          {tr("qaPayment")}
+        </button>
+      )}
     </div>
   );
 
@@ -161,9 +168,17 @@ export default function CustomerDrawer(props: {
         <CustomerEdit ref={editRef} customer={props.c as any} specialties={props.specs || []} canEdit={props.canEdit} countries={props.countries || []} />
       </div>}
       sales={<>
+        <div id="panel-services">
+          <ServicesPanel customerId={props.c.id} meId={props.user?.id || ""}
+            enrolls={props.enrolls} dipOpts={props.dipOpts} batchOpts={props.batchOpts}
+            addons={props.addons} accreditations={props.accredList}
+            projects={props.projList} libraries={props.libNames} canFinance={props.canFinance}
+            serviceTypes={props.serviceTypes || []} serviceItemsByType={props.serviceItemsByType || {}} myTeam={props.myTeam || ""} />
+        </div>
+
         {props.canFinance && (
-          <div id="panel-finsum">
-            <Sec icon="money" bg="rgba(24,169,87,.12)" color="var(--green)" title={tr("financeSummary")} />
+          <div id="panel-finance">
+            <Sec icon="money" bg="rgba(24,169,87,.12)" color="var(--green)" title={tr("financeSummary")} mt />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 14 }}>
               <div style={{ background: "var(--muted-soft)", borderRadius: 10, padding: "11px 8px", textAlign: "center" }}>
                 <div style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700 }}>{tr("agreedAmount")}</div>
@@ -178,16 +193,9 @@ export default function CustomerDrawer(props: {
                 <div className="num" style={{ fontSize: 15, fontWeight: 800, marginTop: 4, color: "#a5790a" }}>{fmtNum(finRemaining)}</div>
               </div>
             </div>
+            <FinancePanel enrollments={props.finEnrollments} customerId={props.c.id} meId={props.user?.id || ""} batchOpts={props.batchOpts} addons={(props.addons || []).filter((a: any) => a.paid)} handedOff={!!(props.c as any).handed_off} stage={(props.c as any).stage || ""} />
           </div>
         )}
-
-        <div id="panel-services">
-          <ServicesPanel customerId={props.c.id} meId={props.user?.id || ""}
-            enrolls={props.enrolls} dipOpts={props.dipOpts} batchOpts={props.batchOpts}
-            addons={props.addons} accreditations={props.accredList}
-            projects={props.projList} libraries={props.libNames} canFinance={props.canFinance}
-            serviceTypes={props.serviceTypes || []} serviceItemsByType={props.serviceItemsByType || {}} myTeam={props.myTeam || ""} />
-        </div>
 
         <div id="panel-access">
           <AccessPanel customerId={props.c.id} handoff={props.handoff} items={props.accessItems}
@@ -205,8 +213,6 @@ export default function CustomerDrawer(props: {
         <div id="panel-followup">
           <FollowUpPanel customerId={props.c.id} meId={props.user?.id || ""} open={props.fuOpen} history={props.fuHistory} />
         </div>
-
-        {props.canFinance && <FinancePanel enrollments={props.finEnrollments} customerId={props.c.id} meId={props.user?.id || ""} batchOpts={props.batchOpts} addons={(props.addons || []).filter((a: any) => a.paid)} handedOff={!!(props.c as any).handed_off} />}
       </>}
       docs={<>
         <div id="panel-whatsapp">

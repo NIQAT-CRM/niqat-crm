@@ -16,16 +16,15 @@ function money(n: number, cur: string) {
 }
 const paidOf = (e: Enr) => e.installments.filter((i) => i.status === "paid" || i.paidAt).reduce((s, i) => s + (Number(i.amount) || 0), 0);
 const isOverdue = (i: Inst) => !(i.status === "paid" || i.paidAt || !i.due) && new Date(i.due) < new Date(new Date().toDateString());
-// استنتاج نوع الدفع: كاش = قسط واحد مدفوع بالكامل | تقسيط = أكتر من قسط
+// نوع الدفع من التسجيل: قسط واحد = كاش (دفعة واحدة) | أكتر من قسط = تقسيط | صفر = لسه ماتحددش
 function payMode(e: Enr): "cash" | "installment" | "none" {
   const n = e.installments.length;
   if (n === 0) return "none";
-  const allPaid = e.installments.every((i) => i.status === "paid" || i.paidAt);
-  if (n === 1 && allPaid) return "cash";
+  if (n === 1) return "cash";
   return "installment";
 }
 
-export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], addons = [], handedOff = false }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; addons?: Addon[]; handedOff?: boolean }) {
+export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], addons = [], handedOff = false, stage = "" }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; addons?: Addon[]; handedOff?: boolean; stage?: string }) {
   const tr = useT();
   const supabase = createClient();
   const router = useRouter();
@@ -112,6 +111,12 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
     if (error) { setBusy(null); return toast(tr("updateFailed") + error.message); }
     await logAudit("installment_paid", tr("auditInstallmentPaid") + (shotUrl ? " + " + tr("receipt") : ""));
 
+    // أول ما يتأكّد أي دفع → العميل بقى دافع فعلاً: حوّله لمرحلة "مسجّل/دفع" لو مش كده
+    if (stage && stage !== "enrolled") {
+      await supabase.from("customers").update({ stage: "enrolled" }).eq("id", customerId);
+      await logAudit("stage_paid", tr("autoStagePaid"));
+    }
+
     // لو الدفعة دي كمّلت المبلغ المتفق عليه → افتح قايمة التفعيل (بدل التحويل الصامت)
     if (enr && Number(enr.agreed) > 0) {
       const paidNow = enr.installments.reduce((s, i) => {
@@ -169,27 +174,63 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
           const instPaid = e.installments.filter((i) => i.status === "paid" || i.paidAt).length;
           const fullyPaid = e.free || (Number(e.agreed) > 0 && paid >= Number(e.agreed));
           return (
-            <div key={e.id} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                <b style={{ color: "var(--ink)" }}>{e.diploma}
-                  {e.free && <span style={{ color: "var(--brand)", fontSize: 12, marginInlineStart: 6 }}>🎁 {tr("gift")}</span>}
-                  {!e.free && mode === "cash" && <span style={{ color: "var(--green)", fontSize: 11.5, marginInlineStart: 6, fontWeight: 700 }}>💵 {tr("cashBadge")}</span>}
-                  {!e.free && mode === "installment" && <span style={{ color: "var(--amber)", fontSize: 11.5, marginInlineStart: 6, fontWeight: 700 }}>🗓️ {tr("installmentBadge")} ({instPaid}/{instTotal})</span>}
-                </b>
-                <div style={{ display: "flex", gap: 12, fontSize: 12.5 }}>
-                  <span style={{ color: "var(--muted)" }}>{tr("agreed")}: {editAgreedId === e.id ? (
-                    <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+            <div key={e.id} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 14 }}>
+              {/* رأس: اسم الدبلومة + شارة النوع + شارة الحالة + المبلغ المتفق */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                <div style={{ minWidth: 0 }}>
+                  <b style={{ color: "var(--ink)", fontSize: 14 }}>{e.diploma}</b>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 7 }}>
+                    {/* نوع الدفع (من التسجيل) */}
+                    {e.free ? (
+                      <span className="stg" style={{ background: "var(--brand-soft)", color: "var(--brand)" }}>🎁 {tr("gift")}</span>
+                    ) : mode === "cash" ? (
+                      <span className="stg" style={{ background: "rgba(24,169,87,.12)", color: "var(--green)" }}>💵 {tr("cashBadge")} · {tr("singlePay")}</span>
+                    ) : mode === "installment" ? (
+                      <span className="stg" style={{ background: "rgba(230,167,0,.14)", color: "#a5790a" }}>🗓️ {tr("installmentBadge")} · {instPaid}/{instTotal}</span>
+                    ) : (
+                      <span className="stg" style={{ background: "var(--muted-soft)", color: "var(--muted)" }}>{tr("notSetup")}</span>
+                    )}
+                    {/* حالة الدفع */}
+                    {!e.free && (fullyPaid
+                      ? <span className="stg" style={{ background: "rgba(24,169,87,.12)", color: "var(--green)" }}>✓ {tr("payFull")}</span>
+                      : paid > 0
+                        ? <span className="stg" style={{ background: "rgba(230,167,0,.14)", color: "#a5790a" }}>{tr("payPartial")}</span>
+                        : <span className="stg" style={{ background: "var(--red-soft)", color: "var(--red)" }}>{tr("payNone")}</span>
+                    )}
+                  </div>
+                </div>
+                <div style={{ textAlign: "end", flexShrink: 0 }}>
+                  <div style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700 }}>{tr("agreed")}</div>
+                  {editAgreedId === e.id ? (
+                    <span style={{ display: "inline-flex", gap: 6, alignItems: "center", marginTop: 4 }}>
                       <input className="inp num" style={{ width: 100, height: 32, fontSize: 13 }} value={editAgreedVal} onChange={ev => setEditAgreedVal(ev.target.value)} />
                       <button onClick={() => saveAgreed(e)} disabled={busy === "agreed"} className="btn" style={{ height: 32, padding: "0 10px", fontSize: 12 }}>{tr("save")}</button>
                       <button onClick={() => setEditAgreedId(null)} className="btn ghost" style={{ height: 32, padding: "0 10px", fontSize: 12 }}>{tr("cancel")}</button>
                     </span>
                   ) : (
-                    <b className="num" style={{ color: "var(--ink)", cursor: "pointer" }} onClick={() => { setEditAgreedId(e.id); setEditAgreedVal(String(e.agreed)); }}>{money(e.agreed, e.currency)}</b>
-                  )}</span>
-                  <span style={{ color: "var(--green)" }}>{tr("paid")}: <b className="num">{money(paid, e.currency)}</b></span>
-                  <span style={{ color: "var(--amber)" }}>{tr("remaining")}: <b className="num">{money(remaining, e.currency)}</b></span>
+                    <b className="num" title={tr("edit")} style={{ color: "var(--ink)", fontSize: 16, cursor: "pointer", display: "block", marginTop: 2 }} onClick={() => { setEditAgreedId(e.id); setEditAgreedVal(String(e.agreed)); }}>{money(e.agreed, e.currency)}</b>
+                  )}
                 </div>
               </div>
+
+              {/* شريط تقدّم + مدفوع/متبقّي واضحين */}
+              {!e.free && Number(e.agreed) > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ height: 8, background: "var(--muted-soft)", borderRadius: 20, overflow: "hidden", marginBottom: 8 }}>
+                    <div style={{ width: Math.min(100, Math.round((paid / Number(e.agreed)) * 100)) + "%", height: "100%", background: fullyPaid ? "var(--green)" : "#E6A700", borderRadius: 20, transition: "width .4s" }} />
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <div style={{ flex: 1, background: "rgba(24,169,87,.08)", borderRadius: 8, padding: "8px 10px" }}>
+                      <div style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700 }}>{tr("paid")}</div>
+                      <b className="num" style={{ color: "var(--green)", fontSize: 14 }}>{money(paid, e.currency)}</b>
+                    </div>
+                    <div style={{ flex: 1, background: remaining > 0 ? "rgba(230,167,0,.1)" : "var(--muted-soft)", borderRadius: 8, padding: "8px 10px" }}>
+                      <div style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700 }}>{tr("remaining")}</div>
+                      <b className="num" style={{ color: remaining > 0 ? "#a5790a" : "var(--muted)", fontSize: 14 }}>{money(Math.max(0, remaining), e.currency)}</b>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* اكتمل الدفع (أو هدية) ولسه ما اتحوّلش للتفعيل → زر واضح يفتح قايمة التفعيل */}
               {fullyPaid && !handedOff && (

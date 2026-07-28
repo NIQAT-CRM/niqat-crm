@@ -20,12 +20,14 @@ export default function DrawerTabs({ basic, sales, docs, ops, showOps = true, fo
   );
   return (
     <div className="flex flex-col flex-1">
-      {quickBar}
-      <div className="flex items-center border-b border-line px-1 sticky top-0 bg-[var(--bg)] z-3 overflow-x-auto">
-        <TabBtn val="basic" label={tr("tabBasic")} />
-        <TabBtn val="sales" label={tr("tabSales")} />
-        <TabBtn val="docs" label={tr("tabDocs")} />
-        {showOps && <TabBtn val="ops" label={tr("tabOps")} />}
+      <div className="sticky top-0 z-10 bg-[var(--bg)]">
+        {quickBar}
+        <div className="flex items-center border-b border-line px-1 overflow-x-auto">
+          <TabBtn val="basic" label={tr("tabBasic")} />
+          <TabBtn val="sales" label={tr("tabSales")} />
+          <TabBtn val="docs" label={tr("tabDocs")} />
+          {showOps && <TabBtn val="ops" label={tr("tabOps")} />}
+        </div>
       </div>
       <div className="tab-pane flex flex-col flex-1 min-h-0" key={tab}>
         {tab === "basic" && basic}
