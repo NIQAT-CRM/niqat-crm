@@ -21,6 +21,8 @@ export default function DocsPanel({
   const [docs, setDocs] = useState<Doc[]>(initial);
   useEffect(() => { setDocs(initial); }, [initial]); // مزامنة الداتا الجديدة (Realtime/refresh)
   const [file, setFile] = useState<File | null>(null);
+  const [docAmount, setDocAmount] = useState("");
+  const [docCurrency, setDocCurrency] = useState("EGP");
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<Doc | null>(null);
   const isImg = (n: string) => /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(n) || /image/i.test(n);
@@ -31,14 +33,15 @@ export default function DocsPanel({
     const path = `docs/${customerId}/${Date.now()}-${file.name}`;
     const up = await supabase.storage.from("receipts").upload(path, file, { upsert: false });
     if (up.error) { setBusy(false); toast(tr("uploadFailed")); return; }
+    const amt = Number(docAmount) > 0 ? Number(docAmount) : null;
     const { data, error } = await supabase.from("customer_docs")
-      .insert({ customer_id: customerId, url: path, name: file.name }).select("id,created_at").single();
+      .insert({ customer_id: customerId, url: path, name: file.name, amount: amt, currency: amt != null ? docCurrency : null }).select("id,created_at").single();
     setBusy(false);
     if (error) { toast(tr("uploadedButSaveFailed")); return; }
     // نخزّن الـ path، ونوقّعه للعرض الفوري في القائمة/المعاينة
     const signed = await receiptSignedUrl(supabase, path);
     setDocs((d) => [{ id: data!.id, url: signed, name: file.name, at: String(data!.created_at || "").slice(0, 10) }, ...d]);
-    setFile(null);
+    setFile(null); setDocAmount("");
     toast(tr("docUploaded"));
   }, [file, customerId, supabase]);
 
@@ -58,12 +61,23 @@ export default function DocsPanel({
         </div>
       ) : (
         <>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "12px 0" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "12px 0", flexWrap: "wrap" }}>
             <FileDrop value={file} onFile={setFile} onClear={() => setFile(null)} accept="image/*,application/pdf" label={tr("pickFileImage")} />
             <button className="btn" type="button" disabled={!file || busy} onClick={upload}>
               {busy ? tr("uploading") : tr("upload")}
             </button>
           </div>
+          {file && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 12, padding: 10, background: "var(--brand-soft)", borderRadius: 10, border: "1px solid var(--line)" }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)" }}>{tr("docAmountLabel")}</span>
+              <input className="inp num" dir="ltr" inputMode="numeric" value={docAmount} placeholder={tr("optionalWord")} onChange={(e) => setDocAmount(e.target.value)} style={{ maxWidth: 150 }} />
+              <select className="inp" value={docCurrency} onChange={(e) => setDocCurrency(e.target.value)} style={{ maxWidth: 90 }}>
+                <option value="EGP">{tr("egpShort")}</option>
+                <option value="USD">$</option>
+              </select>
+              <span style={{ fontSize: 11, color: "var(--muted)", flexBasis: "100%" }}>{tr("docAmountHint")}</span>
+            </div>
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {docs.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noDocsYet")}</div>}
             {docs.map((d) => (

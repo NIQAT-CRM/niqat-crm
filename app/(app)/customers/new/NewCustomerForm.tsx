@@ -74,6 +74,7 @@ export default function NewCustomerForm({
   const [dial2, setDial2] = useState(DEFAULT_DIAL);
   const [saving, setSaving] = useState(false);
   const [payFile, setPayFile] = useState<File | null>(null);
+  const [transferAmount, setTransferAmount] = useState<string>("");
   const [payMode, setPayMode] = useState<"cash" | "installment">("cash");
   const [instCount, setInstCount] = useState(String(defaultInst.count || 3));
   const [instGap, setInstGap] = useState(String(defaultInst.gap || 1));
@@ -229,15 +230,14 @@ export default function NewCustomerForm({
     // صورة تحويل الفلوس المتفق عليها → تخزين + تسجيل في المستندات
     // (نتخطّاها لو الإيصال هيتربط بالقسط الأول في وضع التقسيط)
     const receiptGoesToInstallment = payMode === "installment" && payFirstNow;
-    let payShotPath: string | null = null;
+    const transferAmt = Number(transferAmount) || net; // المبلغ الفعلي المحوّل (افتراضي = المتفق، قابل للتعديل)
     if (payFile && !receiptGoesToInstallment) {
       const recName = receiptDisplayName(f.name, phone1);
       const path = `docs/${cid}/${Date.now()}-${receiptFileName(f.name, phone1, payFile.name)}`;
       const up = await supabase.storage.from("receipts").upload(path, payFile, { upsert: false });
       if (!up.error) {
         const url = path; // نخزّن الـ path ونوقّعه وقت العرض
-        payShotPath = path; // نربطها بالمالية عشان تظهر بمبلغها في الإيصالات
-        await supabase.from("customer_docs").insert({ customer_id: cid, url, name: recName });
+        await supabase.from("customer_docs").insert({ customer_id: cid, url, name: recName, amount: transferAmt, currency: f.currency });
       }
     }
     if (hasSub) {
@@ -249,7 +249,6 @@ export default function NewCustomerForm({
       if (enr && !f.free && net > 0) {
         await supabase.from("enrollment_finance").insert({
           enrollment_id: enr.id, agreed_amount: net, currency: f.currency,
-          screenshot_url: payShotPath,
         });
         // نظام الدفع: كاش = قسط واحد مدفوع بالكامل / تقسيط = أقساط بمواعيد محسوبة
         if (payMode === "cash") {
@@ -269,7 +268,7 @@ export default function NewCustomerForm({
               const u = await supabase.storage.from("receipts").upload(p, payFile, { upsert: false });
               if (!u.error) {
                 firstShot = p; // نخزّن الـ path ونوقّعه وقت العرض
-                await supabase.from("customer_docs").insert({ customer_id: cid, url: firstShot, name: receiptDisplayName(f.name, phone1) });
+                await supabase.from("customer_docs").insert({ customer_id: cid, url: firstShot, name: receiptDisplayName(f.name, phone1), amount: transferAmt, currency: f.currency });
               }
             }
             await supabase.from("installments").insert(
@@ -678,8 +677,19 @@ export default function NewCustomerForm({
             {!f.free && (
               <div className="fld" style={{ marginTop: 8 }}>
                 <label>{tr("agreedTransferShot")}</label>
-                <FileDrop value={payFile} onFile={setPayFile} onClear={() => setPayFile(null)} accept="image/*" label={tr("uploadTransferShot")} />
+                <FileDrop value={payFile} onFile={(file) => { setPayFile(file); if (file && !transferAmount) setTransferAmount(String(net)); }} onClear={() => { setPayFile(null); setTransferAmount(""); }} accept="image/*" label={tr("uploadTransferShot")} />
                 <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>{tr("shotStoredHint")}</div>
+                {payFile && (
+                  <div style={{ marginTop: 10, padding: 12, background: "var(--brand-soft)", borderRadius: 10, border: "1px solid var(--line)" }}>
+                    <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>{tr("transferAmountLabel")}</label>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <input className="inp num" dir="ltr" inputMode="numeric" value={transferAmount} placeholder={String(net)} onChange={(e) => setTransferAmount(e.target.value)} style={{ maxWidth: 170 }} />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>{f.currency === "USD" ? "$" : tr("egpShort")}</span>
+                      <button type="button" onClick={() => setTransferAmount(String(net))} className="rowbtn edit" style={{ height: 36, padding: "0 12px", fontSize: 12.5 }}>{tr("useAgreed")}</button>
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>{tr("transferAmountHint").replace("{n}", `${net} ${f.currency === "USD" ? "$" : tr("egpShort")}`)}</div>
+                  </div>
+                )}
               </div>
             )}
 
