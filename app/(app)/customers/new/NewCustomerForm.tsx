@@ -229,12 +229,14 @@ export default function NewCustomerForm({
     // صورة تحويل الفلوس المتفق عليها → تخزين + تسجيل في المستندات
     // (نتخطّاها لو الإيصال هيتربط بالقسط الأول في وضع التقسيط)
     const receiptGoesToInstallment = payMode === "installment" && payFirstNow;
+    let payShotPath: string | null = null;
     if (payFile && !receiptGoesToInstallment) {
       const recName = receiptDisplayName(f.name, phone1);
       const path = `docs/${cid}/${Date.now()}-${receiptFileName(f.name, phone1, payFile.name)}`;
       const up = await supabase.storage.from("receipts").upload(path, payFile, { upsert: false });
       if (!up.error) {
         const url = path; // نخزّن الـ path ونوقّعه وقت العرض
+        payShotPath = path; // نربطها بالمالية عشان تظهر بمبلغها في الإيصالات
         await supabase.from("customer_docs").insert({ customer_id: cid, url, name: recName });
       }
     }
@@ -247,6 +249,7 @@ export default function NewCustomerForm({
       if (enr && !f.free && net > 0) {
         await supabase.from("enrollment_finance").insert({
           enrollment_id: enr.id, agreed_amount: net, currency: f.currency,
+          screenshot_url: payShotPath,
         });
         // نظام الدفع: كاش = قسط واحد مدفوع بالكامل / تقسيط = أقساط بمواعيد محسوبة
         if (payMode === "cash") {
