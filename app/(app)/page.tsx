@@ -345,7 +345,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
 
   return (
     <div>
-      <RealtimeRefresh tables={["tickets","follow_ups","handoffs","tasks","customers"]} />
+      <RealtimeRefresh tables={["tickets","follow_ups","handoffs","tasks","customers","installments","customer_docs","customer_addons","enrollment_finance"]} />
       <div className="page-h"><div><h1>{tr("dash")}</h1><p>{tr("dashDesc")}</p></div></div>
       <PeriodFilter />
 
