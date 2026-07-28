@@ -1,5 +1,6 @@
 "use client";
 import { confirmDialog } from "@/lib/confirm";
+import { createPortal } from "react-dom";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -333,8 +334,8 @@ export default function ServicesPanel({
                       </div>
                     </>
                   );
-                  const box = (children: React.ReactNode) => (
-                    <div onClick={resetMove} style={{ position: "fixed", top: 0, bottom: 0, insetInlineEnd: 0, width: "min(560px,100%)", background: "rgba(4,10,22,.55)", display: "grid", placeItems: "center", zIndex: 120, padding: 16 }}>
+                  const box = (children: React.ReactNode) => (typeof document === "undefined" ? null : createPortal(
+                    <div onClick={resetMove} style={{ position: "fixed", inset: 0, background: "rgba(4,10,22,.55)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)", display: "grid", placeItems: "center", zIndex: 200, padding: 16 }}>
                       <div onClick={(ev) => ev.stopPropagation()} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,.4)", width: "min(440px,100%)", maxHeight: "88vh", overflow: "auto", padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 15 }}>{tr("moveTransfer")}</div>
@@ -342,8 +343,9 @@ export default function ServicesPanel({
                         </div>
                         {children}
                       </div>
-                    </div>
-                  );
+                    </div>,
+                    document.body
+                  ));
                   const noteBox = (text: string) => box(<>
                     <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.7 }}>{text}</div>
                     <div><button className="btn ghost" onClick={resetMove} style={{ height: 36, padding: "0 14px" }}>{tr("close")}</button></div>

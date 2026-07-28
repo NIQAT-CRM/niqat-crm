@@ -1,5 +1,6 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
+import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
@@ -16,15 +17,16 @@ function money(n: number, cur: string) {
 }
 const paidOf = (e: Enr) => e.installments.filter((i) => i.status === "paid" || i.paidAt).reduce((s, i) => s + (Number(i.amount) || 0), 0);
 const isOverdue = (i: Inst) => !(i.status === "paid" || i.paidAt || !i.due) && new Date(i.due) < new Date(new Date().toDateString());
-// نوع الدفع من التسجيل: قسط واحد = كاش (دفعة واحدة) | أكتر من قسط = تقسيط | صفر = لسه ماتحددش
+// استنتاج نوع الدفع: كاش = قسط واحد مدفوع بالكامل | تقسيط = أكتر من قسط
 function payMode(e: Enr): "cash" | "installment" | "none" {
   const n = e.installments.length;
   if (n === 0) return "none";
-  if (n === 1) return "cash";
+  const allPaid = e.installments.every((i) => i.status === "paid" || i.paidAt);
+  if (n === 1 && allPaid) return "cash";
   return "installment";
 }
 
-export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], addons = [], handedOff = false, stage = "" }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; addons?: Addon[]; handedOff?: boolean; stage?: string }) {
+export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], addons = [], handedOff = false }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; addons?: Addon[]; handedOff?: boolean }) {
   const tr = useT();
   const supabase = createClient();
   const router = useRouter();
@@ -35,11 +37,6 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
   const [file, setFile] = useState<File | null>(null);
   const [payFor, setPayFor] = useState<string | null>(null);
   const [payFile, setPayFile] = useState<File | null>(null);
-  const [payAmount, setPayAmount] = useState("");
-  const [payCurrency, setPayCurrency] = useState("");
-  const [payPreviewOpen, setPayPreviewOpen] = useState(false);
-  const payUrl = useMemo(() => (payFile && payFile.type.startsWith("image/") ? URL.createObjectURL(payFile) : ""), [payFile]);
-  useEffect(() => () => { if (payUrl) URL.revokeObjectURL(payUrl); }, [payUrl]);
   const [editAgreedId, setEditAgreedId] = useState<string | null>(null);
   const [editAgreedVal, setEditAgreedVal] = useState("");
 
@@ -93,7 +90,7 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
   async function logAudit(action: string, detail: string) {
     await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action, detail });
   }
-  async function uploadShot(f?: File | null, label?: string, amount?: number, currency?: string): Promise<string | null> {
+  async function uploadShot(f?: File | null, label?: string): Promise<string | null> {
     const theFile = f ?? file;
     if (!theFile) return null;
     const ext = (theFile.name.split(".").pop() || "jpg").toLowerCase();
@@ -101,41 +98,34 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
     const up = await supabase.storage.from("receipts").upload(path, theFile, { upsert: false });
     if (up.error) { toast(tr("imgUploadFailed")); return null; }
     const url = path; // نخزّن الـ path
-    // تسجيل نسخة في المستندات عشان تظهر في سكشن المستندات (مع المبلغ والعملة)
-    if (url) await supabase.from("customer_docs").insert({ customer_id: customerId, url, name: label || `${tr("instReceipt")} (${theFile.name})`, ...(amount != null ? { amount } : {}), ...(currency ? { currency } : {}) });
+    // تسجيل نسخة في المستندات عشان تظهر في سكشن المستندات
+    if (url) await supabase.from("customer_docs").insert({ customer_id: customerId, url, name: label || `${tr("instReceipt")} (${theFile.name})` });
     return url;
   }
 
-  async function markPaid(i: Inst, enr?: Enr) {
-    setBusy(i.id);
-    const amtNum = payAmount.trim() && !isNaN(Number(payAmount)) ? Number(payAmount) : Number(i.amount);
-    const cur = payCurrency || i.currency || "EGP";
+  async function markPaid(id: string, f?: File | null, enr?: Enr) {
+    setBusy(id);
     let shotUrl: string | null = null;
-    if (payFile) shotUrl = await uploadShot(payFile, `${tr("instReceipt")} (${payFile.name})`, amtNum, cur);
-    const patch: any = { status: "paid", paid_at: new Date().toISOString(), amount: amtNum, currency: cur };
+    if (f) shotUrl = await uploadShot(f, `${tr("instReceipt")} (${f.name})`);
+    const patch: any = { status: "paid", paid_at: new Date().toISOString() };
     if (shotUrl) patch.screenshot_url = shotUrl;
-    const { error } = await supabase.from("installments").update(patch).eq("id", i.id);
+    const { error } = await supabase.from("installments").update(patch).eq("id", id);
     if (error) { setBusy(null); return toast(tr("updateFailed") + error.message); }
-    await logAudit("installment_paid", `${tr("auditInstallmentPaid")} ${money(amtNum, cur)}` + (shotUrl ? " + " + tr("receipt") : ""));
+    await logAudit("installment_paid", tr("auditInstallmentPaid") + (shotUrl ? " + " + tr("receipt") : ""));
 
-    // أول ما يتأكّد أي دفع → العميل بقى دافع فعلاً: حوّله لمرحلة "مسجّل/دفع" لو مش كده
-    if (stage && stage !== "enrolled") {
-      await supabase.from("customers").update({ stage: "enrolled" }).eq("id", customerId);
-      await logAudit("stage_paid", tr("autoStagePaid"));
-    }
-
-    // لو الدفعة دي كمّلت المبلغ المتفق عليه → افتح قايمة التفعيل
+    // لو الدفعة دي كمّلت المبلغ المتفق عليه → افتح قايمة التفعيل (بدل التحويل الصامت)
     if (enr && Number(enr.agreed) > 0) {
-      const paidNow = enr.installments.reduce((s, x) => {
-        const isPaid = x.id === i.id ? true : (x.status === "paid" || x.paidAt);
-        const amt = x.id === i.id ? amtNum : (Number(x.amount) || 0);
-        return s + (isPaid ? amt : 0);
+      const paidNow = enr.installments.reduce((s, i) => {
+        const isPaid = i.id === id ? true : (i.status === "paid" || i.paidAt);
+        return s + (isPaid ? (Number(i.amount) || 0) : 0);
       }, 0);
-      if (paidNow >= Number(enr.agreed)) openActivation(enr);
+      if (paidNow >= Number(enr.agreed)) {
+        openActivation(enr);
+      }
     }
 
     setBusy(null);
-    setPayFor(null); setPayFile(null); setPayAmount(""); setPayCurrency("");
+    setPayFor(null); setPayFile(null);
     toast(tr("paymentLogged")); router.refresh();
   }
   async function addInstallment(e: Enr) {
@@ -180,63 +170,27 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
           const instPaid = e.installments.filter((i) => i.status === "paid" || i.paidAt).length;
           const fullyPaid = e.free || (Number(e.agreed) > 0 && paid >= Number(e.agreed));
           return (
-            <div key={e.id} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 14 }}>
-              {/* رأس: اسم الدبلومة + شارة النوع + شارة الحالة + المبلغ المتفق */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-                <div style={{ minWidth: 0 }}>
-                  <b style={{ color: "var(--ink)", fontSize: 14 }}>{e.diploma}</b>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 7 }}>
-                    {/* نوع الدفع (من التسجيل) */}
-                    {e.free ? (
-                      <span className="stg" style={{ background: "var(--brand-soft)", color: "var(--brand)" }}>🎁 {tr("gift")}</span>
-                    ) : mode === "cash" ? (
-                      <span className="stg" style={{ background: "rgba(24,169,87,.12)", color: "var(--green)" }}>💵 {tr("cashBadge")} · {tr("singlePay")}</span>
-                    ) : mode === "installment" ? (
-                      <span className="stg" style={{ background: "rgba(230,167,0,.14)", color: "#a5790a" }}>🗓️ {tr("installmentBadge")} · {instPaid}/{instTotal}</span>
-                    ) : (
-                      <span className="stg" style={{ background: "var(--muted-soft)", color: "var(--muted)" }}>{tr("notSetup")}</span>
-                    )}
-                    {/* حالة الدفع */}
-                    {!e.free && (fullyPaid
-                      ? <span className="stg" style={{ background: "rgba(24,169,87,.12)", color: "var(--green)" }}>✓ {tr("payFull")}</span>
-                      : paid > 0
-                        ? <span className="stg" style={{ background: "rgba(230,167,0,.14)", color: "#a5790a" }}>{tr("payPartial")}</span>
-                        : <span className="stg" style={{ background: "var(--red-soft)", color: "var(--red)" }}>{tr("payNone")}</span>
-                    )}
-                  </div>
-                </div>
-                <div style={{ textAlign: "end", flexShrink: 0 }}>
-                  <div style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700 }}>{tr("agreed")}</div>
-                  {editAgreedId === e.id ? (
-                    <span style={{ display: "inline-flex", gap: 6, alignItems: "center", marginTop: 4 }}>
+            <div key={e.id} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <b style={{ color: "var(--ink)" }}>{e.diploma}
+                  {e.free && <span style={{ color: "var(--brand)", fontSize: 12, marginInlineStart: 6 }}>🎁 {tr("gift")}</span>}
+                  {!e.free && mode === "cash" && <span style={{ color: "var(--green)", fontSize: 11.5, marginInlineStart: 6, fontWeight: 700 }}>💵 {tr("cashBadge")}</span>}
+                  {!e.free && mode === "installment" && <span style={{ color: "var(--amber)", fontSize: 11.5, marginInlineStart: 6, fontWeight: 700 }}>🗓️ {tr("installmentBadge")} ({instPaid}/{instTotal})</span>}
+                </b>
+                <div style={{ display: "flex", gap: 12, fontSize: 12.5 }}>
+                  <span style={{ color: "var(--muted)" }}>{tr("agreed")}: {editAgreedId === e.id ? (
+                    <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
                       <input className="inp num" style={{ width: 100, height: 32, fontSize: 13 }} value={editAgreedVal} onChange={ev => setEditAgreedVal(ev.target.value)} />
                       <button onClick={() => saveAgreed(e)} disabled={busy === "agreed"} className="btn" style={{ height: 32, padding: "0 10px", fontSize: 12 }}>{tr("save")}</button>
                       <button onClick={() => setEditAgreedId(null)} className="btn ghost" style={{ height: 32, padding: "0 10px", fontSize: 12 }}>{tr("cancel")}</button>
                     </span>
                   ) : (
-                    <b className="num" title={tr("edit")} style={{ color: "var(--ink)", fontSize: 16, cursor: "pointer", display: "block", marginTop: 2 }} onClick={() => { setEditAgreedId(e.id); setEditAgreedVal(String(e.agreed)); }}>{money(e.agreed, e.currency)}</b>
-                  )}
+                    <b className="num" style={{ color: "var(--ink)", cursor: "pointer" }} onClick={() => { setEditAgreedId(e.id); setEditAgreedVal(String(e.agreed)); }}>{money(e.agreed, e.currency)}</b>
+                  )}</span>
+                  <span style={{ color: "var(--green)" }}>{tr("paid")}: <b className="num">{money(paid, e.currency)}</b></span>
+                  <span style={{ color: "var(--amber)" }}>{tr("remaining")}: <b className="num">{money(remaining, e.currency)}</b></span>
                 </div>
               </div>
-
-              {/* شريط تقدّم + مدفوع/متبقّي واضحين */}
-              {!e.free && Number(e.agreed) > 0 && (
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ height: 8, background: "var(--muted-soft)", borderRadius: 20, overflow: "hidden", marginBottom: 8 }}>
-                    <div style={{ width: Math.min(100, Math.round((paid / Number(e.agreed)) * 100)) + "%", height: "100%", background: fullyPaid ? "var(--green)" : "#E6A700", borderRadius: 20, transition: "width .4s" }} />
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <div style={{ flex: 1, background: "rgba(24,169,87,.08)", borderRadius: 8, padding: "8px 10px" }}>
-                      <div style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700 }}>{tr("paid")}</div>
-                      <b className="num" style={{ color: "var(--green)", fontSize: 14 }}>{money(paid, e.currency)}</b>
-                    </div>
-                    <div style={{ flex: 1, background: remaining > 0 ? "rgba(230,167,0,.1)" : "var(--muted-soft)", borderRadius: 8, padding: "8px 10px" }}>
-                      <div style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700 }}>{tr("remaining")}</div>
-                      <b className="num" style={{ color: remaining > 0 ? "#a5790a" : "var(--muted)", fontSize: 14 }}>{money(Math.max(0, remaining), e.currency)}</b>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* اكتمل الدفع (أو هدية) ولسه ما اتحوّلش للتفعيل → زر واضح يفتح قايمة التفعيل */}
               {fullyPaid && !handedOff && (
@@ -263,39 +217,14 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
                       {i.shot && <a href={i.shot} target="_blank" rel="noreferrer" style={{ fontSize: 11.5, color: "var(--brand)", fontWeight: 700 }}>{tr("receipt")}</a>}
                       {paidNow ? badge(tr("paid"), "#18A957") : over ? badge(tr("overdue"), "#E0483B") : badge(tr("pending"), "#94A2BB")}
                       {!paidNow ? (
-                        <button onClick={() => { const opening = payFor !== i.id; setPayFor(opening ? i.id : null); setPayFile(null); setPayAmount(opening ? String(i.amount) : ""); setPayCurrency(opening ? i.currency : ""); }} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{tr("paid")}</button>
+                        <button onClick={() => { setPayFor(payFor === i.id ? null : i.id); setPayFile(null); }} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{tr("paid")}</button>
                       ) : <span style={{ width: 70 }} />}
                      </div>
                      {payFor === i.id && !paidNow && (
-                       <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px dashed var(--line)", paddingTop: 10 }}>
-                         <FileDrop value={payFile} onFile={setPayFile} onClear={() => setPayFile(null)} accept="image/*" label={tr("uploadTransferShot")} />
-                         <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{tr("shotStoredHint")}</div>
-                         {payFile && (
-                           <div style={{ padding: 12, background: "var(--brand-soft)", borderRadius: 10, border: "1px solid var(--line)" }}>
-                             {payUrl && (
-                               <div style={{ marginBottom: 10 }}>
-                                 <button type="button" onClick={() => setPayPreviewOpen(true)} title={tr("clickToEnlarge")} style={{ display: "block", width: "100%", maxWidth: 280, border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", cursor: "zoom-in", padding: 0, background: "var(--surface)" }}>
-                                   <img src={payUrl} alt="receipt" style={{ width: "100%", maxHeight: 240, objectFit: "contain", display: "block" }} />
-                                 </button>
-                                 <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>{tr("clickToEnlarge")}</div>
-                               </div>
-                             )}
-                             <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>{tr("transferAmountLabel")}</label>
-                             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                               <input className="inp num" dir="ltr" inputMode="numeric" value={payAmount} placeholder={String(i.amount)} onChange={(e) => setPayAmount(e.target.value)} style={{ maxWidth: 150 }} />
-                               <select className="inp" value={payCurrency || i.currency} onChange={(e) => setPayCurrency(e.target.value)} style={{ maxWidth: 90 }}>
-                                 <option value="EGP">{tr("egpShort")}</option>
-                                 <option value="USD">$</option>
-                               </select>
-                               <button type="button" onClick={() => { setPayAmount(String(i.amount)); setPayCurrency(i.currency); }} className="rowbtn edit" style={{ height: 36, padding: "0 12px", fontSize: 12.5 }}>{tr("useAgreed")}</button>
-                             </div>
-                             <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>{tr("transferAmountHint").replace("{n}", money(i.amount, i.currency))}</div>
-                           </div>
-                         )}
-                         <div style={{ display: "flex", gap: 8 }}>
-                           <button onClick={() => markPaid(i, e)} disabled={busy === i.id} className="btn" style={{ height: 34, padding: "0 14px", fontSize: 12.5, background: "var(--green)" }}>{busy === i.id ? "..." : tr("confirmPayment")}</button>
-                           <button onClick={() => { setPayFor(null); setPayFile(null); setPayAmount(""); setPayCurrency(""); }} className="btn ghost" style={{ height: 34, padding: "0 12px", fontSize: 12.5 }}>{tr("cancel")}</button>
-                         </div>
+                       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, borderTop: "1px dashed var(--line)", paddingTop: 8 }}>
+                         <FileDrop compact value={payFile} onFile={setPayFile} onClear={() => setPayFile(null)} accept="image/*" label={tr("uploadReceiptOpt")} />
+                         <button onClick={() => markPaid(i.id, payFile, e)} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{busy === i.id ? "..." : tr("confirmPayment")}</button>
+                         <button onClick={() => { setPayFor(null); setPayFile(null); }} className="btn ghost" style={{ height: 30, padding: "0 10px", fontSize: 12 }}>{tr("cancel")}</button>
                        </div>
                      )}
                     </div>
@@ -322,10 +251,10 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
         })}
       </div>
 
-      {/* ===== مودال قايمة التفعيل ===== */}
-      {actEnr && (
+      {/* ===== مودال قايمة التفعيل (Portal لـ body عشان يثبت ولا يتحرك مع الدرور) ===== */}
+      {actEnr && typeof document !== "undefined" && createPortal(
         <div onClick={() => !actBusy && setActEnr(null)}
-          style={{ position: "fixed", top: 0, bottom: 0, insetInlineEnd: 0, width: "min(560px,100%)", background: "rgba(0,0,0,.45)", zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          style={{ position: "fixed", inset: 0, background: "rgba(15,27,48,.55)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} className="card"
             style={{ padding: 20, width: "100%", maxWidth: 440, maxHeight: "90vh", overflow: "auto" }}>
             <div className="sec-t" style={{ marginBottom: 4 }}>{tr("activationChecklistTitle")}</div>
@@ -370,17 +299,8 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
               <button onClick={() => setActEnr(null)} disabled={actBusy} className="btn ghost">{tr("cancel")}</button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* ===== مودال تكبير صورة التحويل ===== */}
-      {payPreviewOpen && payUrl && (
-        <div onClick={() => setPayPreviewOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(4,10,22,.8)", display: "grid", placeItems: "center", zIndex: 130, padding: 20 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", maxWidth: "92vw", maxHeight: "92vh" }}>
-            <button onClick={() => setPayPreviewOpen(false)} style={{ position: "absolute", top: -14, insetInlineEnd: -14, width: 36, height: 36, borderRadius: "50%", background: "#fff", border: "none", cursor: "pointer", fontSize: 20, boxShadow: "0 4px 12px rgba(0,0,0,.3)", zIndex: 1 }}>×</button>
-            <img src={payUrl} alt="receipt" style={{ maxWidth: "92vw", maxHeight: "92vh", borderRadius: 12, display: "block" }} />
-          </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
