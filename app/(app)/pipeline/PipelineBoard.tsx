@@ -11,11 +11,14 @@ type Cust = {
   id: string;
   name: string;
   diploma: string;
+  batch?: string;
+  phone?: string;
   stage: string;
   ownerId: string;
   ownerName: string;
   createdAt?: string;
   value?: number;
+  paid?: number;
 };
 
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
@@ -182,7 +185,32 @@ export default function PipelineBoard({ initial, canFinance = false }: { initial
                       <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 12l5 5L20 7" /></svg>
                     </button>
                     <div className="pn">{c.name}</div>
-                    <div className="pm">{c.diploma || "—"}</div>
+                    <div className="pc-meta">
+                      {(c.diploma || c.batch) ? (
+                        <div className="pc-chips">
+                          {c.diploma && <span className="pc-chip">{c.diploma}</span>}
+                          {c.batch && <span className="pc-chip bt" dir="ltr">{c.batch}</span>}
+                        </div>
+                      ) : <span className="pc-none">{tr("noEnrolledYet")}</span>}
+                      {c.phone && (
+                        <a className="pc-phone" dir="ltr" href={`tel:${c.phone}`} onMouseDown={(ev) => ev.stopPropagation()} onClick={(ev) => ev.stopPropagation()}>
+                          <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2}><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.4 2.1L8 11.5a16 16 0 0 0 6 6l1.1-1.3a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.7 2z" /></svg>
+                          {c.phone}
+                        </a>
+                      )}
+                      {canFinance && (Number(c.value) > 0 || Number(c.paid) > 0) && (() => {
+                        const agreed = Number(c.value) || 0, paid = Number(c.paid) || 0;
+                        const st = agreed > 0 && paid >= agreed ? "paid" : paid > 0 ? "partial" : "unpaid";
+                        const col = st === "paid" ? "#18A957" : st === "partial" ? "#E6A700" : "#94A2BB";
+                        return (
+                          <div className="pc-money">
+                            <span className="pc-dot" style={{ background: col }} />
+                            <span className="num" style={{ fontWeight: 800, color: "var(--ink)" }}>{money(paid)}</span>
+                            <span style={{ color: "var(--muted)" }}> / {money(agreed)}</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
                     <div className="pf">
                       <span className="who-mini">
                         <span className="av-xs" style={{ background: avColor(c.ownerId) }}>
