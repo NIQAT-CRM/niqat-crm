@@ -37,7 +37,6 @@ export default function RefundPanel({
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("EGP");
   const [reason, setReason] = useState("");
-  const [closes, setCloses] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState<string>("");
 
@@ -54,7 +53,7 @@ export default function RefundPanel({
   function pickService(k: string) {
     setSvcKey(k);
     const s = svcByKey(k);
-    if (s) { setCurrency(s.currency || "EGP"); setAmount(s.free ? "0" : String(s.paid || "")); setCloses(!!s.free); }
+    if (s) { setCurrency(s.currency || "EGP"); setAmount(s.free ? "0" : String(s.paid || "")); }
   }
 
   async function uploadShot(): Promise<string> {
@@ -75,7 +74,7 @@ export default function RefundPanel({
     setBusy("req");
     const row: any = {
       customer_id: customerId, amount: a, currency, reason: reason.trim(),
-      shot_url: "", status: "requested", requested_by: meId, closes_service: closes,
+      shot_url: "", status: "requested", requested_by: meId, closes_service: true,
       enrollment_id: selected.kind === "enrollment" ? selected.id : null,
       addon_id: selected.kind === "addon" ? selected.id : null,
     };
@@ -83,7 +82,7 @@ export default function RefundPanel({
     if (!error) await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "refund_request", detail: `${tr("auditRefundRequest")} ${money(a, currency)} — ${selected.name}` });
     setBusy("");
     if (error) { toast(tr("logRequestFailed") + error.message); return; }
-    setSvcKey(""); setAmount(""); setReason(""); setCloses(false);
+    setSvcKey(""); setAmount(""); setReason("");
     toast(tr("refundRequestLogged")); router.refresh();
   }
 
@@ -119,10 +118,9 @@ export default function RefundPanel({
     setBusy("close:" + r.id);
     const { error } = await supabase.from("refunds").update({ status: "closed" }).eq("id", r.id);
     if (error) { setBusy(""); toast(tr("updateFailed") + error.message); return; }
-    if (r.closesService) {
-      if (r.enrollmentId) await supabase.from("enrollments").update({ status: "refunded" }).eq("id", r.enrollmentId);
-      else if (r.addonId) await supabase.from("customer_addons").update({ refunded: true }).eq("id", r.addonId);
-    }
+    // يقفل الخدمة اللي اتعمل عليها الريفند فقط (الجزء المستهدف) — العميل يفضل بباقي خدماته
+    if (r.enrollmentId) await supabase.from("enrollments").update({ status: "refunded" }).eq("id", r.enrollmentId);
+    else if (r.addonId) await supabase.from("customer_addons").update({ refunded: true }).eq("id", r.addonId);
     await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "refunded", detail: `${tr("serviceClosed")} — ${svcName(r)}` });
     setBusy("");
     await revalidateCustomers();
@@ -195,12 +193,8 @@ export default function RefundPanel({
                   </select></div>
               </div>
               {!selected.free && (
-                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--ink)", margin: "2px 0 10px", cursor: "pointer" }}>
-                  <input type="checkbox" checked={closes} onChange={(e) => setCloses(e.target.checked)} />
-                  {tr("closesServiceLabel")}
-                </label>
+                <div style={{ fontSize: 11.5, color: "var(--muted)", margin: "2px 0 10px" }}>{tr("supportWillCloseHint")}</div>
               )}
-              {!closes && !selected.free && <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 8 }}>{tr("partialRefundHint")}</div>}
               <div className="fld"><label>{tr("refundReason")}</label>
                 <textarea className="inp" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></div>
               <button onClick={request} disabled={busy === "req"} className="btn danger">{busy === "req" ? "..." : tr("refundRequestBtn")}</button>
@@ -254,7 +248,7 @@ export default function RefundPanel({
                       <button onClick={() => markRefunded(r)} disabled={busy === "ref:" + r.id} className="btn" style={{ fontSize: 12.5 }}>{busy === "ref:" + r.id ? "..." : tr("refundTransfer")}</button>
                     </div>
                   )}
-                  {r.status === "refunded" && r.closesService && (
+                  {r.status === "refunded" && (
                     !closeItem ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{tr("supportWillCloseHint")}</div>
@@ -271,9 +265,6 @@ export default function RefundPanel({
                         <button onClick={() => closeService(r)} disabled={busy === "close:" + r.id} className="btn danger" style={{ fontSize: 12 }}>{busy === "close:" + r.id ? "..." : tr("closeServiceBtn")}</button>
                       </div>
                     )
-                  )}
-                  {r.status === "refunded" && !r.closesService && (
-                    <div style={{ fontSize: 12, color: "var(--muted)" }}>{tr("partialDoneHint")}</div>
                   )}
                   {r.status === "closed" && (
                     <div style={{ fontSize: 12, color: "var(--muted)" }}>✓ {tr("serviceClosedDone")}</div>
