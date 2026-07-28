@@ -31,6 +31,40 @@ const SEC_ICONS: Record<string, ReactNode> = {
   warning: <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2}><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><path d="M12 9v4M12 17h.01" /></svg>,
 };
 
+// ===== تايم لاين: أيقونة + لون لكل نوع حدث =====
+const TL_ICONS: Record<string, ReactNode> = {
+  money: <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>,
+  add: <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M12 5v14M5 12h14" /></svg>,
+  arrow: <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><path d="M5 12h14M13 6l6 6-6 6" /></svg>,
+  x: <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M6 6l12 12M18 6L6 18" /></svg>,
+  refund: <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><path d="M3 7v6h6" /><path d="M3.5 13a9 9 0 1 0 2.5-7.5L3 8" /></svg>,
+  user: <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
+  check: <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M20 6 9 17l-5-5" /></svg>,
+  edit: <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>,
+  dot: <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="4" /></svg>,
+};
+function tlVisual(action: string): { icon: string; color: string; bg: string } {
+  const m: Record<string, { icon: string; color: string }> = {
+    installment_paid: { icon: "money", color: "#18A957" },
+    installment_add: { icon: "add", color: "#F08A24" },
+    enrollment_add: { icon: "add", color: "#F08A24" },
+    create: { icon: "check", color: "#18A957" },
+    update: { icon: "edit", color: "#7A8699" },
+    agreed_edit: { icon: "edit", color: "#7A8699" },
+    stage_change: { icon: "user", color: "#7B61FF" },
+    stage_paid: { icon: "user", color: "#18A957" },
+    handoff: { icon: "arrow", color: "#2F6BFF" },
+    handoff_requested: { icon: "arrow", color: "#2F6BFF" },
+    batch_transfer: { icon: "arrow", color: "#2F6BFF" },
+    handoff_canceled: { icon: "x", color: "#E0483B" },
+    refund_cancel: { icon: "x", color: "#E0483B" },
+    refund_request: { icon: "refund", color: "#E6A700" },
+    refunded: { icon: "refund", color: "#E6A700" },
+  };
+  const v = m[action] || { icon: "dot", color: "#94A2BB" };
+  return { icon: v.icon, color: v.color, bg: v.color + "1a" };
+}
+
 // عنوان قسم هادي (ink + أيقونة SVG ملوّنة في مربّع + عدّاد اختياري)
 function Sec({ icon, bg, color, title, count, mt }: { icon: string; bg: string; color: string; title: string; count?: number; mt?: boolean }) {
   return (
@@ -242,22 +276,37 @@ export default function CustomerDrawer(props: {
         <DocsPanel customerId={props.c.id} initial={props.docs} tableMissing={props.docsMissing} />
 
         <div className="card" style={{ padding: 18 }}>
-          <Sec icon="clock" bg="var(--muted-soft)" color="var(--muted)" title={tr("timeline")} />
+          <Sec icon="clock" bg="var(--muted-soft)" color="var(--muted)" title={tr("timeline")} count={(props.auditRows || []).length} />
           {(!props.auditRows || props.auditRows.length === 0) ? (
             <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noTimeline")}</div>
-          ) : (props.auditRows || []).map((a: any, idx: number) => (
-            <div key={idx} className="comm">
-              <div className="ci" style={{ background: "#eef2f8", color: "var(--muted)" }}>
-                <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-              </div>
-              <div>
-                <div style={{ fontSize: 13.5, color: "var(--ink)" }}>{props.AUDIT_KEYS[a.action] ? tr(props.AUDIT_KEYS[a.action]) : a.action}{a.detail ? " — " + a.detail : ""}</div>
-                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
-                  <b>{props.pMap.get(a.actor_id || "") || "—"}</b> • <span className="num">{String(a.at || "").replace("T", " ").slice(0, 16)}</span>
-                </div>
-              </div>
+          ) : (
+            <div style={{ position: "relative", marginTop: 8 }}>
+              {/* الخط الرأسي اللي بيربط الأحداث */}
+              <div style={{ position: "absolute", insetInlineStart: 15, top: 10, bottom: 14, width: 2, background: "var(--line)" }} />
+              {(props.auditRows || []).map((a: any, idx: number) => {
+                const v = tlVisual(a.action);
+                const title = props.AUDIT_KEYS[a.action] ? tr(props.AUDIT_KEYS[a.action]) : a.action;
+                const dt = String(a.at || "").replace("T", " ").slice(0, 16);
+                const last = idx === (props.auditRows || []).length - 1;
+                return (
+                  <div key={idx} style={{ display: "flex", gap: 12, position: "relative", paddingBottom: last ? 0 : 16 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", background: v.bg, color: v.color, boxShadow: "0 0 0 3px var(--surface)", zIndex: 1 }}>
+                      {TL_ICONS[v.icon]}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, paddingTop: 3 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>{title}</div>
+                      {a.detail && <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 3, lineHeight: 1.55, wordBreak: "break-word" }}>{a.detail}</div>}
+                      <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 5, display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 700, color: "var(--ink)" }}>{props.pMap.get(a.actor_id || "") || "—"}</span>
+                        <span style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--muted)", display: "inline-block" }} />
+                        <span className="num" dir="ltr">{dt}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
+          )}
         </div>
       </>}
       ops={<div className="px-5 py-5">

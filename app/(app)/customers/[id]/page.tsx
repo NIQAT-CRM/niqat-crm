@@ -22,6 +22,8 @@ const AUDIT_KEYS: Record<string, string> = {
   installment_add: "auditInstallmentAdd", installment_paid: "auditInstallmentPaid",
   create: "auditCreate", update: "auditUpdate", stage_change: "auditStageChange",
   refund_request: "auditRefundRequest", refunded: "auditRefunded", handoff: "auditHandoff",
+  handoff_requested: "auditHandoffRequested", stage_paid: "auditStagePaidTl",
+  agreed_edit: "auditAgreedEdit", refund_cancel: "auditRefundCancelTl", handoff_canceled: "auditHandoffCanceledTl",
 };
 
 const TK: Record<string, { labelKey: string; color: string }> = {
