@@ -116,7 +116,6 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
   const selBox: React.CSSProperties = { position: "relative", display: "inline-flex" };
   const sel: React.CSSProperties = { appearance: "none", WebkitAppearance: "none", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "11px 38px 11px 14px", fontSize: 14, fontWeight: 700, color: "var(--ink)", cursor: "pointer", minWidth: 150, fontFamily: "inherit", boxShadow: "var(--sh)" };
   const chev: React.CSSProperties = { position: "absolute", insetInlineStart: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--muted)" };
-  const pill: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 20, padding: "7px 14px", fontSize: 13, fontWeight: 700, color: "var(--muted)" };
   const arrowBtn = (disabled: boolean): React.CSSProperties => ({ width: 40, height: 40, borderRadius: 11, border: "1px solid var(--line)", background: disabled ? "var(--bg)" : "var(--surface)", color: disabled ? "var(--line)" : "var(--brand-d)", cursor: disabled ? "not-allowed" : "pointer", display: "grid", placeItems: "center", boxShadow: disabled ? "none" : "var(--sh)", transition: "all .15s" });
 
   if (rows.length === 0) {
@@ -149,11 +148,32 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
         </div>
       </div>
 
-      {/* ===== إجماليات اليوم ===== */}
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
-        <div style={{ ...pill, background: "var(--brand-soft)", borderColor: "var(--brand-soft)", color: "var(--brand-d)" }}>{tr("total")}: <b className="n">{nf.format(totals.egp)}</b> {tr("egp")}</div>
-        <div style={pill}>{tr("total")}: <b className="n">{nf.format(totals.usd)}</b> {tr("usd")}</div>
-        <div style={pill}>{tr("count")}: <b className="n">{nf.format(totals.count)}</b></div>
+      {/* ===== إجماليات اليوم — كروت أوضح ===== */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 12, marginBottom: 18 }}>
+        {/* الجنيه */}
+        <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, padding: "16px 18px", boxShadow: "var(--sh)", position: "relative", overflow: "hidden" }}>
+          <span style={{ position: "absolute", insetInlineStart: 0, top: 0, bottom: 0, width: 4, background: "var(--brand)" }} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>{tr("total")}</span>
+            <span style={{ fontSize: 11, fontWeight: 800, color: "var(--brand-d)", background: "var(--brand-soft)", borderRadius: 20, padding: "3px 10px" }}>{tr("egp")}</span>
+          </div>
+          <div className="n" style={{ fontSize: 28, fontWeight: 800, color: "var(--green)", lineHeight: 1.1, direction: "ltr", textAlign: lang === "ar" ? "right" : "left" }}>{nf.format(totals.egp)}</div>
+        </div>
+        {/* الدولار */}
+        <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, padding: "16px 18px", boxShadow: "var(--sh)", position: "relative", overflow: "hidden" }}>
+          <span style={{ position: "absolute", insetInlineStart: 0, top: 0, bottom: 0, width: 4, background: "#2F6BFF" }} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>{tr("total")}</span>
+            <span style={{ fontSize: 11, fontWeight: 800, color: "#2F6BFF", background: "rgba(47,107,255,.12)", borderRadius: 20, padding: "3px 10px" }}>{tr("usd")}</span>
+          </div>
+          <div className="n" style={{ fontSize: 28, fontWeight: 800, color: totals.usd > 0 ? "var(--green)" : "var(--muted)", lineHeight: 1.1, direction: "ltr", textAlign: lang === "ar" ? "right" : "left" }}>{nf.format(totals.usd)}</div>
+        </div>
+        {/* العدد */}
+        <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, padding: "16px 18px", boxShadow: "var(--sh)", position: "relative", overflow: "hidden" }}>
+          <span style={{ position: "absolute", insetInlineStart: 0, top: 0, bottom: 0, width: 4, background: "var(--muted)" }} />
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--muted)", marginBottom: 8 }}>{tr("count")}</div>
+          <div className="n" style={{ fontSize: 28, fontWeight: 800, color: "var(--ink)", lineHeight: 1.1, direction: "ltr", textAlign: lang === "ar" ? "right" : "left" }}>{nf.format(totals.count)}</div>
+        </div>
       </div>
 
       {/* ===== معرض إيصالات اليوم ===== */}
