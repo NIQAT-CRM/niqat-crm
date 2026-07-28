@@ -174,8 +174,8 @@ export default function TaskList({ initial, meId, people = [], isAdmin = false }
           )}
         </div>
 
-        {/* تكليف موظف */}
-        {people.length > 0 && (
+        {/* تكليف موظف — للأدمن فقط (غير الأدمن يكلّف نفسه؛ الـRLS بيمنع التكليف لغيره) */}
+        {isAdmin && people.length > 0 && (
           <select className="inp" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} style={{ width: 160 }}>
             {!people.some((p) => p.id === meId) && <option value={meId}>{meName || tr("me")}</option>}
             {people.map((p) => <option key={p.id} value={p.id}>{p.id === meId ? (p.name + " (" + tr("me") + ")") : p.name}</option>)}

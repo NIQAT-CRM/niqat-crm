@@ -36,7 +36,8 @@ export default function CustomerActivity({
     const cur = tasks.find((t) => t.id === id); if (!cur) return;
     const next = !cur.done;
     setTasks((l) => l.map((t) => (t.id === id ? { ...t, done: next } : t)));
-    await supabase.from("tasks").update({ done: next }).eq("id", id);
+    const { error } = await supabase.from("tasks").update({ done: next }).eq("id", id);
+    if (error) { setTasks((l) => l.map((t) => (t.id === id ? { ...t, done: cur.done } : t))); toast(tr("taskOwnerOnly")); }
   }
   async function addNote() {
     const body = noteText.trim();
