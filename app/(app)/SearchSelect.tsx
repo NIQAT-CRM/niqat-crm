@@ -13,6 +13,8 @@ export default function SearchSelect({
   frequentLabel = "الأكثر استخداماً",
   frequentValues = [],
   allowEmpty = true,
+  allowCustom = false,
+  addPrefix = "",
   disabled = false,
 }: {
   options: SSOpt[];
@@ -24,6 +26,8 @@ export default function SearchSelect({
   frequentLabel?: string;
   frequentValues?: string[];
   allowEmpty?: boolean;
+  allowCustom?: boolean;   // يسمح بإدخال قيمة مش موجودة في القائمة (نص حر)
+  addPrefix?: string;      // نص يظهر قبل القيمة المكتوبة في صف "الإضافة" (مثلاً "إضافة")
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -53,10 +57,16 @@ export default function SearchSelect({
   const freqSet = useMemo(() => new Set(freq.map((o) => o.value)), [freq]);
   const rest = useMemo(() => filtered.filter((o) => !freqSet.has(o.value)), [filtered, freqSet]);
 
-  // قائمة مسطّحة للتنقّل بالكيبورد (بدون + الأكثر استخداماً + الباقي)
+  // صف "إضافة" لقيمة مكتوبة مش موجودة في القائمة (نص حر)
+  const customQ = q.trim();
+  const showCustom = allowCustom && !!customQ
+    && !options.some((o) => o.label.toLowerCase() === customQ.toLowerCase());
+
+  // قائمة مسطّحة للتنقّل بالكيبورد (بدون + الأكثر استخداماً + الباقي + الإضافة)
   const flat: SSOpt[] = [];
   if (allowEmpty && !query) flat.push({ value: "", label: emptyLabel });
   flat.push(...freq, ...rest);
+  if (showCustom) flat.push({ value: customQ, label: customQ });
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -107,8 +117,8 @@ export default function SearchSelect({
         onClick={() => !disabled && setOpen((o) => !o)}
         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, textAlign: "start", width: "100%" }}
       >
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: selected ? "var(--ink)" : "var(--muted)" }}>
-          {selected ? selected.label : placeholder}
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: (selected || value) ? "var(--ink)" : "var(--muted)" }}>
+          {selected ? selected.label : (value || placeholder)}
         </span>
         <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2} style={{ flexShrink: 0, opacity: 0.6, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }}><path d="M6 9l6 6 6-6" /></svg>
       </button>
@@ -146,6 +156,15 @@ export default function SearchSelect({
                 {o.value === value && <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2.5} style={{ flexShrink: 0 }}><path d="M20 6L9 17l-5-5" /></svg>}
               </div>
             ); })}
+
+            {showCustom && (() => { idx++; const i = idx; return (
+              <div key="__custom" data-idx={i} onMouseEnter={() => setHi(i)} onClick={() => pick(customQ)} style={{ ...rowStyle(i), color: i === hi ? "var(--brand-d)" : "var(--brand)", fontWeight: 700 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2.4} style={{ flexShrink: 0 }}><path d="M12 5v14M5 12h14" /></svg>
+                  {addPrefix ? `${addPrefix} «${customQ}»` : customQ}
+                </span>
+              </div>
+            ); })()}
 
             {flat.length === 0 && <div style={{ padding: "10px 11px", fontSize: 13, color: "var(--muted)" }}>لا نتائج</div>}
           </div>

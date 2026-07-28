@@ -83,7 +83,7 @@ export async function filteredCustomerIds(sp: CustFilterSP): Promise<string[]> {
   if (svcVals.length) restrictSets.push(await enrollCustomerIds("batch_id", svcVals));
 
   const applyCols = (sub: any) => {
-    if (q) sub = sub.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
+    if (q) sub = sub.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,phone2.ilike.%${q}%,email.ilike.%${q}%`);
     if (stageVals.length) sub = sub.in("stage", stageVals);
     if (specVals.length) sub = sub.in("specialty_id", specVals);
     if (companyVals.length) sub = sub.in("company", companyVals);

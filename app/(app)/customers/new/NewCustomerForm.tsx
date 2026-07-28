@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 import { COUNTRIES, DEFAULT_DIAL, combineDialAndNumber, phoneKey } from "@/lib/phone";
+import { ARAB_COUNTRIES, FREQUENT_COUNTRIES } from "@/lib/countries";
 import FileDrop from "@/lib/ui/FileDrop";
 import SearchSelect from "../../SearchSelect";
 import { useLogUsage } from "../../AiFlags";
@@ -200,21 +201,24 @@ export default function NewCustomerForm({
     const phone1 = f.phone1.trim() ? combineDialAndNumber(dial1, f.phone1) : "";
     const phone2 = f.phone2.trim() ? combineDialAndNumber(dial2, f.phone2) : "";
 
-    // منع التكرار: نفس الاسم أو الموبايل (مطابقة بآخر 9 أرقام) أو الإيميل
-    const ors: string[] = [`name.eq.${f.name.trim()}`];
+    // منع التكرار بالموبايل (مطابقة بآخر 9 أرقام) أو الإيميل فقط.
+    // الاسم مش بيمنع — ممكن يكون فيه عملاء مختلفين بأسماء متشابهة (أرقام/إيميلات مختلفة).
+    const ors: string[] = [];
     const sk1 = phoneKey(f.phone1), sk2 = phoneKey(f.phone2);
     if (sk1) ors.push(`phone1.like.%${sk1}`, `phone2.like.%${sk1}`);
     if (sk2) ors.push(`phone1.like.%${sk2}`, `phone2.like.%${sk2}`);
     if (f.email.trim()) ors.push(`email.eq.${f.email.trim()}`);
-    const { data: exist } = await supabase.from("customers")
-      .select("id,name").eq("deleted", false).or(ors.join(",")).limit(1).maybeSingle();
-    if (exist) {
-      setSaving(false);
-      setStep(1);
-      setDup({ id: exist.id as string, name: (exist.name as string) || tr("customer") });
-      toast(tr("customerAlreadyExists"));
-      setTimeout(() => dupRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
-      return;
+    if (ors.length) {
+      const { data: exist } = await supabase.from("customers")
+        .select("id,name").eq("deleted", false).or(ors.join(",")).limit(1).maybeSingle();
+      if (exist) {
+        setSaving(false);
+        setStep(1);
+        setDup({ id: exist.id as string, name: (exist.name as string) || tr("customer") });
+        toast(tr("customerAlreadyExists"));
+        setTimeout(() => dupRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
+        return;
+      }
     }
 
     const { data: cust, error } = await supabase.from("customers").insert({
@@ -495,7 +499,17 @@ export default function NewCustomerForm({
                   {STAGES.map((s) => <option key={s[0]} value={s[0]}>{tr(s[1])}</option>)}
                 </select></div>
             </div>
-            <div className="frow">{I(tr("residence"), "residency")}{I(tr("gradYear"), "grad_year", true)}</div>
+            <div className="frow">
+              <div className="fld"><label>{tr("country")}</label>
+                <SearchSelect
+                  options={ARAB_COUNTRIES.map((c) => ({ value: c, label: c }))}
+                  value={f.residency} onChange={(v) => set("residency", v)}
+                  placeholder={tr("selectDash")} searchPlaceholder={tr("countrySearchPh")}
+                  frequentValues={FREQUENT_COUNTRIES} frequentLabel={tr("mostUsed")}
+                  allowCustom addPrefix={tr("add")} allowEmpty />
+              </div>
+              {I(tr("gradYear"), "grad_year", true)}
+            </div>
             <div className="frow">
               <div className="fld"><label>{tr("source")}</label>
                 <input className="inp" list="src-list" value={f.source} onChange={(e) => set("source", e.target.value)} placeholder={tr("sourcePlaceholder")} />

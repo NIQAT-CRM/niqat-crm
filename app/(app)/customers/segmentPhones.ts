@@ -76,7 +76,7 @@ export async function getSegmentPhones(f: SP): Promise<string[]> {
   // (2) نجيب الأرقام مع فلاتر أعمدة العميل (deleted/مؤرشف/بحث/مرحلة/تخصص/مسؤول/شركة)
   const applyCols = (cq: any) => {
     cq = cq.eq("deleted", false).not("archived", "is", true);
-    if (q) cq = cq.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
+    if (q) cq = cq.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,phone2.ilike.%${q}%,email.ilike.%${q}%`);
     if (stageVals.length) cq = cq.in("stage", stageVals);
     if (specVals.length) cq = cq.in("specialty_id", specVals);
     if (companyVals.length) cq = cq.in("company", companyVals);

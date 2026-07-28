@@ -3,6 +3,8 @@ import { useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/lib/i18n/client";
+import SearchSelect from "../../SearchSelect";
+import { ARAB_COUNTRIES, FREQUENT_COUNTRIES } from "@/lib/countries";
 
 type Spec = { id: string; name_ar: string };
 type C = {
@@ -130,8 +132,13 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
                 <input className={inp} value={f.company} onChange={(e) => set("company", e.target.value)} />
               </div>
               <div className={fld}>
-                <label className={lbl} style={lblStyle}>{tr("residence")}</label>
-                <input className={inp} value={f.residency} onChange={(e) => set("residency", e.target.value)} />
+                <label className={lbl} style={lblStyle}>{tr("country")}</label>
+                <SearchSelect
+                  options={ARAB_COUNTRIES.map((c) => ({ value: c, label: c }))}
+                  value={f.residency} onChange={(v) => set("residency", v)}
+                  placeholder={tr("selectDash")} searchPlaceholder={tr("countrySearchPh")}
+                  frequentValues={FREQUENT_COUNTRIES} frequentLabel={tr("mostUsed")}
+                  allowCustom addPrefix={tr("add")} allowEmpty />
               </div>
             </div>
           </>
