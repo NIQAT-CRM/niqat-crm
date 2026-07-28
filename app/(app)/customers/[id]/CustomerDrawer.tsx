@@ -130,17 +130,19 @@ export default function CustomerDrawer(props: {
   const qbtnWa: React.CSSProperties = { ...qbtn, background: "var(--wa)", color: "#fff", borderColor: "var(--wa)" };
 
   const quickBar = (
-    <div style={{ display: "flex", gap: 8, padding: "12px 18px", borderBottom: "1px solid var(--line)", background: "linear-gradient(0deg,var(--muted-soft),transparent)", overflowX: "auto" }}>
+    <div style={{ display: "flex", gap: 8, padding: "12px 18px", borderBottom: "1px solid var(--line)", background: "linear-gradient(0deg,var(--muted-soft),transparent)", flexWrap: "wrap" }}>
       {props.canMessage && (
         <button type="button" style={qbtnWa} onClick={() => cardAction("whatsapp")}>
           <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1-.4-.1-.9-.3-1.6-.6-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8s.7-2 .9-2.2c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5.2.5.7 1.8.8 1.9.1.1.1.3 0 .5-.3.6-.6.8-.8 1-.1.2-.3.4-.1.7.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.7-.1.2-.2.8-.9 1-1.2.2-.3.4-.2.7-.1.3.1 1.8.8 2.1 1 .3.1.5.2.6.3.1.2.1.7-.1 1.3z" /></svg>
           {tr("qaWhatsapp")}
         </button>
       )}
-      <button type="button" style={qbtn} onClick={() => cardAction("followup")}>
-        <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" /></svg>
-        {tr("qaFollow")}
-      </button>
+      {props.canFinance && (
+        <button type="button" style={{ ...qbtn, background: "rgba(24,169,87,.12)", color: "var(--green)", borderColor: "rgba(24,169,87,.4)" }} onClick={() => cardAction("payment")}>
+          <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>
+          {tr("qaPayment")}
+        </button>
+      )}
       <button type="button" style={qbtn} onClick={() => cardAction("handoff")}>
         <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
         {tr("qaHandoff")}
@@ -149,12 +151,6 @@ export default function CustomerDrawer(props: {
         <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
         {tr("qaService")}
       </button>
-      {props.canFinance && (
-        <button type="button" style={{ ...qbtn, background: "rgba(24,169,87,.12)", color: "var(--green)", borderColor: "rgba(24,169,87,.4)" }} onClick={() => cardAction("payment")}>
-          <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>
-          {tr("qaPayment")}
-        </button>
-      )}
     </div>
   );
 
