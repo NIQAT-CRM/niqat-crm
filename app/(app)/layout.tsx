@@ -12,6 +12,7 @@ import DailyGreeting from "./DailyGreeting";
 import SidebarRail from "./SidebarRail";
 import RealtimeRefresh from "./RealtimeRefresh";
 import InternalChat from "./InternalChat";
+import Shortcuts, { type SC } from "./Shortcuts";
 // import AnimatedMain from "./AnimatedMain";
 import { LangProvider } from "@/lib/i18n/client";
 import { getLang, tFor } from "@/lib/i18n";
@@ -105,6 +106,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const name = profile?.full_name || user.email || t("userFallback");
+
+  // اختصارات الكيبورد — المفعّلة + المسموح بها للمستخدم فقط (طبقة مستقلة)
+  const { data: scAll } = await supabase.from("keyboard_shortcuts")
+    .select("code,combo,category,action_type,target,label_ar,label_en,perm,context").eq("enabled", true).order("sort");
+  const shortcuts: SC[] = ((scAll as any[]) || [])
+    .filter((s) => !s.perm || (profile as any)?.[s.perm])
+    .map((s) => ({ code: s.code, combo: s.combo, category: s.category, action_type: s.action_type, target: s.target || "", label_ar: s.label_ar, label_en: s.label_en || "", context: s.context || "" }));
   const teamKey = (profile?.team || "").toLowerCase();
   const teamLabel = TEAM_LBL[teamKey] ? TEAM_LBL[teamKey][lang] : (profile?.team || "—");
 
@@ -174,6 +182,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <ConfirmHost />
     <DailyGreeting />
     <InternalChat me={{ id: user.id, name, team: (profile?.team || "").toLowerCase(), sound: profile?.chat_sound !== false }} />
+    <Shortcuts shortcuts={shortcuts} />
     </div>
     </LangProvider>
   );
