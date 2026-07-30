@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     description: "نظام إدارة عملاء نقاط",
     url: "https://niqatcrm.com",
     siteName: "Niqat CRM",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "نقاط CRM" }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Niqat CRM" }],
     locale: "ar_EG",
     type: "website",
   },
