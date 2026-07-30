@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "نقاط CRM",
+    title: "Niqat CRM",
     description: "نظام إدارة عملاء نقاط",
     images: ["/og-image.png"],
   },
