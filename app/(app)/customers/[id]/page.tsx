@@ -227,6 +227,19 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     return s + ((e.agreed || 0) - paid);
   }, 0);
 
+  // حالة الأكسس (معلومة سريعة): مفعّل / بانتظار التفعيل / مدفوع محتاج تفعيل / لسه مدفعش
+  const accessState = (c as any).handed_off ? "active"
+    : (handoff && handoff.status !== "done") ? "awaiting"
+    : (c.stage === "enrolled") ? "paid_need"
+    : "not_paid";
+  const ACCESS_UI: Record<string, { k: string; bg: string; color: string; icon: string }> = {
+    active: { k: "accessActive", bg: "rgba(24,169,87,.14)", color: "#18A957", icon: "✓" },
+    awaiting: { k: "accessAwaiting", bg: "rgba(47,107,255,.12)", color: "#2F6BFF", icon: "⏳" },
+    paid_need: { k: "accessPaidNeed", bg: "rgba(230,167,0,.14)", color: "#a5790a", icon: "●" },
+    not_paid: { k: "accessNotPaid", bg: "var(--muted-soft)", color: "var(--muted)", icon: "🔒" },
+  };
+  const acc = ACCESS_UI[accessState];
+
   return (
     <>
       <RealtimeRefresh tables={["customers","enrollments","installments","tickets","tasks","follow_ups","communications","customer_addons","refunds","handoffs","handoff_items"]} />
@@ -248,6 +261,9 @@ export default async function CustomerDetail({ params }: { params: { id: string 
                   {tr("remainingWord")} <span className="num">{new Intl.NumberFormat("en").format(Math.round(headerRemaining))}</span>
                 </span>
               )}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 20, background: acc.bg, color: acc.color }} title={tr("accessStatusLabel")}>
+                {acc.icon} {tr(acc.k)}
+              </span>
               <CopyNumbers phones={[c.phone1 as string, c.phone2 as string]} />
             </div>
 
@@ -281,6 +297,15 @@ export default async function CustomerDetail({ params }: { params: { id: string 
           </div>
           <DrawerCloseButton label={tr("close")} />
         </div>
+        {notes && notes.length > 0 && (
+          <div style={{ margin: "12px 18px 0", padding: "10px 14px", background: "rgba(240,138,36,.08)", borderInlineStart: "3px solid var(--brand)", borderRadius: 8, display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <span style={{ flexShrink: 0, fontSize: 14, marginTop: 1 }}>📝</span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: "var(--brand-d)", marginBottom: 2, letterSpacing: ".02em" }}>{tr("customerNoteLabel")}</div>
+              <div style={{ fontSize: 12.5, color: "var(--ink)", lineHeight: 1.5, wordBreak: "break-word" }}>{notes[0].body}</div>
+            </div>
+          </div>
+        )}
         <div className="dr-b" style={{ display: "flex", flexDirection: "column" }}>
           <CustomerDrawer
             user={user} c={c} specs={specs || []} countries={((ctry as any[]) || []).map((x) => x.name).filter(Boolean)}
