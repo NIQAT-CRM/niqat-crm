@@ -188,11 +188,13 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const spName = new Map(((spRes.data as any[]) || []).map((s) => [s.id, s.name_ar]));
   const enrollments = (enrRes.data as any[]) || [];
 
-  // خرايط أسماء الدبلومات للعميل (للعرض)
+  // خرايط أسماء الدبلومات + أكواد الباتشات للعميل (للعرض)
   const custDips = new Map<string, string[]>();
+  const custBatches = new Map<string, string[]>();
   for (const e of enrollments) {
     const cid = e.customer_id;
     if (e.diplomas?.name_ar) { const a = custDips.get(cid) || []; if (!a.includes(e.diplomas.name_ar)) a.push(e.diplomas.name_ar); custDips.set(cid, a); }
+    if (e.batches?.code) { const b = custBatches.get(cid) || []; if (!b.includes(e.batches.code)) b.push(e.batches.code); custBatches.set(cid, b); }
   }
 
   // الرصيد المتبقّي + العملة + وسم "متأخر" — للصفوف المعروضة فقط (سريع، ≤ صفحة واحدة)
@@ -334,6 +336,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
             {customers.map((r) => {
               const st = STAGES[r.stage] || STAGES.interested;
               const dips = custDips.get(r.id) || [];
+              const bts = custBatches.get(r.id) || [];
               const rem = remMap.get(r.id) || 0;
               const od = overdueSet.has(r.id);
               return (
@@ -351,6 +354,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
                       <>
                         <span className="chip">{dips[0]}</span>
                         {dips.length > 1 && <span className="chip" style={{ background: "var(--brand-soft)", color: "var(--brand)" }}>+{dips.length - 1}</span>}
+                        {bts.length > 0 && <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 3, fontFamily: "var(--fe)", direction: "ltr", textAlign: "start" }}>{bts.join(" · ")}</div>}
                       </>
                     ) : "—"}
                   </td>

@@ -231,7 +231,7 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "10px 12px", marginBottom: 12, borderRadius: 10, background: "var(--brand-soft)", border: "1px solid #f6d6b0" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "10px 12px", marginBottom: 12, borderRadius: 10, background: "var(--brand-soft)", border: "1px solid #f6d6b0", position: "sticky", top: 0, zIndex: 40, boxShadow: "0 6px 18px rgba(0,0,0,.12)" }}>
         <span style={{ fontWeight: 800, fontSize: 13, color: "var(--brand-d)" }}>
           {tr("bulkSelectedCount").replace("{n}", String(count))}
         </span>
