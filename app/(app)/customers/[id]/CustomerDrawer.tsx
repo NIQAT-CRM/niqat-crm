@@ -286,7 +286,7 @@ export default function CustomerDrawer(props: {
               {(props.auditRows || []).map((a: any, idx: number) => {
                 const v = tlVisual(a.action);
                 const title = props.AUDIT_KEYS[a.action] ? tr(props.AUDIT_KEYS[a.action]) : a.action;
-                const dt = String(a.at || "").replace("T", " ").slice(0, 16);
+                const dt = a.at ? new Date(a.at).toLocaleString("ar-EG", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) : "";
                 const last = idx === (props.auditRows || []).length - 1;
                 return (
                   <div key={idx} style={{ display: "flex", gap: 12, position: "relative", paddingBottom: last ? 0 : 16 }}>

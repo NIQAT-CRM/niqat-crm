@@ -467,14 +467,24 @@ export default function NewCustomerForm({
             <div className="fld"><label>{tr("name")} *</label>
               <input className="inp" value={f.name} onChange={(e) => setName(e.target.value)} placeholder={tr("nameEnOnlyPh")} dir="ltr" /></div>
             <div className="frow">{PhoneField(tr("phone1"), "phone1", dial1, setDial1)}{PhoneField(tr("phone2"), "phone2", dial2, setDial2)}</div>
-            <div className="frow">{I(tr("email"), "email", true)}{I(tr("company"), "company")}</div>
-            <div className="fld"><label>{tr("country")}</label>
-              <SearchSelect
-                options={countryOpts}
-                value={f.residency} onChange={(v) => set("residency", v)}
-                placeholder={tr("selectDash")} searchPlaceholder={tr("countrySearchPh")}
-                frequentValues={FREQUENT_COUNTRIES} frequentLabel={tr("mostUsed")}
-                allowCustom addPrefix={tr("add")} allowEmpty />
+            <div className="frow">
+              {I(tr("email"), "email", true)}
+              <div className="fld"><label>{tr("engSpec")}</label>
+                <select className="inp" value={f.specialty_id} onChange={(e) => set("specialty_id", e.target.value)}>
+                  <option value="">{tr("selectDash")}</option>
+                  {specialties.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select></div>
+            </div>
+            <div className="frow">
+              {I(tr("gradYear"), "grad_year", true)}
+              <div className="fld"><label>{tr("country")}</label>
+                <SearchSelect
+                  options={countryOpts}
+                  value={f.residency} onChange={(v) => set("residency", v)}
+                  placeholder={tr("selectDash")} searchPlaceholder={tr("countrySearchPh")}
+                  frequentValues={FREQUENT_COUNTRIES} frequentLabel={tr("mostUsed")}
+                  allowCustom addPrefix={tr("add")} allowEmpty />
+              </div>
             </div>
 
             {/* بند 3: تحذير تكرار فوري أثناء الكتابة */}
@@ -485,10 +495,6 @@ export default function NewCustomerForm({
                 <a href={`/customers/${liveDup.id}`} style={{ color: "var(--brand)", fontWeight: 700, marginInlineStart: "auto", whiteSpace: "nowrap" }}>{tr("openExistingAccount")} ←</a>
               </div>
             )}
-
-            {I(tr("affiliateCode"), "affiliate_code", true)}
-            {affMatch && <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: "var(--green)", marginTop: -6, marginBottom: 8 }}><Ic name="check" size={14} /> {affMatch.name} — {tr("discountWord")} {discPct}%</div>}
-            {affUnknown && <div style={{ fontSize: 12.5, color: "#E0483B", marginTop: -6, marginBottom: 8 }}>{tr("codeNotInList")}</div>}
 
             {dup && (
               <div ref={dupRef} style={{ border: "1px solid var(--red)", background: "var(--red-soft)", borderRadius: 10, padding: 12, marginBottom: 10, fontSize: 13.5 }}>
@@ -502,25 +508,25 @@ export default function NewCustomerForm({
             <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
             <Head icon="briefcase" tint="#7B61FF" title={tr("salesData")} />
             <div className="frow">
-              <div className="fld"><label>{tr("engSpec")}</label>
-                <select className="inp" value={f.specialty_id} onChange={(e) => set("specialty_id", e.target.value)}>
-                  <option value="">{tr("selectDash")}</option>
-                  {specialties.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select></div>
+              {I(tr("company"), "company")}
               <div className="fld"><label>{tr("stage")}</label>
                 <select className="inp" value={f.stage} onChange={(e) => set("stage", e.target.value)}>
                   {STAGES.map((s) => <option key={s[0]} value={s[0]}>{tr(s[1])}</option>)}
                 </select></div>
             </div>
+            <div>
+              {I(tr("affiliateCode"), "affiliate_code", true)}
+              {affMatch && <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: "var(--green)", marginTop: -6, marginBottom: 8 }}><Ic name="check" size={14} /> {affMatch.name} — {tr("discountWord")} {discPct}%</div>}
+              {affUnknown && <div style={{ fontSize: 12.5, color: "#E0483B", marginTop: -6, marginBottom: 8 }}>{tr("codeNotInList")}</div>}
+            </div>
             <div className="frow">
-              {I(tr("gradYear"), "grad_year", true)}
               <div className="fld"><label>{tr("source")}</label>
                 <input className="inp" list="src-list" value={f.source} onChange={(e) => set("source", e.target.value)} placeholder={tr("sourcePlaceholder")} />
                 <datalist id="src-list">{sources.map((x) => <option key={x} value={x} />)}</datalist>
               </div>
+              <div className="fld"><label>{tr("followUpDate")}</label>
+                <input className="inp num" type="datetime-local" dir="ltr" value={f.follow} onChange={(e) => set("follow", e.target.value)} /></div>
             </div>
-            <div className="fld"><label>{tr("followUpDate")}</label>
-              <input className="inp num" type="datetime-local" dir="ltr" value={f.follow} onChange={(e) => set("follow", e.target.value)} /></div>
 
             <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
               <button type="button" onClick={() => setStep(2)} className="btn" style={{ flex: 1, justifyContent: "center" }}>{tr("nextStep")} ←</button>
