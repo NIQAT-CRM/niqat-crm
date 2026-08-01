@@ -24,6 +24,7 @@ export default function ShortcutsManager({ initial }: { initial: Row[] }) {
   const [nCombo, setNCombo] = useState("");
   const [nTarget, setNTarget] = useState("");
 
+  const [open, setOpen] = useState(false);
   const label = (r: Row) => (lang === "ar" ? r.label_ar : (r.label_en || r.label_ar));
   const catName: Record<string, string> = { navigation: tr("scNav"), actions: tr("scActions"), customer: tr("scCustomer") };
 
@@ -63,11 +64,15 @@ export default function ShortcutsManager({ initial }: { initial: Row[] }) {
   const grouped = ["navigation", "actions", "customer"].map((c) => ({ c, items: rows.filter((r) => r.category === c) })).filter((g) => g.items.length);
 
   return (
-    <div className="intcard settings-anim" style={{ gridColumn: "1 / -1" }}>
-      <div className="intcard-h">
+    <div className="intcard settings-anim">
+      <div className="intcard-h" onClick={() => setOpen((o) => !o)} style={{ cursor: "pointer", marginBottom: open ? 16 : 0 }}>
         <div><h3>⌨️ {tr("scHelpTitle")}</h3><p>{tr("scManageHint")}</p></div>
+        <button className="rowbtn" onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }} title={open ? tr("collapse") : tr("expand")} style={{ flexShrink: 0 }}>
+          <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.4} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }}><path d="M6 9l6 6 6-6" /></svg>
+        </button>
       </div>
 
+      {open && (<>
       {grouped.map(({ c, items }) => (
         <div key={c} style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 11.5, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>{catName[c] || c}</div>
@@ -94,6 +99,7 @@ export default function ShortcutsManager({ initial }: { initial: Row[] }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M12 5v14M5 12h14" /></svg>
         </button>
       </div>
+      </>)}
     </div>
   );
 }

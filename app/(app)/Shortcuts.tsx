@@ -25,6 +25,16 @@ function drawerOpen(): boolean {
   return !!document.querySelector(".drawer-panel");
 }
 
+// المفتاح الفيزيائي (مستقل عن لغة الكيبورد عربي/إنجليزي) — نعتمد e.code مش e.key
+function physKey(e: KeyboardEvent): string {
+  const c = e.code || "";
+  const m = c.match(/^Key([A-Z])$/);
+  if (m) return m[1].toLowerCase();
+  if (c === "Slash") return e.shiftKey ? "?" : "/";
+  if (c === "Digit1" && e.shiftKey) return "!";
+  return (e.key || "").toLowerCase();
+}
+
 export default function Shortcuts({ shortcuts }: { shortcuts: SC[] }) {
   const router = useRouter();
   const tr = useT();
@@ -60,8 +70,9 @@ export default function Shortcuts({ shortcuts }: { shortcuts: SC[] }) {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      // Command Palette: Ctrl/Cmd + K — يشتغل حتى لو بتكتب
-      if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
+      const pk = physKey(e);
+      // Command Palette: Ctrl/Cmd + K — يشتغل حتى لو بتكتب أو الكيبورد عربي
+      if ((e.ctrlKey || e.metaKey) && pk === "k") {
         e.preventDefault(); setPaletteOpen((o) => !o); setHelpOpen(false); return;
       }
       // Esc: يقفل المودالات بتاعتنا بس (الدروار له معالج خاص)
@@ -77,24 +88,23 @@ export default function Shortcuts({ shortcuts }: { shortcuts: SC[] }) {
       // معدّلات (Ctrl/Alt/Meta) → تجاهل (عشان مانكسرش اختصارات المتصفح)
       if (e.ctrlKey || e.altKey || e.metaKey) return;
 
-      const k = e.key;
       // وضع G ثم حرف
       if (gPending.current) {
         gPending.current = false;
         if (gTimer.current) clearTimeout(gTimer.current);
-        const combo = "g " + k.toLowerCase();
+        const combo = "g " + pk;
         const s = shortcuts.find((x) => x.combo.toLowerCase() === combo);
         if (s) { e.preventDefault(); runShortcut(s); return; }
         return;
       }
-      if (k === "g" || k === "G") {
+      if (pk === "g") {
         gPending.current = true;
         if (gTimer.current) clearTimeout(gTimer.current);
         gTimer.current = setTimeout(() => { gPending.current = false; }, 1000);
         return;
       }
-      // مفاتيح مفردة
-      const single = shortcuts.find((x) => x.combo.toLowerCase() === k.toLowerCase() && x.combo.length <= 2);
+      // مفاتيح مفردة (بالمفتاح الفيزيائي)
+      const single = shortcuts.find((x) => x.combo.toLowerCase() === pk && x.combo.length <= 2 && x.combo !== "mod+k");
       if (single) { e.preventDefault(); runShortcut(single); }
     }
     window.addEventListener("keydown", onKey);
