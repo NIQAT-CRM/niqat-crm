@@ -3,10 +3,13 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useT, useLang } from "@/lib/i18n/client";
+import SharedReceiptModal from "./SharedReceiptModal";
 
+export type Alloc = { customerId: string; name: string; phone: string; amount: number; currency: string };
 export type Receipt = {
   receiptUrl: string; customerId: string; customerName: string; phone1: string;
   amount: number | null; hasAmount: boolean; currency: string; uploadedAt: string; ownerName: string;
+  isShared?: boolean; allocations?: Alloc[]; note?: string;
 };
 
 function cairoDayKey(iso: string): string {
@@ -16,13 +19,14 @@ function cairoTime(iso: string, lang: string): string {
   return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 }
 
-export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
+export default function ScreenshotsView({ rows, canCreate = false }: { rows: Receipt[]; canCreate?: boolean }) {
   const tr = useT();
   const lang = useLang();
   const supabase = createClient();
   const [selDay, setSelDay] = useState<string>("");
   const [signed, setSigned] = useState<Record<string, string>>({});
   const [lbIdx, setLbIdx] = useState<number | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const nf = useMemo(() => new Intl.NumberFormat(lang === "ar" ? "ar-EG" : "en-US"), [lang]);
   const fmtMoney = (v: number, cur: string) => `${nf.format(v)} ${cur === "USD" ? tr("usd") : tr("egp")}`;
@@ -119,7 +123,13 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
   const arrowBtn = (disabled: boolean): React.CSSProperties => ({ width: 40, height: 40, borderRadius: 11, border: "1px solid var(--line)", background: disabled ? "var(--bg)" : "var(--surface)", color: disabled ? "var(--line)" : "var(--brand-d)", cursor: disabled ? "not-allowed" : "pointer", display: "grid", placeItems: "center", boxShadow: disabled ? "none" : "var(--sh)", transition: "all .15s" });
 
   if (rows.length === 0) {
-    return <div style={{ padding: "60px 18px", textAlign: "center", color: "var(--muted)" }}>{tr("noReceiptsYet")}</div>;
+    return (
+      <div style={{ padding: "50px 18px", textAlign: "center", color: "var(--muted)" }}>
+        <div style={{ marginBottom: 16 }}>{tr("noReceiptsYet")}</div>
+        {canCreate && <button onClick={() => setCreating(true)} className="btn" style={{ height: 42, padding: "0 18px", gap: 6, background: "var(--green)" }}>🔗 {tr("shrNewBtn")}</button>}
+        {creating && <SharedReceiptModal onClose={() => setCreating(false)} />}
+      </div>
+    );
   }
 
   const Chevron = () => <svg style={chev} viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M6 9l6 6 6-6" /></svg>;
@@ -146,6 +156,12 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
             })}
           </select><Chevron />
         </div>
+        {canCreate && (
+          <button onClick={() => setCreating(true)} className="btn" style={{ height: 44, padding: "0 16px", marginInlineStart: "auto", gap: 6, background: "var(--green)" }}>
+            <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
+            {tr("shrNewBtn")}
+          </button>
+        )}
       </div>
 
       {/* ===== إجماليات اليوم — كروت أوضح ===== */}
@@ -189,8 +205,17 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
                   : <span style={{ fontSize: 11, color: "var(--muted)" }}>…</span>}
               </div>
               <div style={{ padding: "10px 12px" }}>
-                <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.customerName}</div>
-                <div className="n" style={{ fontSize: 12, color: "var(--muted)", direction: "ltr", textAlign: lang === "ar" ? "right" : "left" }}>{r.phone1}</div>
+                {r.isShared ? (
+                  <>
+                    <span style={{ display: "inline-block", fontSize: 10, fontWeight: 800, background: "var(--brand-soft)", color: "var(--brand-d)", borderRadius: 20, padding: "2px 8px", marginBottom: 4 }}>🔗 {tr("shrReceipt")} · {r.allocations?.length || 0}</span>
+                    <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 700, lineHeight: 1.45, maxHeight: 35, overflow: "hidden" }}>{(r.allocations || []).map((a) => a.name).join("، ")}</div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.customerName}</div>
+                    <div className="n" style={{ fontSize: 12, color: "var(--muted)", direction: "ltr", textAlign: lang === "ar" ? "right" : "left" }}>{r.phone1}</div>
+                  </>
+                )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 7, gap: 6 }}>
                   {r.hasAmount && r.amount != null
                     ? <b style={{ color: "var(--green)", fontSize: 13 }} className="n">{fmtMoney(r.amount, r.currency)}</b>
@@ -199,7 +224,9 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
                   <span style={{ fontSize: 11, color: "var(--muted)" }}>{r.ownerName || "—"}</span>
-                  <Link href={`/customers/${r.customerId}`} style={{ fontSize: 11, fontWeight: 700, color: "var(--brand-d)" }}>{tr("openCustomerCard")}</Link>
+                  {r.isShared
+                    ? <button onClick={() => setLbIdx(i)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, color: "var(--brand-d)", padding: 0 }}>{tr("shrDetails")}</button>
+                    : <Link href={`/customers/${r.customerId}`} style={{ fontSize: 11, fontWeight: 700, color: "var(--brand-d)" }}>{tr("openCustomerCard")}</Link>}
                 </div>
               </div>
             </div>
@@ -216,8 +243,8 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
             <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface)", borderRadius: 16, overflow: "hidden", maxWidth: 600, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,.4)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--line)" }}>
                 <div>
-                  <div style={{ fontWeight: 800, color: "var(--ink)" }}>{r.customerName}</div>
-                  <div className="n" style={{ fontSize: 12, color: "var(--muted)", direction: "ltr" }}>{r.phone1}{r.hasAmount && r.amount != null ? ` · ${fmtMoney(r.amount, r.currency)}` : ""}</div>
+                  <div style={{ fontWeight: 800, color: "var(--ink)" }}>{r.isShared ? `🔗 ${tr("shrReceipt")}` : r.customerName}</div>
+                  <div className="n" style={{ fontSize: 12, color: "var(--muted)", direction: "ltr" }}>{r.isShared ? `${r.allocations?.length || 0} · ${fmtMoney(r.amount || 0, r.currency)}` : `${r.phone1}${r.hasAmount && r.amount != null ? ` · ${fmtMoney(r.amount, r.currency)}` : ""}`}</div>
                 </div>
                 <button onClick={closeLb} style={{ background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 9, width: 32, height: 32, cursor: "pointer", color: "var(--muted)", fontSize: 18, lineHeight: 1 }}>×</button>
               </div>
@@ -227,6 +254,18 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
                   ? <img src={signed[r.receiptUrl]} alt={r.customerName} style={{ maxWidth: "100%", display: "block" }} />
                   : <span style={{ padding: 40, color: "var(--muted)" }}>…</span>}
               </div>
+
+              {r.isShared && (r.allocations?.length || 0) > 0 && (
+                <div style={{ padding: "10px 16px", borderTop: "1px solid var(--line)", maxHeight: 200, overflowY: "auto" }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", marginBottom: 6 }}>{tr("shrCustomers")} ({r.allocations!.length})</div>
+                  {r.allocations!.map((a, ai) => (
+                    <div key={ai} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: ai < r.allocations!.length - 1 ? "1px solid var(--line)" : "none" }}>
+                      <Link href={`/customers/${a.customerId}`} style={{ fontSize: 12.5, fontWeight: 700, color: "var(--brand-d)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</Link>
+                      <b className="num" style={{ fontSize: 12.5, color: "var(--green)", flexShrink: 0 }} dir="ltr">{fmtMoney(a.amount, a.currency)}</b>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* شريط التنقّل بين الصور */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderTop: "1px solid var(--line)", gap: 10 }}>
@@ -245,12 +284,14 @@ export default function ScreenshotsView({ rows }: { rows: Receipt[] }) {
 
               <div style={{ padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)" }}>
                 <span style={{ fontSize: 12, color: "var(--muted)" }}>{r.ownerName || "—"} · {cairoTime(r.uploadedAt, lang)}</span>
-                <Link href={`/customers/${r.customerId}`} className="btn" style={{ fontSize: 13 }}>{tr("openCustomerCard")}</Link>
+                {!r.isShared && <Link href={`/customers/${r.customerId}`} className="btn" style={{ fontSize: 13 }}>{tr("openCustomerCard")}</Link>}
               </div>
             </div>
           </div>
         );
       })()}
+
+      {creating && <SharedReceiptModal onClose={() => setCreating(false)} />}
     </div>
   );
 }
