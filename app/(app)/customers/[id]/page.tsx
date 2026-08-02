@@ -98,7 +98,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const enrolls = (enrRows || []).map((e: any) => ({
     id: e.id, diploma: e.diplomas?.name_ar || "—", batch: e.batches?.code || "—",
     diplomaId: e.diploma_id || "", batchId: e.batch_id || "",
-    transferCount: Number(e.transfer_count) || 0,
+    transferCount: Number(e.transfer_count) || 0, status: e.status || "active",
   }));
   const dipOpts = (allDips || []).map((d: any) => ({ v: d.id, label: d.name_ar }));
   const batchOpts = (allBatches || []).map((b: any) => ({ v: b.id, label: b.code, dip: b.diploma_id || "", status: b.status || "", done: !!b.done, price: Number(b.price) || 0, currency: b.currency || "EGP", price_egp: Number(b.price_egp) || 0, price_usd: Number(b.price_usd) || 0 }));
@@ -221,7 +221,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const createdRel = relDays((c as any).created_at);
 
   // شيبس الهيدر: الدبلومة·الباتش (أول اشتراك) + المتبقّي (canFinance)
-  const firstEnr = enrolls[0];
+  const firstEnr = enrolls.find((e: any) => e.status !== "refunded") || enrolls[0];
   const headerRemaining = (finEnrollments || []).reduce((s: number, e: any) => {
     const paid = (e.installments || []).filter((i: any) => i.paidAt || i.status === "paid").reduce((a: number, i: any) => a + (i.amount || 0), 0);
     return s + ((e.agreed || 0) - paid);

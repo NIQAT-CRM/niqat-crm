@@ -6,7 +6,7 @@ import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 
 type Opt = { v: string; label: string };
-type Enr = { id: string; diploma: string; batch: string; diplomaId: string; batchId: string };
+type Enr = { id: string; diploma: string; batch: string; diplomaId: string; batchId: string; status?: string };
 
 export default function SubscriptionsPanel({
   customerId, meId, enrolls, dipOpts, batchOpts, canFinance,
@@ -94,19 +94,23 @@ export default function SubscriptionsPanel({
 
       {enrolls.length === 0 && !adding ? (
         <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noSubscriptions")}</div>
-      ) : enrolls.map((e) => (
-        <div key={e.id} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
+      ) : enrolls.map((e) => {
+        const refunded = e.status === "refunded";
+        return (
+        <div key={e.id} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", marginBottom: 6, opacity: refunded ? .65 : 1, background: refunded ? "var(--muted-soft)" : "transparent" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-            <b style={{ color: "var(--ink)" }}>{e.diploma}</b>
+            <b style={{ color: "var(--ink)", textDecoration: refunded ? "line-through" : "none" }}>{e.diploma}
+              {refunded && <span style={{ marginInlineStart: 8, fontSize: 10.5, fontWeight: 800, background: "var(--red-soft)", color: "var(--red)", borderRadius: 20, padding: "2px 8px", textDecoration: "none", display: "inline-block" }}>↩ {tr("refundedBadge")}</span>}
+            </b>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ color: "var(--muted)", fontSize: 13 }}>{tr("batchColon")} <span className="num">{e.batch}</span></span>
-              <button onClick={() => { setMoveFor(moveFor === e.id ? null : e.id); setMoveTo(e.batchId); }}
+              {!refunded && <button onClick={() => { setMoveFor(moveFor === e.id ? null : e.id); setMoveTo(e.batchId); }}
                 style={{ color: "var(--brand)", fontWeight: 700, fontSize: 12, background: "none", border: "none", cursor: "pointer" }}>
                 {tr("move")}
-              </button>
+              </button>}
             </div>
           </div>
-          {moveFor === e.id && (
+          {!refunded && moveFor === e.id && (
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               <select className="inp" style={{ flex: 1, height: 36 }} value={moveTo} onChange={(ev) => setMoveTo(ev.target.value)}>
                 {batchOpts.map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
@@ -116,7 +120,8 @@ export default function SubscriptionsPanel({
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
