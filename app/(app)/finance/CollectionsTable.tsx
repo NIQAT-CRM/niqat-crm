@@ -30,10 +30,16 @@ export default function CollectionsTable({ rows }: { rows: Row[] }) {
 
   async function markPaid(id: string) {
     setBusy(id);
+    const row = list.find((r) => r.id === id);
     const { error } = await supabase.from("installments")
       .update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", id);
+    if (error) { setBusy(null); toast(tr("updateFailed") + error.message); return; }
+    // حوّل العميل لـ «مسجّل / دفع» أول ما يتأكّد الدفع (زي باقي أماكن تأكيد الدفع)
+    if (row?.customerId) {
+      await supabase.from("customers").update({ stage: "enrolled" }).eq("id", row.customerId);
+      await supabase.from("audit_log").insert({ customer_id: row.customerId, action: "stage_change", detail: tr("dashStageEnrolled") });
+    }
     setBusy(null);
-    if (error) { toast(tr("updateFailed") + error.message); return; }
     setList((l) => l.filter((r) => r.id !== id));
     router.refresh();
   }
