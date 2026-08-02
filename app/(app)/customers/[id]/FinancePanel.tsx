@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
+import { confirmDialog } from "@/lib/confirm";
 import FileDrop from "@/lib/ui/FileDrop";
 
 type Inst = { id: string; amount: number; currency: string; due: string; status: string; paidAt: string | null; shot: string | null };
 type Enr = { id: string; diploma: string; status: string; free: boolean; freeReason: string; agreed: number; currency: string; installments: Inst[]; batchId?: string; batch?: string };
-type Opt = { v: string; label: string };
+type Opt = { v: string; label: string; dip?: string };
 type Addon = { id: string; name: string; type?: string; paid?: boolean };
 
 function money(n: number, cur: string) {
@@ -25,7 +26,7 @@ function payMode(e: Enr): "cash" | "installment" | "none" {
   return "installment";
 }
 
-export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], addons = [], handedOff = false, stage = "" }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; addons?: Addon[]; handedOff?: boolean; stage?: string }) {
+export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], diplomas = [], addons = [], handedOff = false, stage = "" }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; diplomas?: Opt[]; addons?: Addon[]; handedOff?: boolean; stage?: string }) {
   const tr = useT();
   const supabase = createClient();
   const router = useRouter();
@@ -43,6 +44,14 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
   useEffect(() => () => { if (payUrl) URL.revokeObjectURL(payUrl); }, [payUrl]);
   const [editAgreedId, setEditAgreedId] = useState<string | null>(null);
   const [editAgreedVal, setEditAgreedVal] = useState("");
+  // (أ) تعديل الدبلومة/الباتش للاشتراك
+  const [editEnr, setEditEnr] = useState<string | null>(null);
+  const [edDip, setEdDip] = useState("");
+  const [edBatch, setEdBatch] = useState("");
+  // (ب) تعديل مبلغ/تاريخ القسط
+  const [editInst, setEditInst] = useState<string | null>(null);
+  const [edAmt, setEdAmt] = useState("");
+  const [edDue, setEdDue] = useState("");
 
   // ===== قايمة التفعيل المنبثقة (تظهر بعد اكتمال الدفع، قبل تحويل العميل للدعم) =====
   const [actEnr, setActEnr] = useState<Enr | null>(null);
@@ -164,6 +173,35 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
     setPayFor(null); setPayFile(null); setPayAmount(""); setPayCurrency("");
     toast(tr("paymentLogged")); router.refresh();
   }
+  // (أ) حفظ تعديل الدبلومة/الباتش للاشتراك — بتأكيد قوي
+  async function saveEnr(e: Enr) {
+    if (!await confirmDialog({ message: tr("editEnrConfirm"), confirmLabel: tr("yesEditSave"), cancelLabel: tr("keepIt"), danger: true })) return;
+    setBusy("enr:" + e.id);
+    const patch: any = {};
+    if (edDip) patch.diploma_id = edDip;
+    patch.batch_id = edBatch || null;
+    const { error } = await supabase.from("enrollments").update(patch).eq("id", e.id);
+    if (error) { setBusy(null); return toast(tr("updateFailed") + error.message); }
+    const dipName = diplomas.find((d) => d.v === edDip)?.label || e.diploma;
+    const bCode = batchOpts.find((b) => b.v === edBatch)?.label || "—";
+    await logAudit("update", `${tr("editSubscription")}: ${dipName} · ${bCode}`);
+    setBusy(null); setEditEnr(null);
+    toast(tr("changeSavedOk")); router.refresh();
+  }
+
+  // (ب) حفظ تعديل مبلغ/تاريخ القسط — بتأكيد قوي
+  async function saveInst(i: Inst) {
+    const amt = Number(edAmt);
+    if (isNaN(amt) || amt < 0) return toast(tr("enterValidAmount"));
+    if (!await confirmDialog({ message: tr("editInstConfirm"), confirmLabel: tr("yesEditSave"), cancelLabel: tr("keepIt"), danger: true })) return;
+    setBusy("inst:" + i.id);
+    const { error } = await supabase.from("installments").update({ amount: amt, due_date: edDue || null }).eq("id", i.id);
+    if (error) { setBusy(null); return toast(tr("updateFailed") + error.message); }
+    await logAudit("update", `${tr("editInstallment")}: ${money(amt, i.currency)}${edDue ? " · " + edDue : ""}`);
+    setBusy(null); setEditInst(null);
+    toast(tr("changeSavedOk")); router.refresh();
+  }
+
   async function addInstallment(e: Enr) {
     const a = Number(amt);
     if (!a || a <= 0) return toast(tr("enterValidAmount"));
@@ -212,6 +250,9 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
                   {e.free && <span style={{ color: "var(--brand)", fontSize: 12, marginInlineStart: 6 }}>🎁 {tr("gift")}</span>}
                   {!e.free && mode === "cash" && <span style={{ color: "var(--green)", fontSize: 11.5, marginInlineStart: 6, fontWeight: 700 }}>💵 {tr("cashBadge")}</span>}
                   {!e.free && mode === "installment" && <span style={{ color: "var(--amber)", fontSize: 11.5, marginInlineStart: 6, fontWeight: 700 }}>🗓️ {tr("installmentBadge")} ({instPaid}/{instTotal})</span>}
+                  <button title={tr("editSubscription")} onClick={() => { const o = editEnr !== e.id; setEditEnr(o ? e.id : null); setEdDip(o ? (diplomas.find((d) => d.label === e.diploma)?.v || "") : ""); setEdBatch(o ? (e.batchId || "") : ""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", marginInlineStart: 6, verticalAlign: "middle" }}>
+                    <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                  </button>
                 </b>
                 <div style={{ display: "flex", gap: 12, fontSize: 12.5 }}>
                   <span style={{ color: "var(--muted)" }}>{tr("agreed")}: {editAgreedId === e.id ? (
@@ -227,6 +268,32 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
                   <span style={{ color: "var(--amber)" }}>{tr("remaining")}: <b className="num">{money(remaining, e.currency)}</b></span>
                 </div>
               </div>
+
+              {editEnr === e.id && (
+                <div style={{ border: "1px solid var(--brand)", background: "var(--brand-soft)", borderRadius: 10, padding: 12, margin: "10px 0", display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "var(--brand-d)" }}>✎ {tr("editSubscription")}</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <div style={{ flex: 1, minWidth: 150 }}>
+                      <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, display: "block", marginBottom: 4 }}>{tr("diploma")}</label>
+                      <select className="inp" value={edDip} onChange={(ev) => { setEdDip(ev.target.value); setEdBatch(""); }} style={{ width: "100%" }}>
+                        <option value="">{tr("selectDash")}</option>
+                        {diplomas.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 150 }}>
+                      <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, display: "block", marginBottom: 4 }}>{tr("batch")}</label>
+                      <select className="inp" value={edBatch} onChange={(ev) => setEdBatch(ev.target.value)} style={{ width: "100%" }}>
+                        <option value="">{tr("selectDash")}</option>
+                        {batchOpts.filter((b) => !edDip || !b.dip || b.dip === edDip).map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => saveEnr(e)} disabled={busy === "enr:" + e.id} className="btn" style={{ height: 34, padding: "0 14px", fontSize: 12.5 }}>{busy === "enr:" + e.id ? "..." : tr("saveChanges")}</button>
+                    <button onClick={() => setEditEnr(null)} className="btn ghost" style={{ height: 34, padding: "0 12px", fontSize: 12.5 }}>{tr("cancel")}</button>
+                  </div>
+                </div>
+              )}
 
               {/* اكتمل الدفع (أو هدية) ولسه ما اتحوّلش للتفعيل → زر واضح يفتح قايمة التفعيل */}
               {fullyPaid && !handedOff && (
@@ -252,10 +319,32 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
                       <span className="num" dir="ltr" style={{ color: "var(--muted)", fontSize: 12 }}>{i.due || "—"}</span>
                       {i.shot && <a href={i.shot} target="_blank" rel="noreferrer" style={{ fontSize: 11.5, color: "var(--brand)", fontWeight: 700 }}>{tr("receipt")}</a>}
                       {paidNow ? badge(tr("paid"), "#18A957") : over ? badge(tr("overdue"), "#E0483B") : badge(tr("pending"), "#94A2BB")}
+                      <button title={tr("editInstallment")} onClick={() => { const o = editInst !== i.id; setEditInst(o ? i.id : null); setEdAmt(o ? String(i.amount) : ""); setEdDue(o ? (i.due || "") : ""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)" }}>
+                        <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                      </button>
                       {!paidNow ? (
                         <button onClick={() => { const opening = payFor !== i.id; setPayFor(opening ? i.id : null); setPayFile(null); setPayAmount(opening ? String(i.amount) : ""); setPayCurrency(opening ? i.currency : ""); }} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{tr("paid")}</button>
                       ) : <span style={{ width: 70 }} />}
                      </div>
+                     {editInst === i.id && (
+                       <div style={{ border: "1px solid var(--brand)", background: "var(--brand-soft)", borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                         <div style={{ fontSize: 11.5, fontWeight: 800, color: "var(--brand-d)" }}>✎ {tr("editInstallment")}</div>
+                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                           <div style={{ flex: 1, minWidth: 110 }}>
+                             <label style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700, display: "block", marginBottom: 3 }}>{tr("amountWord")}</label>
+                             <input className="inp num" dir="ltr" inputMode="numeric" value={edAmt} onChange={(ev) => setEdAmt(ev.target.value)} style={{ width: "100%", height: 34 }} />
+                           </div>
+                           <div style={{ flex: 1, minWidth: 130 }}>
+                             <label style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700, display: "block", marginBottom: 3 }}>{tr("dueDate")}</label>
+                             <input className="inp num" type="date" dir="ltr" value={edDue} onChange={(ev) => setEdDue(ev.target.value)} style={{ width: "100%", height: 34 }} />
+                           </div>
+                         </div>
+                         <div style={{ display: "flex", gap: 8 }}>
+                           <button onClick={() => saveInst(i)} disabled={busy === "inst:" + i.id} className="btn" style={{ height: 32, padding: "0 12px", fontSize: 12 }}>{busy === "inst:" + i.id ? "..." : tr("saveChanges")}</button>
+                           <button onClick={() => setEditInst(null)} className="btn ghost" style={{ height: 32, padding: "0 10px", fontSize: 12 }}>{tr("cancel")}</button>
+                         </div>
+                       </div>
+                     )}
                      {payFor === i.id && !paidNow && (
                        <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px dashed var(--line)", paddingTop: 10 }}>
                          <FileDrop value={payFile} onFile={setPayFile} onClear={() => setPayFile(null)} accept="image/*" label={tr("uploadTransferShot")} />

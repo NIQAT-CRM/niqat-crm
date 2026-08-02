@@ -223,7 +223,7 @@ export default function CustomerDrawer(props: {
                 <div className="num" style={{ fontSize: 15, fontWeight: 800, marginTop: 4, color: "#a5790a" }}>{fmtNum(finRemaining)}</div>
               </div>
             </div>
-            <FinancePanel enrollments={props.finEnrollments} customerId={props.c.id} meId={props.user?.id || ""} batchOpts={props.batchOpts} addons={(props.addons || []).filter((a: any) => a.paid)} handedOff={!!(props.c as any).handed_off} stage={(props.c as any).stage || ""} />
+            <FinancePanel enrollments={props.finEnrollments} customerId={props.c.id} meId={props.user?.id || ""} batchOpts={props.batchOpts} diplomas={props.dipOpts || []} addons={(props.addons || []).filter((a: any) => a.paid)} handedOff={!!(props.c as any).handed_off} stage={(props.c as any).stage || ""} />
           </div>
         )}
 
