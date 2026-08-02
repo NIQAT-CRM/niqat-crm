@@ -10,7 +10,7 @@ import FileDrop from "@/lib/ui/FileDrop";
 import SearchSelect from "../../SearchSelect";
 
 type Opt = { v: string; label: string; dip?: string; status?: string; done?: boolean; price?: number; currency?: string; price_egp?: number; price_usd?: number };
-type Enr = { id: string; diploma: string; batch: string; diplomaId: string; batchId: string; transferCount: number };
+type Enr = { id: string; diploma: string; batch: string; diplomaId: string; batchId: string; transferCount: number; status?: string };
 type Addon = { id: string; type: string; name: string; amount: number; free: boolean; note: string; paid: boolean; shot_url?: string };
 
 const SV_TYPES = [
@@ -300,12 +300,12 @@ export default function ServicesPanel({
         </div>
       )}
 
-      {/* الدبلومات (الاشتراكات) */}
-      {enrolls.length > 0 && (
+      {/* الدبلومات (الاشتراكات النشطة فقط — المستردة بتختفي وتظهر في التايم لاين) */}
+      {enrolls.filter((e) => e.status !== "refunded").length > 0 && (
         <div style={{ marginTop: 8 }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: "var(--muted)", marginBottom: 6 }}>{tr("diplomas")}</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,300px))", gap: 8, alignItems: "start", justifyContent: "start" }}>
-          {enrolls.map((e) => {
+          {enrolls.filter((e) => e.status !== "refunded").map((e) => {
             const m = stMeta("diploma");
             const moving = moveFor === e.id;
             return (

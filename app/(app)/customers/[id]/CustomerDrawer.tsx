@@ -102,7 +102,7 @@ export default function CustomerDrawer(props: {
   const showOps = props.canFinance || props.canManageBatches;
 
   // ملخص الماليات (عرض فقط — من finEnrollments، بدون لمس أي منطق مالي)
-  const finSum = (props.finEnrollments || []).reduce(
+  const finSum = (props.finEnrollments || []).filter((e: any) => e.status !== "refunded").reduce(
     (acc: { agreed: number; paid: number }, e: any) => {
       const paid = (e.installments || []).filter((i: any) => i.paidAt || i.status === "paid").reduce((a: number, i: any) => a + (i.amount || 0), 0);
       acc.agreed += e.agreed || 0; acc.paid += paid; return acc;

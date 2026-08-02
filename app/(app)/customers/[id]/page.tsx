@@ -222,7 +222,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
   // شيبس الهيدر: الدبلومة·الباتش (أول اشتراك) + المتبقّي (canFinance)
   const firstEnr = enrolls.find((e: any) => e.status !== "refunded") || enrolls[0];
-  const headerRemaining = (finEnrollments || []).reduce((s: number, e: any) => {
+  const headerRemaining = (finEnrollments || []).filter((e: any) => e.status !== "refunded").reduce((s: number, e: any) => {
     const paid = (e.installments || []).filter((i: any) => i.paidAt || i.status === "paid").reduce((a: number, i: any) => a + (i.amount || 0), 0);
     return s + ((e.agreed || 0) - paid);
   }, 0);

@@ -234,9 +234,9 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
   return (
     <div className="card" style={{ padding: 18, marginBottom: 14 }}>
       <div className="sec-t">{tr("financeAndInstallments")}</div>
-      {enrollments.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noEnrolls")}</div>}
+      {enrollments.filter((e) => e.status !== "refunded").length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noEnrolls")}</div>}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {enrollments.map((e) => {
+        {enrollments.filter((e) => e.status !== "refunded").map((e) => {
           const paid = paidOf(e);
           const remaining = (Number(e.agreed) || 0) - paid;
           const mode = payMode(e);
