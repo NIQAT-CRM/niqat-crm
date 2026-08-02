@@ -1,5 +1,6 @@
 import Link from "next/link";
 import RealtimeRefresh from "./RealtimeRefresh";
+import MonthlySales from "./MonthlySales";
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import BatchesByDiploma from "./BatchesByDiploma";
@@ -337,6 +338,13 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
     }
   }
 
+  // المبيعات الشهرية (نفس مصدر الإيصالات) — للكارت
+  let monthlySales: { ym: string; egp: number; usd: number; cnt: number }[] = [];
+  if (canDailySales || canFinance) {
+    const { data: ms } = await supabase.rpc("receipts_monthly");
+    monthlySales = ((ms as any[]) || []).map((m) => ({ ym: m.ym, egp: Number(m.egp) || 0, usd: Number(m.usd) || 0, cnt: Number(m.cnt) || 0 }));
+  }
+
   // التخصصات الهندسية: المسجّلين لكل تخصص (من دالة القاعدة)
   const spCount: Record<string, number> = {};
   for (const r of (seRes.data as any[]) || []) spCount[r.specialty_id] = Number(r.n) || 0;
@@ -421,6 +429,12 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {(canDailySales || canFinance) && (
+        <div style={{ marginBottom: 16 }}>
+          <MonthlySales rows={monthlySales} collapsible />
         </div>
       )}
 

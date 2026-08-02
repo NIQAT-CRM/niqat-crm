@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import { receiptPath } from "@/lib/supabase/receipts";
 import RealtimeRefresh from "../RealtimeRefresh";
+import MonthlySales from "../MonthlySales";
 import ScreenshotsView, { type Receipt } from "./ScreenshotsView";
 
 export const dynamic = "force-dynamic";
@@ -12,12 +13,12 @@ export default async function ScreenshotsPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   const { data: prof } = await supabase.from("profiles")
-    .select("can_view_receipts,can_see_finance").eq("id", user?.id || "").maybeSingle();
+    .select("can_view_receipts").eq("id", user?.id || "").maybeSingle();
   if (!prof?.can_view_receipts) redirect("/");
-  const canCreate = !!prof?.can_see_finance;
 
   // كل صور الدفع الفعلي من كل المصادر (أقساط + دفعة أولى + إضافات + تحويلات) — الريفند مستبعد داخل الدالة.
   const { data } = await supabase.rpc("receipts_all", { p_from: "2000-01-01", p_to: "2100-01-01" });
+  const { data: monthly } = await supabase.rpc("receipts_monthly");
 
   // إزالة تكرار نفس الصورة (لو اتخزنت في أكتر من مصدر) — الأولوية للي فيها مبلغ
   const byPath = new Map<string, Receipt>();
@@ -39,46 +40,19 @@ export default async function ScreenshotsPage() {
     if (!existing || (!existing.hasAmount && rec.hasAmount)) byPath.set(key, rec);
   });
 
-  const oldRows: Receipt[] = Array.from(byPath.values());
-
-  // ===== الإيصالات المشتركة/المجزّأة الجديدة (receipts + receipt_allocations) — محمية بالماليات =====
-  const sharedRows: Receipt[] = [];
-  const { data: shared } = await supabase
-    .from("receipts")
-    .select("id,url,currency,total_amount,note,created_at,uploaded_by, receipt_allocations(customer_id,amount,currency,customers(name,phone1))");
-  const sh = (shared as any[]) || [];
-  if (sh.length) {
-    const ownIds = Array.from(new Set(sh.map((s) => s.uploaded_by).filter(Boolean)));
-    let ownMap = new Map<string, string>();
-    if (ownIds.length) {
-      const { data: profs } = await supabase.from("profiles").select("id,full_name").in("id", ownIds);
-      ownMap = new Map(((profs as any[]) || []).map((p) => [p.id, p.full_name]));
-    }
-    for (const s of sh) {
-      if (!s.url) continue;
-      const allocs = ((s.receipt_allocations as any[]) || []).map((a) => ({
-        customerId: a.customer_id || "", name: a.customers?.name || "—", phone: a.customers?.phone1 || "",
-        amount: Number(a.amount) || 0, currency: a.currency || s.currency || "EGP",
-      }));
-      sharedRows.push({
-        receiptUrl: s.url, customerId: allocs[0]?.customerId || "", customerName: "", phone1: "",
-        amount: Number(s.total_amount) || 0, hasAmount: true, currency: s.currency || "EGP",
-        uploadedAt: s.created_at || "", ownerName: ownMap.get(s.uploaded_by) || "",
-        isShared: true, allocations: allocs, note: s.note || "",
-      });
-    }
-  }
-
-  const rows: Receipt[] = [...oldRows, ...sharedRows]
+  const rows: Receipt[] = Array.from(byPath.values())
     .sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1));
 
   return (
     <div className="page-h" style={{ display: "block" }}>
-      <RealtimeRefresh tables={["installments","customer_docs","customer_addons","enrollment_finance","addon_finance","receipts","receipt_allocations"]} />
+      <RealtimeRefresh tables={["installments","customer_docs","customer_addons","enrollment_finance","addon_finance"]} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <h1>{tr("screenshots")}</h1>
       </div>
-      <ScreenshotsView rows={rows} canCreate={canCreate} />
+      <div style={{ marginBottom: 18 }}>
+        <MonthlySales rows={((monthly as any[]) || []).map((m) => ({ ym: m.ym, egp: Number(m.egp) || 0, usd: Number(m.usd) || 0, cnt: Number(m.cnt) || 0 }))} collapsible />
+      </div>
+      <ScreenshotsView rows={rows} />
     </div>
   );
 }
