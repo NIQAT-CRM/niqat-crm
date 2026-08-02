@@ -99,13 +99,14 @@ export default function ServicesPanel({
     await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action, detail });
   }
 
-  async function uploadShot(): Promise<string> {
+  async function uploadShot(amount?: number, currency?: string): Promise<string> {
     if (!file) return "";
     const path = `services/${customerId}/${Date.now()}-${file.name}`;
     const up = await supabase.storage.from("receipts").upload(path, file, { upsert: false });
     if (up.error) { toast(tr("screenshotUploadFailed")); return ""; }
     const url = path; // نخزّن الـ path
-    await supabase.from("customer_docs").insert({ customer_id: customerId, url, name: `${tr("svPaymentProof")} — (${file.name})` });
+    // نخزّن المبلغ والعملة عشان يظهر في الإيصالات بالمبلغ الصح
+    await supabase.from("customer_docs").insert({ customer_id: customerId, url, name: `${tr("svPaymentProof")} — (${file.name})`, ...(amount != null && amount > 0 ? { amount } : {}), ...(currency ? { currency } : {}) });
     return url;
   }
 
@@ -113,8 +114,11 @@ export default function ServicesPanel({
     if (svType === "diploma" && !svDip) { toast(tr("selectDiploma")); return; }
     if (svType !== "diploma" && !svName) { toast(tr("selectItem")); return; }
     setBusy(true);
-    const shot_url = svPaid && file ? await uploadShot() : "";
     const amt = svFree ? 0 : Number(svAmount) || 0;
+    // الاسكرين يترفع دايماً لو فيه ملف (مش متوقّف على toggle «مدفوع») — بالمبلغ والعملة
+    const shot_url = file ? await uploadShot(amt, svCurrency) : "";
+    // لو فيه اسكرين تحويل + مبلغ → دي دفعة فعلية: تتعلّم «مدفوعة» تلقائياً
+    const isPaid = svPaid || (!!shot_url && amt > 0);
     const label = svType === "diploma" ? (dipOpts.find((d) => d.v === svDip)?.label || "—") : svName;
 
     if (svType === "diploma") {
@@ -123,12 +127,16 @@ export default function ServicesPanel({
         .select("id").maybeSingle();
       if (error || !ins) { setBusy(false); toast(tr("addDiplomaFailed")); return; }
       if (canFinance && amt > 0) {
-        await supabase.from("enrollment_finance").insert({ enrollment_id: ins.id, agreed_amount: amt, currency: svCurrency, screenshot_url: shot_url || null });
+        await supabase.from("enrollment_finance").insert({ enrollment_id: ins.id, agreed_amount: amt, currency: svCurrency, screenshot_url: null });
+        // نعمل قسط مدفوع لو فيه اسكرين تحويل — عشان يتحسب محصّل ويظهر في الإيصالات (مرة واحدة)
+        if (shot_url) {
+          await supabase.from("installments").insert({ enrollment_id: ins.id, amount: amt, currency: svCurrency, status: "paid", paid_at: new Date().toISOString(), screenshot_url: shot_url });
+        }
       }
       await logAudit("enrollment_add", `${tr("auditEnrollmentAdd")}: ${label}${svBatch ? " — " + batchLabel(svBatch) : ""}`);
     } else {
       const { data, error } = await supabase.from("customer_addons").insert({
-        customer_id: customerId, type: svType, name: label, amount: amt, free: svFree, note: svNote.trim(), paid: svPaid, shot_url: shot_url || null, needs_activation: svNeedsAct,
+        customer_id: customerId, type: svType, name: label, amount: amt, free: svFree, note: svNote.trim(), paid: isPaid, shot_url: shot_url || null, currency: svCurrency, needs_activation: svNeedsAct,
       }).select("id").single();
       if (error) { setBusy(false); toast(tr("addFailed") + error.message); return; }
       await logAudit("addon_add", `${tr("auditAddonAdd")} ${tr(stMeta(svType).labelKey)}: ${label}`);
@@ -428,7 +436,7 @@ export default function ServicesPanel({
                   {a.name}{a.free && <span style={{ color: "var(--green)", fontSize: 11, marginInlineStart: 6 }}>🎁 {tr("free")}</span>}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {canFinance && !a.free && <span className="num" dir="ltr" style={{ fontSize: 12.5, color: "var(--muted)" }}>{new Intl.NumberFormat("en").format(a.amount)} {tr("egpShort")}</span>}
+                  {canFinance && !a.free && <span className="num" dir="ltr" style={{ fontSize: 12.5, color: "var(--muted)" }}>{new Intl.NumberFormat("en").format(a.amount)} {(a as any).currency === "USD" ? "$" : tr("egpShort")}</span>}
                   {a.shot_url && <a href={a.shot_url} target="_blank" rel="noreferrer" title={tr("paymentProof")} style={{ color: "var(--blue)", fontSize: 13 }}>🧾</a>}
                   <div className={"sw" + (a.paid ? " on" : "")} onClick={() => togglePaid(a)} title={a.paid ? tr("paid") : tr("unpaid")} style={{ marginInlineStart: "auto" }}><i /></div>
                   <button onClick={() => delAddon(a)} title={tr("delete")} style={{ color: "var(--red)", fontSize: 13, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>✕</button>
