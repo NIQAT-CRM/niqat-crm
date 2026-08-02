@@ -92,36 +92,33 @@ export default function SubscriptionsPanel({
         </div>
       )}
 
-      {enrolls.length === 0 && !adding ? (
-        <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noSubscriptions")}</div>
-      ) : enrolls.map((e) => {
-        const refunded = e.status === "refunded";
-        return (
-        <div key={e.id} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", marginBottom: 6, opacity: refunded ? .65 : 1, background: refunded ? "var(--muted-soft)" : "transparent" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-            <b style={{ color: "var(--ink)", textDecoration: refunded ? "line-through" : "none" }}>{e.diploma}
-              {refunded && <span style={{ marginInlineStart: 8, fontSize: 10.5, fontWeight: 800, background: "var(--red-soft)", color: "var(--red)", borderRadius: 20, padding: "2px 8px", textDecoration: "none", display: "inline-block" }}>↩ {tr("refundedBadge")}</span>}
-            </b>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ color: "var(--muted)", fontSize: 13 }}>{tr("batchColon")} <span className="num">{e.batch}</span></span>
-              {!refunded && <button onClick={() => { setMoveFor(moveFor === e.id ? null : e.id); setMoveTo(e.batchId); }}
-                style={{ color: "var(--brand)", fontWeight: 700, fontSize: 12, background: "none", border: "none", cursor: "pointer" }}>
-                {tr("move")}
-              </button>}
+      {(() => { const active = enrolls.filter((e) => e.status !== "refunded"); return (
+        active.length === 0 && !adding ? (
+          <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noSubscriptions")}</div>
+        ) : active.map((e) => (
+          <div key={e.id} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              <b style={{ color: "var(--ink)" }}>{e.diploma}</b>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ color: "var(--muted)", fontSize: 13 }}>{tr("batchColon")} <span className="num">{e.batch}</span></span>
+                <button onClick={() => { setMoveFor(moveFor === e.id ? null : e.id); setMoveTo(e.batchId); }}
+                  style={{ color: "var(--brand)", fontWeight: 700, fontSize: 12, background: "none", border: "none", cursor: "pointer" }}>
+                  {tr("move")}
+                </button>
+              </div>
             </div>
+            {moveFor === e.id && (
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <select className="inp" style={{ flex: 1, height: 36 }} value={moveTo} onChange={(ev) => setMoveTo(ev.target.value)}>
+                  {batchOpts.map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
+                </select>
+                <button className="btn" onClick={() => doMove(e)} disabled={busy} style={{ height: 36, padding: "0 14px" }}>{busy ? "..." : tr("move")}</button>
+                <button className="btn ghost" onClick={() => setMoveFor(null)} style={{ height: 36, padding: "0 12px" }}>{tr("cancel")}</button>
+              </div>
+            )}
           </div>
-          {!refunded && moveFor === e.id && (
-            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-              <select className="inp" style={{ flex: 1, height: 36 }} value={moveTo} onChange={(ev) => setMoveTo(ev.target.value)}>
-                {batchOpts.map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
-              </select>
-              <button className="btn" onClick={() => doMove(e)} disabled={busy} style={{ height: 36, padding: "0 14px" }}>{busy ? "..." : tr("move")}</button>
-              <button className="btn ghost" onClick={() => setMoveFor(null)} style={{ height: 36, padding: "0 12px" }}>{tr("cancel")}</button>
-            </div>
-          )}
-        </div>
-        );
-      })}
+        ))
+      ); })()}
     </div>
   );
 }
