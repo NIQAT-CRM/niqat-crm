@@ -28,7 +28,7 @@ export default async function Onboarding() {
 
   // موجة 2: العملاء + التسجيلات + بنود التسليم (كلهم يعتمدوا على IDs من موجة 1، لكن مستقلين عن بعض)
   const [custsRes, enrRes, itemsRes] = await Promise.all([
-    custIds.length ? supabase.from("customers").select("id,name,phone1").in("id", custIds) : Promise.resolve({ data: [] as any[] }),
+    custIds.length ? supabase.from("customers").select("id,name,phone1,email").in("id", custIds) : Promise.resolve({ data: [] as any[] }),
     custIds.length ? supabase.from("enrollments").select("customer_id, diplomas(name_ar), batches(code)").in("customer_id", custIds) : Promise.resolve({ data: [] as any[] }),
     hIds.length ? supabase.from("handoff_items").select("id,handoff_id,label,done,done_by,done_at").in("handoff_id", hIds).order("id") : Promise.resolve({ data: [] as any[] }),
   ]);
@@ -61,6 +61,7 @@ export default async function Onboarding() {
     custId: h.customer_id as string,
     name: cMap.get(h.customer_id)?.name || "—",
     phone: cMap.get(h.customer_id)?.phone1 || "",
+    email: cMap.get(h.customer_id)?.email || "",
     status: h.status || "pending",
     note: h.note || "",
     onholdReason: h.onhold_reason || "",

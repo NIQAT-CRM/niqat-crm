@@ -11,7 +11,7 @@ import EmptyState from "../EmptyState";
 type Item = { id: string; label: string; done: boolean; by: string | null; at: string };
 const REFUND_CLOSE_LABEL = "قفل الأكسس (ريفند)";
 type Card = {
-  handoffId: string; custId: string; name: string; phone: string;
+  handoffId: string; custId: string; name: string; phone: string; email: string;
   status: string; note: string; onholdReason: string; createdAt: string;
   assignee: string; diplomas: string[]; batches: string[]; items: Item[];
   kind: string; meta: any;
@@ -29,7 +29,7 @@ function ageHours(iso: string) { if (!iso) return 0; return (Date.now() - Date.p
 const CardView = memo(function CardView({
   c, confirming, holding, holdReason, setHoldReason,
   onToggle, onAskComplete, onCancelComplete, onComplete,
-  onAskHold, onCancelHold, onHold, onResume, onArchive, onConfirmTransfer,
+  onAskHold, onCancelHold, onHold, onResume, onArchive, onConfirmTransfer, onCancelCard,
 }: {
   c: Card; confirming: boolean; holding: boolean; holdReason: string; setHoldReason: (v: string) => void;
   onToggle: (hid: string, iid: string) => void;
@@ -37,6 +37,7 @@ const CardView = memo(function CardView({
   onAskHold: (hid: string) => void; onCancelHold: () => void; onHold: (hid: string) => void; onResume: (hid: string) => void;
   onArchive: (custId: string, handoffId: string) => void;
   onConfirmTransfer: (hid: string, custId: string, meta: any) => void;
+  onCancelCard: (hid: string, custId: string, kind: string) => void;
 }) {
   const tr = useT();
 
@@ -51,6 +52,7 @@ const CardView = memo(function CardView({
           <div style={{ flex: 1, minWidth: 0 }}>
             <b style={{ color: "var(--ink)" }}>{c.name}</b>
             <div style={{ fontSize: 11.5, color: "var(--muted)", fontFamily: "var(--fe)", direction: "ltr" }}>{c.phone || "—"}</div>
+            {c.email && <div style={{ fontSize: 11, color: "var(--muted)", direction: "ltr", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>✉️ {c.email}</div>}
           </div>
           <span className="chip" style={{ background: "rgba(47,107,255,.12)", color: "#2F6BFF" }}>{tr("batchTransferChip")}</span>
         </div>
@@ -79,6 +81,7 @@ const CardView = memo(function CardView({
                   <svg viewBox="0 0 24 24" width={15} height={15} fill="currentColor"><path d="M12 2a10 10 0 00-8.5 15.3L2 22l4.8-1.5A10 10 0 1012 2z" /></svg>
                 </a>
                 <Link className="btn ghost sm" href={`/customers/${c.custId}`}>{tr("theFile")}</Link>
+                <button className="btn ghost sm" style={{ color: "var(--red)", borderColor: "var(--red)" }} onClick={() => onCancelCard(c.handoffId, c.custId, c.kind)}>✕ {tr("cancelRequestBtn")}</button>
               </div>
               <button className="btn onb-primary" disabled={onHoldNow}
                 onClick={() => onAskComplete(c.handoffId)}
@@ -109,6 +112,7 @@ const CardView = memo(function CardView({
         <div style={{ flex: 1, minWidth: 0 }}>
           <b style={{ color: "var(--ink)" }}>{c.name}</b>
           <div style={{ fontSize: 11.5, color: "var(--muted)", fontFamily: "var(--fe)", direction: "ltr" }}>{c.phone || "—"}</div>
+          {c.email && <div style={{ fontSize: 11, color: "var(--muted)", direction: "ltr", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>✉️ {c.email}</div>}
         </div>
         <span className="chip" style={{
           background: onHoldNow ? "rgba(230,167,0,.14)" : allDone ? "rgba(24,169,87,.12)" : "var(--brand-soft)",
@@ -184,6 +188,7 @@ const CardView = memo(function CardView({
               ) : (
                 <button className="btn ghost sm" onClick={() => onAskHold(c.handoffId)}>⏸ {tr("putOnHold")}</button>
               )}
+              <button className="btn ghost sm" style={{ color: "var(--red)", borderColor: "var(--red)" }} onClick={() => onCancelCard(c.handoffId, c.custId, c.kind)}>✕ {tr("cancelRequestBtn")}</button>
             </div>
             {/* الزر الأساسي — دايماً ظاهر، بينوّر أخضر لما يجهز */}
             {refundCloseDone ? (
@@ -260,6 +265,23 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
     await supabase.from("handoffs").update({ status: "pending", onhold_reason: null }).eq("id", hid);
   }, [supabase]);
 
+  // إلغاء الكارت بالكامل (نقل أو تفعيل) — لو العميل رجع في كلامه. بيشيل الـhandoff وبنوده.
+  // بيانات العميل واشتراكه مش بتتأثر (النقل لسه ماتطبّقش).
+  const cancelCard = useCallback(async (hid: string, custId: string, kind: string) => {
+    const ok = await confirmDialog({
+      message: kind === "batch_transfer" ? tr("cancelTransferConfirm") : tr("cancelActivationConfirm"),
+      confirmLabel: tr("cancelCardYes"), cancelLabel: tr("keepIt"), danger: true,
+    });
+    if (!ok) return;
+    setCards((cs) => cs.filter((c) => c.handoffId !== hid));
+    await supabase.from("handoff_items").delete().eq("handoff_id", hid);
+    const { error } = await supabase.from("handoffs").delete().eq("id", hid);
+    if (error) { toast(tr("updateFailed") + error.message); return; }
+    if (custId) await supabase.from("audit_log").insert({ customer_id: custId, action: "handoff_canceled", detail: kind === "batch_transfer" ? tr("transferCanceledAudit") : tr("activationCanceledAudit") });
+    await revalidateCustomers();
+    toast(tr("cardCanceled"));
+  }, [supabase, tr]);
+
   const archiveCustomer = useCallback(async (custId: string, hid: string) => {
     if (!await confirmDialog(tr("archiveCustomerQ"), true)) return;
     setCards((cs) => cs.filter((c) => c.handoffId !== hid));
@@ -312,7 +334,7 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
               onToggle={toggle}
               onAskComplete={setConfirmId} onCancelComplete={() => setConfirmId(null)} onComplete={complete}
               onAskHold={(hid) => { setHoldId(hid); setHoldReason(""); }} onCancelHold={() => setHoldId(null)}
-              onHold={doHold} onResume={resume} onArchive={archiveCustomer} onConfirmTransfer={confirmTransfer} />
+              onHold={doHold} onResume={resume} onArchive={archiveCustomer} onConfirmTransfer={confirmTransfer} onCancelCard={cancelCard} />
           ))}
         </div>
       ) : (
