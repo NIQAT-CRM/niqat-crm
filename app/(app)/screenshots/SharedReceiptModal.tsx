@@ -73,8 +73,42 @@ export default function SharedReceiptModal({ onClose }: { onClose: () => void })
         p_url: path, p_currency: currency, p_note: note.trim(), p_allocations,
       });
       if (error) { setBusy(false); return toast(tr("saveFailed") + " " + error.message); }
+
+      // 3) لكل عميل في الإيصال: حوّله لـ«مسجّل/دفع» + اعمله طلب تفعيل للدعم (مش واحد بس)
+      const custIds = Array.from(new Set(valid.map((r) => r.customerId)));
+      const { data: authUser } = await supabase.auth.getUser();
+      const meId = authUser?.user?.id || null;
+      // دبلومة/باتش كل عميل (لبند التفعيل)
+      const { data: enrs } = await supabase.from("enrollments")
+        .select("customer_id, diplomas(name_ar), batches(code)").in("customer_id", custIds);
+      const dipByCust = new Map<string, { dip: string; batch: string }>();
+      ((enrs as any[]) || []).forEach((e) => { if (!dipByCust.has(e.customer_id)) dipByCust.set(e.customer_id, { dip: e.diplomas?.name_ar || "", batch: e.batches?.code || "" }); });
+
+      for (const cid of custIds) {
+        // (1) تحويل العميل لـ «مسجّل / دفع»
+        await supabase.from("customers").update({ stage: "enrolled" }).eq("id", cid);
+        // (2) طلب تفعيل (handoff pending) — نعيد استخدام الموجود أو ننشئ جديد
+        const { data: ex } = await supabase.from("handoffs").select("id").eq("customer_id", cid).limit(1).maybeSingle();
+        let hoId = (ex as any)?.id as string | undefined;
+        if (!hoId) {
+          const { data: h } = await supabase.from("handoffs").insert({ customer_id: cid, created_by: meId, note: tr("shrTitle"), status: "pending" }).select("id").single();
+          hoId = (h as any)?.id;
+        } else {
+          await supabase.from("handoffs").update({ status: "pending" }).eq("id", hoId);
+        }
+        if (hoId) {
+          const d = dipByCust.get(cid);
+          const label = `${tr("activatePrefix")} ${d?.dip || ""}${d?.batch ? " — " + d.batch : ""}`.trim();
+          const { data: cur } = await supabase.from("handoff_items").select("label").eq("handoff_id", hoId);
+          const already = new Set(((cur as any[]) || []).map((x) => x.label));
+          if (label && !already.has(label)) await supabase.from("handoff_items").insert({ handoff_id: hoId, label, done: false });
+        }
+        // (3) سجل في تايم لاين العميل
+        await supabase.from("audit_log").insert({ customer_id: cid, actor_id: meId, action: "handoff_requested", detail: tr("shrActivationNote") });
+      }
+
       setBusy(false);
-      toast(tr("shrCreated"));
+      toast(tr("shrCreatedActivated").replace("{n}", String(custIds.length)));
       onClose();
       router.refresh();
     } catch (e: any) {
@@ -177,6 +211,10 @@ export default function SharedReceiptModal({ onClose }: { onClose: () => void })
           <div style={{ marginTop: 16, padding: "12px 14px", background: "var(--brand-soft)", borderRadius: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--brand-d)" }}>{tr("shrTotal")}</span>
             <b className="num" style={{ fontSize: 17, color: "var(--brand-d)" }} dir="ltr">{nf.format(total)} {currency === "USD" ? "USD" : tr("egp")}</b>
+          </div>
+
+          <div style={{ marginTop: 12, fontSize: 11.5, color: "var(--muted)", background: "rgba(24,169,87,.08)", borderRadius: 8, padding: "8px 10px", lineHeight: 1.5 }}>
+            ✅ {tr("shrActivateInfo")}
           </div>
 
           {/* الأزرار */}
