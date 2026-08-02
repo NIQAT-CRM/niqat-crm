@@ -37,6 +37,8 @@ const I: Record<string, string> = {
   cog: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h13M3 12h18M3 18h9"/><circle cx="18" cy="6" r="2.2"/><circle cx="15" cy="18" r="2.2"/></svg>',
   chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-8.9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5.1a8.38 8.38 0 0 1-.9-3.9 8.5 8.5 0 0 1 8.4-8.9 8.5 8.5 0 0 1 8.6 8.4z"/></svg>',
   ai: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>',
+  edu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  feedback: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>',
 };
 
 type Item = { href: string; key: string; tk: string; badge?: number };
@@ -60,6 +62,8 @@ export default function NavLinks(p: Perms) {
   const teams: Item[] = [];
   if (A || p.canSupport) teams.push({ href: "/support", key: "support", tk: "support" });
   if (A || p.canActivations) teams.push({ href: "/onboarding", key: "onb", tk: "onboarding", badge: p.handoffCount });
+  teams.push({ href: "/education", key: "edu", tk: "eduTeam" });
+  teams.push({ href: "/feedback", key: "feedback", tk: "feedbackNav" });
   teams.push({ href: "/refunds", key: "refund", tk: "refunds", badge: p.refundCount });
   if (p.canReceipts) teams.push({ href: "/screenshots", key: "receipt", tk: "screenshots" });
   teams.push({ href: "/archive", key: "archive", tk: "archive" });
