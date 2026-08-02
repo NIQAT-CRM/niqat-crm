@@ -6,6 +6,7 @@ import BatchesByDiploma from "./BatchesByDiploma";
 import { CountUp, BarRow, Kpi, LineIcon, ApexCombo, PipelineViz } from "./Charts";
 import PeriodFilter from "./PeriodFilter";
 import SeeAllModal from "./SeeAllModal";
+import MonthlySales from "./MonthlySales";
 
 export const dynamic = "force-dynamic";
 
@@ -122,10 +123,13 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
 
   // ===== المالية: إجماليات مفصولة بالعملة (من دالة fin_totals) + تنبيهات =====
   let egpCollected = 0, egpDue = 0, usdCollected = 0, usdDue = 0;
+  let monthlyRows: any[] = [];
   let overdueInst: any[] = [], soonInst: any[] = [];
   let refundGroups: { diploma: string; batch: string; egp: number; usd: number; count: number }[] = [];
   if (canFinance) {
     const { data: ft } = await supabase.rpc("fin_totals", rpcArgs);
+    const { data: mr } = await supabase.rpc("receipts_monthly");
+    monthlyRows = (mr as any[]) || [];
     for (const r of (ft as any[]) || []) {
       if (r.currency === "USD") { usdCollected = Number(r.collected) || 0; usdDue = Number(r.due) || 0; }
       else { egpCollected += Number(r.collected) || 0; egpDue += Number(r.due) || 0; }
@@ -421,6 +425,12 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {canFinance && monthlyRows.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <MonthlySales rows={monthlyRows} collapsible />
         </div>
       )}
 

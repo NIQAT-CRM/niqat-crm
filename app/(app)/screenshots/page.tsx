@@ -4,6 +4,7 @@ import { t as tr } from "@/lib/i18n";
 import { receiptPath } from "@/lib/supabase/receipts";
 import RealtimeRefresh from "../RealtimeRefresh";
 import ScreenshotsView, { type Receipt } from "./ScreenshotsView";
+import MonthlySales from "../MonthlySales";
 
 export const dynamic = "force-dynamic";
 
@@ -72,11 +73,17 @@ export default async function ScreenshotsPage() {
   const rows: Receipt[] = [...oldRows, ...sharedRows]
     .sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1));
 
+  // التجميع الشهري (يستخدم الدالة الموجودة receipts_monthly — قراءة فقط، مفيش تعديل داتابيز)
+  const { data: monthlyRows } = await supabase.rpc("receipts_monthly");
+
   return (
     <div className="page-h" style={{ display: "block" }}>
       <RealtimeRefresh tables={["installments","customer_docs","customer_addons","enrollment_finance","addon_finance","receipts","receipt_allocations"]} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <h1>{tr("screenshots")}</h1>
+      </div>
+      <div style={{ marginBottom: 18 }}>
+        <MonthlySales rows={(monthlyRows as any[]) || []} collapsible />
       </div>
       <ScreenshotsView rows={rows} canCreate={canCreate} />
     </div>
