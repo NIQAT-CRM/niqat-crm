@@ -14,6 +14,8 @@ type Perms = {
   canActivations?: boolean;
   canUniversities?: boolean;
   canReceipts?: boolean;
+  canEducation?: boolean;
+  canFeedback?: boolean;
   isAdmin?: boolean;
   dueCount?: number;
   handoffCount?: number;
@@ -62,8 +64,8 @@ export default function NavLinks(p: Perms) {
   const teams: Item[] = [];
   if (A || p.canSupport) teams.push({ href: "/support", key: "support", tk: "support" });
   if (A || p.canActivations) teams.push({ href: "/onboarding", key: "onb", tk: "onboarding", badge: p.handoffCount });
-  teams.push({ href: "/education", key: "edu", tk: "eduTeam" });
-  teams.push({ href: "/feedback", key: "feedback", tk: "feedbackNav" });
+  if (A || p.canEducation) teams.push({ href: "/education", key: "edu", tk: "eduTeam" });
+  if (A || p.canFeedback) teams.push({ href: "/feedback", key: "feedback", tk: "feedbackNav" });
   teams.push({ href: "/refunds", key: "refund", tk: "refunds", badge: p.refundCount });
   if (p.canReceipts) teams.push({ href: "/screenshots", key: "receipt", tk: "screenshots" });
   teams.push({ href: "/archive", key: "archive", tk: "archive" });

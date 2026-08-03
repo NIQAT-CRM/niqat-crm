@@ -22,6 +22,8 @@ const PERMS: [string, string][] = [
   ["can_view_activations", "رؤية طلبات التفعيل"],
   ["can_view_universities", "رؤية الجامعات"],
   ["can_view_receipts", "رؤية الإيصالات"],
+  ["can_view_education", "رؤية فريق التعليم"],
+  ["can_view_feedback", "رؤية الفيدباك"],
 ];
 
 export default function PermissionsManager({ profiles }: { profiles: Profile[] }) {

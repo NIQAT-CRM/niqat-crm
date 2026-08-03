@@ -15,7 +15,7 @@ import ChatLogView from "../admin/chat-log/ChatLogView";
 export const dynamic = "force-dynamic";
 
 const TEAM_AR: Record<string, string> = { sales: "المبيعات", support: "الدعم", admin: "الإدارة", ops: "العمليات", operations: "العمليات" };
-const USER_COLS = "id,full_name,team,phone,can_edit_customers,can_see_finance,can_view_reports,can_manage_tickets,can_manage_batches,can_grant_access,can_message,can_export,can_manage_settings,can_manage_users,can_see_daily_sales,can_use_ai,ai_options,can_add_customers,can_view_pipeline,can_view_support,can_view_activations,can_view_universities";
+const USER_COLS = "id,full_name,team,phone,can_edit_customers,can_see_finance,can_view_reports,can_manage_tickets,can_manage_batches,can_grant_access,can_message,can_export,can_manage_settings,can_manage_users,can_see_daily_sales,can_use_ai,ai_options,can_add_customers,can_view_pipeline,can_view_support,can_view_activations,can_view_universities,can_view_receipts,can_view_education,can_view_feedback";
 
 async function safeList(supabase: any, table: string, col: string, extraCol?: string) {
   const sel = extraCol ? `id,${col},${extraCol}` : `id,${col}`;
