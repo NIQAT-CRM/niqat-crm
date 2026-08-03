@@ -42,8 +42,8 @@ export async function POST(req: Request) {
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
   // نجيب أرقام وأسماء العملاء المختارين
-  const { data: custs } = await admin.from("customers").select("id, full_name, phone1").in("id", customer_ids);
-  const targets = (custs || []).filter((c: any) => c.phone1).map((c: any) => ({ id: c.id, name: String(c.full_name || "").trim().split(/\s+/).slice(0, 2).join(" "), num: normNum(c.phone1) })).filter((t) => t.num);
+  const { data: custs } = await admin.from("customers").select("id, name, phone1").in("id", customer_ids);
+  const targets = (custs || []).filter((c: any) => c.phone1).map((c: any) => ({ id: c.id, name: String(c.name || "").trim().split(/\s+/).slice(0, 2).join(" "), num: normNum(c.phone1) })).filter((t) => t.num);
 
   const vmap: any[] = Array.isArray(var_map) ? var_map : [];
   const buildParams = (t: { name: string; num: string }) => vmap.map((v, idx) => {
