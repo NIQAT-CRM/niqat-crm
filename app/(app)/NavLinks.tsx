@@ -58,7 +58,6 @@ export default function NavLinks(p: Perms) {
   if (A || p.canPipeline) main.push({ href: "/pipeline", key: "pipe", tk: "pipeline" });
   main.push({ href: "/my-tasks", key: "task", tk: "myTasks", badge: p.dueCount });
   main.push({ href: "/batches", key: "batch", tk: "batches" });
-  if (A || p.canUniversities) main.push({ href: "/universities", key: "uni2", tk: "universities" });
 
   // الرؤى بقت جزء من صفحة التقارير (نفس صلاحية can_view_reports) — مبقاش بند مستقل
   const teams: Item[] = [];
@@ -94,6 +93,20 @@ export default function NavLinks(p: Perms) {
     <nav className="nav">
       <div className="sect">{t("MAIN")}</div>
       {main.map(Btn)}
+      {(A || p.canUniversities) && (
+        <>
+          <Link href="/universities" onClick={closeSb} className={path.startsWith("/universities") ? "on" : ""}>
+            <span dangerouslySetInnerHTML={{ __html: I["uni2"] }} />
+            <span>{t("universities")}</span>
+          </Link>
+          {path.startsWith("/universities") && (
+            <div className="sub">
+              <Link href="/universities" onClick={closeSb} className={path === "/universities" ? "on" : ""}><span>{t("universities")}</span></Link>
+              <Link href="/universities/protocols" onClick={closeSb} className={path.startsWith("/universities/protocols") ? "on" : ""}><span>{t("protocolsNav")}</span></Link>
+            </div>
+          )}
+        </>
+      )}
       <div className="sect">{t("TEAMS")}</div>
       {teams.map(Btn)}
       {admin.length > 0 && <div className="sect">{t("ADMIN")}</div>}
