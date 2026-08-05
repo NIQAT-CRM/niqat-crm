@@ -43,6 +43,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .select("full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users, can_grant_access, can_use_ai, chat_sound, can_view_pipeline, can_view_support, can_view_activations, can_view_universities, can_view_receipts, can_view_education, can_view_feedback")
     .eq("id", user.id).maybeSingle();
 
+  // عضوية تيم التعليم (طبقة edu_members منفصلة) — لعزل القايمة الجانبية
+  const { data: eduRow } = await supabase
+    .from("edu_members").select("role, active")
+    .eq("profile_id", user.id).eq("active", true).maybeSingle();
+  const isAdminTeam = (profile?.team || "").toLowerCase() === "admin";
+  const eduMode = !!eduRow && !isAdminTeam;
+  const eduRole = ((eduRow as any)?.role as string) || null;
+
   // بوابة الذكاء الاصطناعي: مفعّل للمستخدم + مفعّل عام في ai_settings
   const { data: aiSet } = await supabase.from("ai_settings").select("insights_enabled").maybeSingle();
   const canAi = !!profile?.can_use_ai && !!aiSet?.insights_enabled;
@@ -142,6 +150,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           canReceipts={!!profile?.can_view_receipts}
           canEducation={!!profile?.can_view_education}
           canFeedback={!!profile?.can_view_feedback}
+          eduMode={eduMode}
+          eduRole={eduRole}
           canAi={canAi}
           isAdmin={(profile?.team || "").toLowerCase() === "admin"}
           dueCount={dueCount}

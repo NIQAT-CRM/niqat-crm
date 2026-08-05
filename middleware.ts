@@ -37,6 +37,26 @@ export async function middleware(request: NextRequest) {
   
   if (!user && !isPublic) return NextResponse.redirect(new URL("/login", request.url));
   if (user && path === "/login") return NextResponse.redirect(new URL("/", request.url));
+
+  // عزل تيم التعليم على مستوى الراوت:
+  // عضو تعليم نشط ومش أدمن عام → يُسمح له بـ /education و/api و/auth فقط،
+  // وأي صفحة تانية تتحوّل تلقائياً لـ /education. (استعلام واحد للأغلبية غير التعليمية = صفر صفوف)
+  if (user && !isPublic) {
+    const isEduPath = path === "/education" || path.startsWith("/education/");
+    const bypass = isEduPath || path.startsWith("/api/") || path.startsWith("/auth/") || path.startsWith("/_next");
+    if (!bypass) {
+      const { data: em } = await supabase
+        .from("edu_members").select("active")
+        .eq("profile_id", user.id).eq("active", true).maybeSingle();
+      if (em) {
+        const { data: prof } = await supabase
+          .from("profiles").select("team").eq("id", user.id).maybeSingle();
+        const isAdmin = (prof?.team || "").toLowerCase() === "admin";
+        if (!isAdmin) return NextResponse.redirect(new URL("/education", request.url));
+      }
+    }
+  }
+
   return response;
 }
 

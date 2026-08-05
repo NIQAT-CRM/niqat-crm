@@ -17,6 +17,8 @@ type Perms = {
   canEducation?: boolean;
   canFeedback?: boolean;
   isAdmin?: boolean;
+  eduMode?: boolean;
+  eduRole?: string | null;
   dueCount?: number;
   handoffCount?: number;
   refundCount?: number;
@@ -63,7 +65,7 @@ export default function NavLinks(p: Perms) {
   const teams: Item[] = [];
   if (A || p.canSupport) teams.push({ href: "/support", key: "support", tk: "support" });
   if (A || p.canActivations) teams.push({ href: "/onboarding", key: "onb", tk: "onboarding", badge: p.handoffCount });
-  if (A || p.canEducation) teams.push({ href: "/education", key: "edu", tk: "eduTeam" });
+  // «فريق التعليم» بقى مجموعة منسدلة (تحت) بدل رابط مفرد
   if (A || p.canFeedback) teams.push({ href: "/feedback", key: "feedback", tk: "feedbackNav" });
   teams.push({ href: "/refunds", key: "refund", tk: "refunds", badge: p.refundCount });
   if (p.canReceipts) teams.push({ href: "/screenshots", key: "receipt", tk: "screenshots" });
@@ -73,6 +75,44 @@ export default function NavLinks(p: Perms) {
   // المستخدمون + سجل الشات بقوا تبويبات جوّه الإعدادات — مبقاش فيه صفحات منفصلة
   const admin: Item[] = [];
   if (p.canSettings || p.canUsers || p.isAdmin) admin.push({ href: "/settings", key: "cog", tk: "settings" });
+
+  // ===== قسم «فريق التعليم» =====
+  const eduItems: Item[] = [
+    { href: "/education", key: "batch", tk: "eduDiplomasBatches" },
+    { href: "/education/grading", key: "task", tk: "eduGrading" },
+    { href: "/education/accreditations", key: "uni2", tk: "eduAccreditations" },
+    { href: "/education/appeals", key: "feedback", tk: "eduAppeals" },
+    { href: "/education/dashboard", key: "dash", tk: "eduDashboard" },
+    { href: "/education/members", key: "users", tk: "eduPermissions" },
+  ];
+  const eduRole = p.eduRole || null;
+  const eduCanSee = (href: string): boolean => {
+    if (p.eduMode) {
+      if (eduRole === "edu_admin") return true;
+      if (eduRole === "edu_staff") return href === "/education";
+      if (eduRole === "edu_grader") return href === "/education/grading";
+      return false; // instructor/غير معروف
+    }
+    if (href === "/education/members") return A; // الصلاحيات: الأدمن العام فقط في الوضع العادي
+    return true;
+  };
+  const eduActive = (href: string) => (href === "/education" ? path === "/education" : path.startsWith(href));
+  const EduBtn = (n: Item) => (
+    <Link key={n.href} href={n.href} onClick={closeSb} className={eduActive(n.href) ? "on" : ""}>
+      <span dangerouslySetInnerHTML={{ __html: I[n.key] }} />
+      <span>{t(n.tk)}</span>
+    </Link>
+  );
+
+  // عضو تعليم صافي (مش أدمن عام) → قايمة معزولة: «فريق التعليم» فقط
+  if (p.eduMode) {
+    return (
+      <nav className="nav">
+        <div className="sect">{t("eduTeam")}</div>
+        {eduItems.filter((n) => eduCanSee(n.href)).map(EduBtn)}
+      </nav>
+    );
+  }
 
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
@@ -109,6 +149,23 @@ export default function NavLinks(p: Perms) {
       )}
       <div className="sect">{t("TEAMS")}</div>
       {teams.map(Btn)}
+      {(A || p.canEducation) && (
+        <>
+          <Link href="/education" onClick={closeSb} className={path.startsWith("/education") ? "on" : ""}>
+            <span dangerouslySetInnerHTML={{ __html: I["edu"] }} />
+            <span>{t("eduTeam")}</span>
+          </Link>
+          {path.startsWith("/education") && (
+            <div className="sub">
+              {eduItems.filter((n) => eduCanSee(n.href)).map((n) => (
+                <Link key={n.href} href={n.href} onClick={closeSb} className={eduActive(n.href) ? "on" : ""}>
+                  <span>{t(n.tk)}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </>
+      )}
       {admin.length > 0 && <div className="sect">{t("ADMIN")}</div>}
       {admin.map(Btn)}
     </nav>
