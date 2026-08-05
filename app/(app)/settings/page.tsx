@@ -11,6 +11,7 @@ import ServiceTypesManager from "./ServiceTypesManager";
 import AffiliatesManager from "../affiliates/AffiliatesManager";
 import UsersManager from "../users/UsersManager";
 import ChatLogView from "../admin/chat-log/ChatLogView";
+import MembersManager from "../education/members/MembersManager";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +101,30 @@ async function buildChatLogTab(supabase: any): Promise<SettingsTab> {
   }));
 
   return { key: "chatlog", label: "💬 " + tr("chatLogNav"), content: <ChatLogView items={items} rooms={rooms} /> };
+}
+
+// ============ تبويب فريق التعليم (طبقة edu_members منفصلة) — للأدمن العام ============
+async function buildEduTeamTab(supabase: any, meId: string): Promise<SettingsTab> {
+  const [profRes, memRes] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, team, phone").order("full_name"),
+    supabase.from("edu_members").select("id, profile_id, role, active, can_edit_results, created_at").order("created_at", { ascending: false }),
+  ]);
+  const profiles = ((profRes.data as any[]) || []);
+  const byId = new Map(profiles.map((p: any) => [p.id, p]));
+  const members = (((memRes.data as any[]) || [])).map((m: any) => {
+    const p = byId.get(m.profile_id);
+    return {
+      id: m.id, profile_id: m.profile_id, role: m.role, active: m.active,
+      can_edit_results: m.can_edit_results,
+      name: (p?.full_name && p.full_name.trim()) || p?.phone || "—",
+      team: p?.team || null,
+    };
+  });
+  return {
+    key: "eduteam",
+    label: "📚 " + tr("eduTeam"),
+    content: <MembersManager initialMembers={members} profiles={profiles} meId={meId} />,
+  };
 }
 
 export default async function Settings() {
@@ -196,11 +221,14 @@ export default async function Settings() {
   // ===== تبويب المستخدمين — لمن عنده can_manage_users =====
   if (canUsers) tabs.push(await buildUsersTab(supabase));
 
+  // ===== تبويب فريق التعليم — للأدمن العام (يدير كل الفرق من مكان واحد) =====
+  if (isAdmin) tabs.push(await buildEduTeamTab(supabase, user?.id || ""));
+
   // ===== تبويب سجل الشات — للأدمن فقط =====
   if (isAdmin) tabs.push(await buildChatLogTab(supabase));
 
   // ترتيب التبويبات النهائي المطلوب
-  const TAB_ORDER = ["users", "catalog", "team", "integrations", "chatlog"];
+  const TAB_ORDER = ["users", "eduteam", "catalog", "team", "integrations", "chatlog"];
   tabs.sort((a, b) => {
     const ia = TAB_ORDER.indexOf(a.key), ib = TAB_ORDER.indexOf(b.key);
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);

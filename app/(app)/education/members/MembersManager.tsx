@@ -41,38 +41,68 @@ export default function MembersManager({
 
   const [rows, setRows] = useState<Member[]>(initialMembers);
   const [busy, setBusy] = useState<string | null>(null);
-  const [newUser, setNewUser] = useState("");
-  const [newRole, setNewRole] = useState("edu_staff");
-  const [adding, setAdding] = useState(false);
+
+  // دعوة بالإيميل (الوضع الأساسي — زي إضافة موظف مبيعات)
+  const [invName, setInvName] = useState("");
+  const [invEmail, setInvEmail] = useState("");
+  const [invRole, setInvRole] = useState("edu_staff");
+  const [inviting, setInviting] = useState(false);
+
+  // إضافة مستخدم موجود (اختياري)
+  const [showExisting, setShowExisting] = useState(false);
+  const [exUser, setExUser] = useState("");
+  const [exRole, setExRole] = useState("edu_staff");
+  const [addingEx, setAddingEx] = useState(false);
 
   const nameOf = (p: Profile) => (p.full_name && p.full_name.trim()) || p.phone || tr("eduNoName");
-  const roleKey = (r: string) => ROLES.find((x) => x[0] === r)?.[1] || r;
 
   const available = useMemo(() => {
     const taken = new Set(rows.map((r) => r.profile_id));
     return profiles.filter((p) => !taken.has(p.id));
   }, [rows, profiles]);
 
-  async function addMember() {
-    if (!newUser) return toast(tr("eduPickUserFirst"));
-    setAdding(true);
+  function pushRow(m: { id: string; profile_id: string; role: string; active: boolean; can_edit_results: boolean }, name: string, team: string | null) {
+    setRows((r) => [{ ...m, name, team }, ...r]);
+  }
+
+  // دعوة عضو جديد بالإيميل عبر راوت السيرفر (service role)
+  async function inviteMember() {
+    const email = invEmail.trim();
+    if (!email) return toast(tr("eduEmailRequired"));
+    setInviting(true);
+    try {
+      const res = await fetch("/api/edu/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, full_name: invName.trim(), role: invRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data?.error || "تعذّر إرسال الدعوة"); return; }
+      pushRow(data.member, data.name || (invName.trim() || email), "support");
+      setInvName(""); setInvEmail(""); setInvRole("edu_staff");
+      toast(tr("eduInvited"));
+      router.refresh();
+    } catch {
+      toast("تعذّر إرسال الدعوة");
+    } finally {
+      setInviting(false);
+    }
+  }
+
+  // إضافة مستخدم موجود بالفعل (بدون دعوة) — كتابة مباشرة تحت الـ RLS
+  async function addExisting() {
+    if (!exUser) return toast(tr("eduPickUserFirst"));
+    setAddingEx(true);
     const { data, error } = await supabase
       .from("edu_members")
-      .insert({ profile_id: newUser, role: newRole, active: true, can_edit_results: false, created_by: meId })
+      .insert({ profile_id: exUser, role: exRole, active: true, can_edit_results: false, created_by: meId })
       .select("id, profile_id, role, active, can_edit_results")
       .single();
-    setAdding(false);
+    setAddingEx(false);
     if (error) { toast(error.code === "23505" ? tr("eduMemberExists") : error.message); return; }
-    const p = profiles.find((x) => x.id === newUser);
-    setRows((r) => [
-      {
-        id: data!.id, profile_id: data!.profile_id, role: data!.role,
-        active: data!.active, can_edit_results: data!.can_edit_results,
-        name: p ? nameOf(p) : "—", team: p?.team || null,
-      },
-      ...r,
-    ]);
-    setNewUser(""); setNewRole("edu_staff");
+    const p = profiles.find((x) => x.id === exUser);
+    pushRow(data as any, p ? nameOf(p) : "—", p?.team || null);
+    setExUser(""); setExRole("edu_staff");
     toast(tr("eduAddedMember"));
     router.refresh();
   }
@@ -102,18 +132,36 @@ export default function MembersManager({
         <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>{tr("eduMembersDesc")}</p>
       </div>
 
-      {/* فورم الإضافة */}
-      <div className="card" style={{ padding: 16, marginTop: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <select value={newUser} onChange={(e) => setNewUser(e.target.value)} style={sel} disabled={available.length === 0}>
-          <option value="">{available.length === 0 ? tr("eduNoUsersLeft") : tr("eduSelectUser")}</option>
-          {available.map((p) => (
-            <option key={p.id} value={p.id}>{nameOf(p)}{p.team ? ` · ${p.team}` : ""}</option>
-          ))}
-        </select>
-        <select value={newRole} onChange={(e) => setNewRole(e.target.value)} style={sel}>
-          {ROLES.map(([v, k]) => <option key={v} value={v}>{tr(k)}</option>)}
-        </select>
-        <button className="btn" onClick={addMember} disabled={adding || !newUser}>{tr("eduAddMember")}</button>
+      {/* دعوة عضو بالإيميل */}
+      <div className="card" style={{ padding: 16, marginTop: 16 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <input value={invName} onChange={(e) => setInvName(e.target.value)} placeholder={tr("name")} style={{ ...inp, minWidth: 180 }} />
+          <input value={invEmail} onChange={(e) => setInvEmail(e.target.value)} placeholder="name@niqat.com" type="email" style={{ ...inp, minWidth: 220 }} />
+          <select value={invRole} onChange={(e) => setInvRole(e.target.value)} style={sel}>
+            {ROLES.map(([v, k]) => <option key={v} value={v}>{tr(k)}</option>)}
+          </select>
+          <button className="btn" onClick={inviteMember} disabled={inviting || !invEmail.trim()}>{tr("eduInviteMember")}</button>
+        </div>
+        <p style={{ fontSize: 12, color: "var(--muted)", margin: "10px 0 0" }}>✉️ {tr("eduInviteHint")}</p>
+
+        <button type="button" onClick={() => setShowExisting((v) => !v)}
+          style={{ marginTop: 12, background: "none", color: "var(--brand-d)", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
+          {tr("eduOrPickExisting")}
+        </button>
+        {showExisting && (
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
+            <select value={exUser} onChange={(e) => setExUser(e.target.value)} style={sel} disabled={available.length === 0}>
+              <option value="">{available.length === 0 ? tr("eduNoUsersLeft") : tr("eduSelectUser")}</option>
+              {available.map((p) => (
+                <option key={p.id} value={p.id}>{nameOf(p)}{p.team ? ` · ${p.team}` : ""}</option>
+              ))}
+            </select>
+            <select value={exRole} onChange={(e) => setExRole(e.target.value)} style={sel}>
+              {ROLES.map(([v, k]) => <option key={v} value={v}>{tr(k)}</option>)}
+            </select>
+            <button className="btn ghost" onClick={addExisting} disabled={addingEx || !exUser}>{tr("eduAddMember")}</button>
+          </div>
+        )}
       </div>
 
       {/* قائمة الأعضاء */}
@@ -164,9 +212,13 @@ export default function MembersManager({
   );
 }
 
+const inp: CSSProperties = {
+  height: 40, padding: "0 12px", borderRadius: 10, border: "1px solid var(--line)",
+  background: "var(--card)", color: "var(--text)", fontSize: 13,
+};
 const sel: CSSProperties = {
   height: 40, padding: "0 12px", borderRadius: 10, border: "1px solid var(--line)",
-  background: "var(--card)", color: "var(--text)", fontSize: 13, fontWeight: 600, minWidth: 200,
+  background: "var(--card)", color: "var(--text)", fontSize: 13, fontWeight: 600, minWidth: 160,
 };
 const row: CSSProperties = {
   display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
