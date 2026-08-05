@@ -25,8 +25,8 @@ async function safeList(supabase: any, table: string, col: string, extraCol?: st
   return { items: (data || []).map((r: any) => ({ id: r.id, label: r[col], extra: extraCol ? (r[extraCol] || "") : undefined })), missing: false };
 }
 
-// ============ تبويب المستخدمين والصلاحيات ============
-async function buildUsersTab(supabase: any): Promise<SettingsTab> {
+// ============ تبويب المستخدمين والصلاحيات (+ سيكشن فريق التعليم للأدمن) ============
+async function buildUsersTab(supabase: any, meId: string, isAdmin: boolean): Promise<SettingsTab> {
   let usersRes: any = await supabase.from("profiles").select(USER_COLS).order("team");
   if (usersRes.error) {
     usersRes = await supabase.from("profiles").select(USER_COLS.replace(",phone", "").replace(",can_see_daily_sales", "")).order("team");
@@ -45,6 +45,29 @@ async function buildUsersTab(supabase: any): Promise<SettingsTab> {
     } catch { /* تجاهل بأمان */ }
   }
 
+  // سيكشن فريق التعليم — طبقة edu_members منفصلة (للأدمن العام بس)
+  let eduSection: any = null;
+  if (isAdmin) {
+    const { data: memRows } = await supabase.from("edu_members")
+      .select("id, profile_id, role, active, can_edit_results, created_at")
+      .order("created_at", { ascending: false });
+    const byId = new Map(users.map((p: any) => [p.id, p]));
+    const eduMembers = ((memRows as any[]) || []).map((m: any) => {
+      const p: any = byId.get(m.profile_id);
+      return {
+        id: m.id, profile_id: m.profile_id, role: m.role, active: m.active,
+        can_edit_results: m.can_edit_results,
+        name: (p?.full_name && p.full_name.trim()) || p?.phone || "—",
+        team: p?.team || null,
+      };
+    });
+    eduSection = (
+      <div style={{ marginTop: 28, borderTop: "1px solid var(--line)", paddingTop: 20 }}>
+        <MembersManager initialMembers={eduMembers} profiles={users as any} meId={meId} />
+      </div>
+    );
+  }
+
   return {
     key: "users",
     label: "👤 " + tr("users"),
@@ -53,6 +76,7 @@ async function buildUsersTab(supabase: any): Promise<SettingsTab> {
         <div className="sec-t" style={{ marginTop: 4, marginBottom: 4 }}>{tr("users")}</div>
         <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>{users.length} {tr("userWord")} — {tr("unlimitedAdd")}</p>
         <UsersManager profiles={users} />
+        {eduSection}
       </>
     ),
   };
@@ -101,30 +125,6 @@ async function buildChatLogTab(supabase: any): Promise<SettingsTab> {
   }));
 
   return { key: "chatlog", label: "💬 " + tr("chatLogNav"), content: <ChatLogView items={items} rooms={rooms} /> };
-}
-
-// ============ تبويب فريق التعليم (طبقة edu_members منفصلة) — للأدمن العام ============
-async function buildEduTeamTab(supabase: any, meId: string): Promise<SettingsTab> {
-  const [profRes, memRes] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, team, phone").order("full_name"),
-    supabase.from("edu_members").select("id, profile_id, role, active, can_edit_results, created_at").order("created_at", { ascending: false }),
-  ]);
-  const profiles = ((profRes.data as any[]) || []);
-  const byId = new Map(profiles.map((p: any) => [p.id, p]));
-  const members = (((memRes.data as any[]) || [])).map((m: any) => {
-    const p = byId.get(m.profile_id);
-    return {
-      id: m.id, profile_id: m.profile_id, role: m.role, active: m.active,
-      can_edit_results: m.can_edit_results,
-      name: (p?.full_name && p.full_name.trim()) || p?.phone || "—",
-      team: p?.team || null,
-    };
-  });
-  return {
-    key: "eduteam",
-    label: "📚 " + tr("eduTeam"),
-    content: <MembersManager initialMembers={members} profiles={profiles} meId={meId} />,
-  };
 }
 
 export default async function Settings() {
@@ -219,16 +219,13 @@ export default async function Settings() {
   }
 
   // ===== تبويب المستخدمين — لمن عنده can_manage_users =====
-  if (canUsers) tabs.push(await buildUsersTab(supabase));
-
-  // ===== تبويب فريق التعليم — للأدمن العام (يدير كل الفرق من مكان واحد) =====
-  if (isAdmin) tabs.push(await buildEduTeamTab(supabase, user?.id || ""));
+  if (canUsers) tabs.push(await buildUsersTab(supabase, user?.id || "", isAdmin));
 
   // ===== تبويب سجل الشات — للأدمن فقط =====
   if (isAdmin) tabs.push(await buildChatLogTab(supabase));
 
   // ترتيب التبويبات النهائي المطلوب
-  const TAB_ORDER = ["users", "eduteam", "catalog", "team", "integrations", "chatlog"];
+  const TAB_ORDER = ["users", "catalog", "team", "integrations", "chatlog"];
   tabs.sort((a, b) => {
     const ia = TAB_ORDER.indexOf(a.key), ib = TAB_ORDER.indexOf(b.key);
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
