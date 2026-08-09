@@ -88,7 +88,7 @@ export default function ReportsView({
   salesRows: SalesRow[]; supportRows: SupportRow[]; supportTotals?: { activations: number; total: number; open: number; closed: number }; monthly: Monthly[];
   byDiploma: { label: string; value: number; color: string }[];
   byService?: { label: string; value: number; color: string }[];
-  batchOpts: { v: string; label: string }[];
+  batchOpts: { v: string; label: string; dip?: string }[];
   diplomaOpts: { v: string; label: string }[];
   affiliates: { code: string; name: string; rate?: number; discount?: number }[];
   resetAt?: string;

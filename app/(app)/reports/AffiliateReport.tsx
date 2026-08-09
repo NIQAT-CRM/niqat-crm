@@ -155,7 +155,9 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
   }
 
   function onBatch(v: string) { setBatchId(v); setSelCodes(new Set()); setOnlySel(false); load(v, dip); }
-  function onDip(v: string) { setDip(v); load(batchId, v); }
+  // الدبلومة أولاً: تختارها → الباتشات تضيّق لباتشاتها + نصفّر الباتش المختار
+  function onDip(v: string) { setDip(v); setBatchId(""); setSumRows([]); setCustRows([]); setSelCodes(new Set()); setOnlySel(false); }
+  const visBatches = dip ? batches.filter((b) => (b as any).dip === dip) : batches;
 
   const statusLabel = (s: string) => s === "paid" ? tr("payFullyPaid") : s === "partial" ? tr("payPartial") : tr("unpaid");
   const statusColor = (s: string) => s === "paid" ? "#18A957" : s === "partial" ? "#E6A700" : "#E0483B";
@@ -170,13 +172,13 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
       {/* الفلاتر */}
       <div className="card" style={{ padding: 16 }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-          <select value={batchId} onChange={(e) => onBatch(e.target.value)} style={{ ...sel, minWidth: 160 }}>
-            <option value="">{tr("selectBatchDash")}</option>
-            {batches.map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
-          </select>
-          <select value={dip} onChange={(e) => onDip(e.target.value)} style={sel} disabled={!batchId}>
+          <select value={dip} onChange={(e) => onDip(e.target.value)} style={{ ...sel, minWidth: 160 }}>
             <option value="">{tr("filterDip")}</option>
             {diplomas.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
+          </select>
+          <select value={batchId} onChange={(e) => onBatch(e.target.value)} style={{ ...sel, minWidth: 160 }} disabled={!dip}>
+            <option value="">{dip ? tr("selectBatchDash") : tr("selectDiplomaFirst")}</option>
+            {visBatches.map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
           </select>
           <select value={pay} onChange={(e) => setPay(e.target.value)} style={sel} disabled={!batchId}>
             <option value="">{tr("filterPay")}</option>

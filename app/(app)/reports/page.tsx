@@ -74,7 +74,7 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
     supabase.from("profiles").select("id,full_name,team"),
     supabase.from("diplomas").select("id,name_ar"),
     supabase.from("refunds").select("customer_id"),
-    supabase.from("batches").select("id,code").order("start_date", { ascending: false }),
+    supabase.from("batches").select("id,code,diploma_id").order("start_date", { ascending: false }),
     supabase.from("tickets").select("assignee_id,status"),
     supabase.rpc("dash_stage_counts", rpcArgs),
     supabase.rpc("dash_enrollment_diploma"),
@@ -246,7 +246,7 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
     interested: Math.max(0, v.customers - v.enrolled), refunded: refundCodeCount[code] || 0,
   })).sort((a, b) => b.customers - a.customers);
 
-  const batchOpts = ((batchRes.data as any[]) || []).map((b) => ({ v: b.id, label: b.code }));
+  const batchOpts = ((batchRes.data as any[]) || []).map((b) => ({ v: b.id, label: b.code, dip: b.diploma_id || "" }));
   const diplomaOpts = diplomas.map((d: any) => ({ v: d.id, label: d.name_ar }));
   const affiliatesList = affList.map((a: any) => ({ code: (a.code || "").toUpperCase(), name: a.name || "—", rate: Number(a.rate) || 0, discount: Number(a.discount) || 0 }));
 
