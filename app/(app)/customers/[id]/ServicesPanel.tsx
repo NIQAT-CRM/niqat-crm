@@ -22,12 +22,12 @@ const SV_TYPES = [
 const stMeta = (k: string) => SV_TYPES.find((t) => t.key === k) || { key: k, labelKey: "serviceWord", color: "#2F6BFF", icon: "🔧" };
 
 export default function ServicesPanel({
-  customerId, meId, enrolls, dipOpts, batchOpts, addons, accreditations, projects, libraries, canFinance, serviceTypes = [], serviceItemsByType = {}, myTeam = "",
+  customerId, meId, enrolls, dipOpts, batchOpts, addons, accreditations, projects, libraries, canFinance, serviceTypes = [], serviceItemsByType = {}, myTeam = "", stage = "",
 }: {
   customerId: string; meId: string; enrolls: Enr[];
   dipOpts: Opt[]; batchOpts: Opt[]; addons: Addon[];
   accreditations: string[]; projects: string[]; libraries: string[]; canFinance: boolean;
-  myTeam?: string;
+  myTeam?: string; stage?: string;
   serviceTypes?: { slug: string; name: string }[];
   serviceItemsByType?: Record<string, { code: string; price_egp: number; price_usd: number }[]>;
 }) {
@@ -38,6 +38,18 @@ export default function ServicesPanel({
   const [open, setOpen] = useState(false);
   const [svType, setSvType] = useState("diploma");
   const [svDip, setSvDip] = useState("");
+  // تغيير الدبلومة/الباتش لاشتراك غير مدفوع
+  const [dipEditFor, setDipEditFor] = useState<string | null>(null);
+  const [edDip2, setEdDip2] = useState("");
+  const [edBatch2, setEdBatch2] = useState("");
+  const notPaid = stage !== "enrolled";
+  async function saveDipChange(e: any) {
+    setBusy(true);
+    const { error } = await supabase.from("enrollments").update({ diploma_id: edDip2 || e.diplomaId, batch_id: edBatch2 || null }).eq("id", e.id);
+    setBusy(false);
+    if (error) return toast(tr("saveFailed") + error.message);
+    setDipEditFor(null); toast(tr("updated")); router.refresh();
+  }
   const [svBatch, setSvBatch] = useState("");
   const [svName, setSvName] = useState("");
   const [svAmount, setSvAmount] = useState("");
@@ -323,7 +335,35 @@ export default function ServicesPanel({
                   <span className="chip" style={{ background: m.color + "1a", color: m.color }}>{tr(m.labelKey)}</span>
                   <span style={{ marginInlineStart: "auto", fontSize: 11, color: "var(--green)", display: "flex", alignItems: "center", gap: 3 }}>● {tr("active")}</span>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", marginBottom: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.diploma}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", marginBottom: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.diploma}
+                  {notPaid && (
+                    <button title={tr("changeDiploma")} onClick={() => { const o = dipEditFor !== e.id; setDipEditFor(o ? e.id : null); setEdDip2(o ? e.diplomaId : ""); setEdBatch2(o ? (e.batchId || "") : ""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", marginInlineStart: 6, verticalAlign: "middle" }}>
+                      <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                    </button>
+                  )}
+                </div>
+                {dipEditFor === e.id && (
+                  <div style={{ gridColumn: "1 / -1", border: "1px solid var(--brand)", background: "var(--brand-soft)", borderRadius: 9, padding: 10, marginBottom: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 800, color: "var(--brand-d)" }}>✎ {tr("changeDiploma")}</div>
+                    <div>
+                      <label style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700, display: "block", marginBottom: 3 }}>{tr("diploma")}</label>
+                      <select className="inp" value={edDip2} onChange={(ev) => { setEdDip2(ev.target.value); setEdBatch2(""); }} style={{ width: "100%", height: 36 }}>
+                        {dipOpts.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700, display: "block", marginBottom: 3 }}>{tr("batch")}</label>
+                      <select className="inp" value={edBatch2} onChange={(ev) => setEdBatch2(ev.target.value)} style={{ width: "100%", height: 36 }}>
+                        <option value="">{tr("selectDash")}</option>
+                        {batchOpts.filter((b) => !edDip2 || b.dip === edDip2).map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => saveDipChange(e)} disabled={busy} className="btn" style={{ height: 32, padding: "0 12px", fontSize: 12 }}>{busy ? "..." : tr("saveChanges")}</button>
+                      <button onClick={() => setDipEditFor(null)} className="btn ghost" style={{ height: 32, padding: "0 10px", fontSize: 12 }}>{tr("cancel")}</button>
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                   <span style={{ color: "var(--muted)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tr("batchColon")} <span className="num">{e.batch}</span></span>
                   <button onClick={(ev) => { if (moveFor === e.id) { resetMove(); } else { const r = ev.currentTarget.getBoundingClientRect(); resetMove(); setMoveFor(e.id); setMoveAnchor(r); setMoveTo(""); } }}

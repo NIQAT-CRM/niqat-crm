@@ -339,6 +339,14 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
       if (r.currency === "USD") todayUsd += amt; else todayEgp += amt;
       todayCount++;
     }
+    // + الإيصالات المشتركة الجديدة (مش داخلة في receipts_all) — عشان توتال اليوم يساوي صفحة الإيصالات
+    const { data: shrToday } = await supabase.from("receipts").select("total_amount,currency,created_at").gte("created_at", dFrom);
+    for (const r of ((shrToday as any[]) || [])) {
+      if (cairoKey(r.created_at) !== cairoToday) continue;
+      const amt = Number(r.total_amount) || 0;
+      if (r.currency === "USD") todayUsd += amt; else todayEgp += amt;
+      todayCount++;
+    }
   }
 
   // التخصصات الهندسية: المسجّلين لكل تخصص (من دالة القاعدة)
@@ -349,7 +357,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
 
   return (
     <div>
-      <RealtimeRefresh tables={["tickets","follow_ups","handoffs","tasks","customers","installments","customer_docs","customer_addons","enrollment_finance"]} />
+      <RealtimeRefresh tables={["tickets","follow_ups","handoffs","tasks","customers","installments","customer_docs","customer_addons","enrollment_finance","receipts"]} />
       <div className="page-h"><div><h1>{tr("dash")}</h1><p>{tr("dashDesc")}</p></div></div>
       <PeriodFilter />
 
