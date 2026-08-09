@@ -16,6 +16,7 @@ import AccessPanel from "./AccessPanel";
 import FollowUpPanel from "./FollowUpPanel";
 import RefundPanel from "./RefundPanel";
 import WhatsAppPanel from "./WhatsAppPanel";
+import EducationPanel from "./EducationPanel";
 import SmartActions from "../../SmartActions";
 import { useLogUsage } from "../../AiFlags";
 
@@ -95,7 +96,7 @@ export default function CustomerDrawer(props: {
   const router = useRouter();
   const supabase = createClient();
   const editRef = useRef<CustomerEditHandle>(null);
-  const [tab, setTab] = useState<"basic" | "sales" | "docs" | "ops">("basic");
+  const [tab, setTab] = useState<"basic" | "sales" | "docs" | "ops" | "edu">("basic");
   const [archiving, setArchiving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -345,6 +346,7 @@ export default function CustomerDrawer(props: {
           </>
         )}
       </div>}
+      edu={<EducationPanel customerId={props.c.id} />}
       footer={() => null}
     />
     </>

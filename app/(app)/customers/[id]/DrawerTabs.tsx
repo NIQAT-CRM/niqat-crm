@@ -2,10 +2,10 @@
 import { type ReactNode } from "react";
 import { useT } from "@/lib/i18n/client";
 
-type TabKey = "basic" | "sales" | "docs" | "ops";
+type TabKey = "basic" | "sales" | "docs" | "ops" | "edu";
 
-export default function DrawerTabs({ basic, sales, docs, ops, showOps = true, footer, tab, onTab, quickBar }: {
-  basic: ReactNode; sales: ReactNode; docs: ReactNode; ops?: ReactNode; showOps?: boolean;
+export default function DrawerTabs({ basic, sales, docs, ops, edu, showOps = true, showEdu = true, footer, tab, onTab, quickBar }: {
+  basic: ReactNode; sales: ReactNode; docs: ReactNode; ops?: ReactNode; edu?: ReactNode; showOps?: boolean; showEdu?: boolean;
   footer?: (tab: string) => ReactNode;
   tab: TabKey; onTab: (t: TabKey) => void; quickBar?: ReactNode;
 }) {
@@ -27,6 +27,7 @@ export default function DrawerTabs({ basic, sales, docs, ops, showOps = true, fo
           <TabBtn val="sales" label={tr("tabSales")} />
           <TabBtn val="docs" label={tr("tabDocs")} />
           {showOps && <TabBtn val="ops" label={tr("tabOps")} />}
+          {showEdu && <TabBtn val="edu" label={tr("eduTabTitle")} />}
         </div>
       </div>
       <div className="tab-pane flex flex-col flex-1 min-h-0" key={tab}>
@@ -34,6 +35,7 @@ export default function DrawerTabs({ basic, sales, docs, ops, showOps = true, fo
         {tab === "sales" && sales}
         {tab === "docs" && docs}
         {tab === "ops" && ops}
+        {tab === "edu" && edu}
       </div>
       {footer?.(tab)}
     </div>
