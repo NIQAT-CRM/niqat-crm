@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/lib/toast";
 
 type Batch = { id: string; code: string; status: string; count: number; start_date: string | null };
 type Group = { id: string; name: string; batches: Batch[] };
@@ -21,6 +22,7 @@ export default function EducationTree({
   const [openDip, setOpenDip] = useState<Record<string, boolean>>(groups[0] ? { [groups[0].id]: true } : {});
   const [openBatch, setOpenBatch] = useState<Record<string, boolean>>({});
   const [custCache, setCustCache] = useState<Record<string, Cust[] | "loading">>({});
+  const [exp, setExp] = useState<string | null>(null);
 
   // بحث العملاء في قاعدة البيانات
   const [results, setResults] = useState<SearchRow[] | null>(null);
@@ -89,6 +91,24 @@ export default function EducationTree({
       }
       setCustCache((s) => ({ ...s, [b.id]: rows }));
     }
+  }
+
+  async function exportBatch(b: Batch) {
+    setExp(b.id);
+    try {
+      const res = await fetch("/api/edu/export", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batch_id: b.id }),
+      });
+      if (!res.ok) { toast(tr("exportFailed")); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `niqat-education-${b.code || "batch"}.xlsx`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch { toast(tr("exportFailed")); }
+    finally { setExp(null); }
   }
 
   const CustRow = (c: Cust) => (
@@ -172,18 +192,29 @@ export default function EducationTree({
                       const rows = custCache[b.id];
                       return (
                         <div key={b.id} style={{ border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden" }}>
-                          <button
-                            onClick={() => toggleBatch(b)}
-                            style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", background: "none", border: "none", cursor: "pointer", textAlign: "start" }}
-                          >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth={2.5}
-                              style={{ width: 13, height: 13, flexShrink: 0, transition: "transform .25s", transform: bOpen ? "rotate(90deg)" : "rotate(0deg)" }}>
-                              <path d="M9 5l7 7-7 7" />
-                            </svg>
-                            <span className="num" style={{ minWidth: 60, fontSize: 12.5, fontWeight: 800, color: "var(--ink)" }} dir="ltr">{b.code}</span>
-                            <span style={{ flex: 1 }} />
-                            <span className="chip" style={{ background: "var(--muted-soft)", color: "var(--muted)", minWidth: 30, textAlign: "center" }}>{b.count}</span>
-                          </button>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px" }}>
+                            <button
+                              onClick={() => toggleBatch(b)}
+                              style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, padding: 0, background: "none", border: "none", cursor: "pointer", textAlign: "start" }}
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth={2.5}
+                                style={{ width: 13, height: 13, flexShrink: 0, transition: "transform .25s", transform: bOpen ? "rotate(90deg)" : "rotate(0deg)" }}>
+                                <path d="M9 5l7 7-7 7" />
+                              </svg>
+                              <span className="num" style={{ minWidth: 60, fontSize: 12.5, fontWeight: 800, color: "var(--ink)" }} dir="ltr">{b.code}</span>
+                              <span style={{ flex: 1 }} />
+                              <span className="chip" style={{ background: "var(--muted-soft)", color: "var(--muted)", minWidth: 30, textAlign: "center" }}>{b.count}</span>
+                            </button>
+                            <button
+                              onClick={() => exportBatch(b)}
+                              disabled={exp === b.id || b.count === 0}
+                              title={tr("exportExcel")}
+                              className="btn ghost sm"
+                              style={{ padding: "4px 10px", fontSize: 11.5, flexShrink: 0 }}
+                            >
+                              ⬇ {tr("exportExcel")}
+                            </button>
+                          </div>
 
                           {bOpen && (
                             <div style={{ borderTop: "1px solid var(--line)", background: "var(--card)" }}>
