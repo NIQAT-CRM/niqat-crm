@@ -1,5 +1,6 @@
 "use client";
 import type { CSSProperties } from "react";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
@@ -124,7 +125,10 @@ export default function EducationTree({
 
   return (
     <div className="page-h" style={{ display: "block" }}>
-      <h1>{tr("eduDiplomasBatches")}</h1>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <h1 style={{ flex: 1 }}>{tr("eduDiplomasBatches")}</h1>
+        <Link href="/education/setup" className="btn ghost sm">⚙️ {tr("eduSetupLink")}</Link>
+      </div>
 
       {/* بحث */}
       <input
