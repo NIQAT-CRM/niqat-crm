@@ -8,7 +8,6 @@ import { toast } from "@/lib/toast";
 import { CountUp, Donut, BarRow, AreaChart, MiniSpark, ApexArea, ApexStageBar, ApexDonut } from "../Charts";
 import PeriodFilter from "../PeriodFilter";
 import ExportButton from "../ExportButton";
-import AffiliateReport from "./AffiliateReport";
 import AffiliateGlobal from "./AffiliateGlobal";
 import InsightsSection, { type InsightsData } from "./InsightsSection";
 
@@ -404,7 +403,6 @@ export default function ReportsView({
             <SecHead icon="link" tint="#7B61FF" title={tr("affiliateReportTitle")} />
           </div>
           <AffiliateGlobal affiliates={affiliates} diplomas={diplomaOpts} batches={batchOpts} canFinance={canFinance} />
-          <AffiliateReport affRows={affRows} batches={batchOpts} diplomas={diplomaOpts} affiliates={affiliates} canFinance={canFinance} />
         </div>
       )}
     </div>
