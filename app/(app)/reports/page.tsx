@@ -248,7 +248,7 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
 
   const batchOpts = ((batchRes.data as any[]) || []).map((b) => ({ v: b.id, label: b.code, dip: b.diploma_id || "" }));
   const diplomaOpts = diplomas.map((d: any) => ({ v: d.id, label: d.name_ar }));
-  const affiliatesList = affList.map((a: any) => ({ code: (a.code || "").toUpperCase(), name: a.name || "—", rate: Number(a.rate) || 0, discount: Number(a.discount) || 0 }));
+  const affiliatesList = affList.map((a: any) => ({ code: (a.code || "").toUpperCase(), name: a.name || "—", rate: Number(a.rate) || 0, discount: Number(a.discount) || 0, phone: (a.phone || "").trim() }));
 
   // ===== تقرير الاستردادات (لأصحاب صلاحية المالية) =====
   let refundReport: any = null;

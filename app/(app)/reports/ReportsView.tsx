@@ -9,6 +9,7 @@ import { CountUp, Donut, BarRow, AreaChart, MiniSpark, ApexArea, ApexStageBar, A
 import PeriodFilter from "../PeriodFilter";
 import ExportButton from "../ExportButton";
 import AffiliateReport from "./AffiliateReport";
+import AffiliateGlobal from "./AffiliateGlobal";
 import InsightsSection, { type InsightsData } from "./InsightsSection";
 
 type StageRow = { key: string; label: string; color: string; n: number };
@@ -90,7 +91,7 @@ export default function ReportsView({
   byService?: { label: string; value: number; color: string }[];
   batchOpts: { v: string; label: string; dip?: string }[];
   diplomaOpts: { v: string; label: string }[];
-  affiliates: { code: string; name: string; rate?: number; discount?: number }[];
+  affiliates: { code: string; name: string; rate?: number; discount?: number; phone?: string }[];
   resetAt?: string;
 }) {
   const tr = useT();
@@ -402,6 +403,7 @@ export default function ReportsView({
           <div style={{ marginBottom: 14 }}>
             <SecHead icon="link" tint="#7B61FF" title={tr("affiliateReportTitle")} />
           </div>
+          <AffiliateGlobal affiliates={affiliates} diplomas={diplomaOpts} batches={batchOpts} canFinance={canFinance} />
           <AffiliateReport affRows={affRows} batches={batchOpts} diplomas={diplomaOpts} affiliates={affiliates} canFinance={canFinance} />
         </div>
       )}
