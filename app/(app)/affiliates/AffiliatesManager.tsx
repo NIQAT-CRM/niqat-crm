@@ -6,11 +6,11 @@ import { useT } from "@/lib/i18n/client";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type Aff = { name: string; code: string; discount: number; rate?: number; _uid: number; _orig: string };
+type Aff = { name: string; code: string; discount: number; rate?: number; phone?: string; _uid: number; _orig: string };
 
 let UID = 1;
 
-export default function AffiliatesManager({ initial }: { initial: { name: string; code: string; discount: number; rate?: number }[] }) {
+export default function AffiliatesManager({ initial }: { initial: { name: string; code: string; discount: number; rate?: number; phone?: string }[] }) {
   const tr = useT();
   const supabase = createClient();
   const router = useRouter();
@@ -19,6 +19,7 @@ export default function AffiliatesManager({ initial }: { initial: { name: string
   const [code, setCode] = useState("");
   const [disc, setDisc] = useState("");
   const [rate, setRate] = useState("");
+  const [ph, setPh] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -31,7 +32,7 @@ export default function AffiliatesManager({ initial }: { initial: { name: string
 
     setBusy(true); setSaved(false);
     // 1) احفظ الإعداد (من غير الحقول الداخلية)
-    const clean = next.map((a) => ({ name: a.name, code: a.code.trim().toUpperCase(), discount: Number(a.discount) || 0, rate: Number(a.rate) || 0 }));
+    const clean = next.map((a) => ({ name: a.name, code: a.code.trim().toUpperCase(), discount: Number(a.discount) || 0, rate: Number(a.rate) || 0, phone: (a.phone || "").trim() }));
     const { error } = await supabase.from("app_settings")
       .upsert({ key: "affiliates", value: clean, updated_at: new Date().toISOString() });
     if (error) { setBusy(false); toast(tr("saveFailedColon") + error.message); return false; }
@@ -57,8 +58,8 @@ export default function AffiliatesManager({ initial }: { initial: { name: string
     const c = code.trim().toUpperCase();
     if (!c) return toast(tr("enterCode"));
     if (list.some((a) => a.code.toUpperCase() === c)) return toast(tr("codeAlreadyExists"));
-    const next = [...list, { name: name.trim() || "—", code: c, discount: Number(disc) || 0, rate: Number(rate) || 0, _uid: UID++, _orig: c }];
-    setName(""); setCode(""); setDisc(""); setRate("");
+    const next = [...list, { name: name.trim() || "—", code: c, discount: Number(disc) || 0, rate: Number(rate) || 0, phone: ph.trim(), _uid: UID++, _orig: c }];
+    setName(""); setCode(""); setDisc(""); setRate(""); setPh("");
     await persist(next);
   }
 
@@ -77,6 +78,7 @@ export default function AffiliatesManager({ initial }: { initial: { name: string
         <div className="sec-t" style={{ marginTop: 0 }}>{tr("addNewCode")}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
           <input className="inp" style={{ flex: 1, minWidth: 140 }} placeholder={tr("affiliateName")} value={name} onChange={(e) => setName(e.target.value)} />
+          <input className="inp" dir="ltr" style={{ width: 140 }} placeholder={tr("uniRespPhone")} value={ph} onChange={(e) => setPh(e.target.value)} />
           <input className="inp" style={{ width: 130 }} placeholder={tr("code")} value={code} onChange={(e) => setCode(e.target.value)} />
           <input className="inp num" style={{ width: 100 }} placeholder={tr("discountPct")} value={disc} onChange={(e) => setDisc(e.target.value)} />
           <input className="inp num" style={{ width: 120 }} placeholder={tr("commissionPct")} value={rate} onChange={(e) => setRate(e.target.value)} />
@@ -90,6 +92,7 @@ export default function AffiliatesManager({ initial }: { initial: { name: string
             <tr>
               <th style={{ minWidth: 150 }}>{tr("code")}</th>
               <th style={{ minWidth: 160 }}>{tr("name")}</th>
+              <th style={{ minWidth: 130 }}>{tr("uniRespPhone")}</th>
               <th>{tr("discountPct")}</th>
               <th>{tr("commissionPct")}</th>
               <th></th>
@@ -97,12 +100,13 @@ export default function AffiliatesManager({ initial }: { initial: { name: string
           </thead>
           <tbody>
             {list.length === 0 && (
-              <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>{tr("noCodesYet")}</td></tr>
+              <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>{tr("noCodesYet")}</td></tr>
             )}
             {list.map((a) => (
               <tr key={a._uid}>
                 <td><input style={{ ...cellInp, fontWeight: 700, color: "var(--brand)" }} value={a.code} onChange={(e) => upd(a._uid, { code: e.target.value })} /></td>
                 <td><input style={cellInp} placeholder={tr("affiliateName")} value={a.name === "—" ? "" : a.name} onChange={(e) => upd(a._uid, { name: e.target.value })} /></td>
+                <td><input style={cellInp} dir="ltr" placeholder={tr("uniRespPhone")} value={a.phone || ""} onChange={(e) => upd(a._uid, { phone: e.target.value })} /></td>
                 <td><input className="num" style={{ ...cellInp, width: 80 }} value={a.discount} onChange={(e) => upd(a._uid, { discount: Number(e.target.value) || 0 })} /></td>
                 <td><input className="num" style={{ ...cellInp, width: 80 }} value={a.rate ?? 0} onChange={(e) => upd(a._uid, { rate: Number(e.target.value) || 0 })} /></td>
                 <td style={{ textAlign: "end" }}>
