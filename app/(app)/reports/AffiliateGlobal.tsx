@@ -108,6 +108,65 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
     commission: rows.reduce((s, r) => s + r.commission, 0),
   }), [rows]);
 
+  const [pdfInc, setPdfInc] = useState(true);
+
+  function waPhone(raw: string) {
+    let d = (raw || "").replace(/\D/g, "");
+    if (!d) return "";
+    if (d.startsWith("00")) d = d.slice(2);
+    if (d.startsWith("0")) d = "20" + d.slice(1);
+    else if (!d.startsWith("20") && d.length <= 11) d = "20" + d;
+    return d;
+  }
+  function buildMsg(r: Row) {
+    const cs = custs.filter((c) => c.code === r.code && !c.refunded);
+    const dips = Array.from(new Set(cs.map((c) => c.diploma).filter((x) => x && x !== "—"))).join("، ") || "—";
+    const bts = Array.from(new Set(cs.flatMap((c) => (c.batch || "").split(" / ")).filter((x) => x && x !== "—"))).join("، ") || "—";
+    const L = [
+      `مساء الخير مهندس/${r.name} 🌟`,
+      `بعد إغلاق الحساب وانتهاء باب التحويل والاسترداد، تم تسوية العمولة الخاصة بحضرتك.`,
+      ``,
+      `🔑 الكود: ${r.code}`,
+      `🎓 الدبلومة: ${dips} — الباتش: ${bts}`,
+      ...(canFinance ? [`📈 نسبة عمولتك: ${r.rate}%`] : []),
+      ``,
+      `👥 إجمالي العملاء: ${r.customers} — ✅ دفعوا: ${r.paidN} · ⏳ لسه: ${r.notPaidN}`,
+      ...(canFinance ? [`💰 إجمالي المبيعات: ${money(r.sales)} جنيه`, `💵 عمولتك المستحقة: ${money(r.commission)} جنيه`] : []),
+      ``,
+      `سيتم التحويل خلال أقصاها 15 يوم عمل.`,
+      `نشكر حضرتك على جهودك المستمرة، ونتطلع لمزيد من النجاحات معًا 🤝`,
+    ];
+    return L.join("\n");
+  }
+  function esc(s: string) { return (s || "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string)); }
+  function openPdf(r: Row) {
+    const cs = custs.filter((c) => c.code === r.code).sort((a, b) => b.agreed - a.agreed);
+    const rowsHtml = cs.map((c) => `<tr style="${c.refunded ? "opacity:.6" : ""}"><td>${esc(c.name)}</td><td dir="ltr">${esc(c.phone) || "—"}</td><td>${esc(c.diploma)}</td><td dir="ltr">${esc(c.batch)}</td><td>${c.refunded ? "مسترد" : c.paid ? "دفع" : "لسه"}</td>${canFinance ? `<td dir="ltr">${money(c.agreed)}</td><td dir="ltr">${money(c.collected)}</td>` : ""}</tr>`).join("");
+    const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير الشريك — ${esc(r.name)}</title>
+<style>body{font-family:Tajawal,Arial,sans-serif;padding:28px;color:#1a1a1a}h1{color:#F08A24;margin:0 0 4px}.meta{color:#555;font-size:13px;margin-bottom:14px}.sum{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0}.box{border:1px solid #eee;border-radius:10px;padding:10px 16px;min-width:90px}.box small{color:#777;font-size:11px}.box b{display:block;font-size:18px;color:#F08A24;margin-top:2px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px}th,td{border:1px solid #e2e2e2;padding:7px 9px;text-align:right}th{background:#faf5ee;color:#8a5a12}.ft{margin-top:22px;color:#999;font-size:11px}</style>
+</head><body>
+<h1>نقاط — تقرير الشريك</h1>
+<div class="meta">الاسم: <b>${esc(r.name)}</b> · الكود: <b>${esc(r.code)}</b>${r.phone ? ` · تليفون: ${esc(r.phone)}` : ""}</div>
+<div class="sum">
+  <div class="box"><small>العملاء</small><b>${r.customers}</b></div>
+  <div class="box"><small>دفعوا</small><b>${r.paidN}</b></div>
+  <div class="box"><small>لسه</small><b>${r.notPaidN}</b></div>
+  ${canFinance ? `<div class="box"><small>المبيعات</small><b>${money(r.sales)}</b></div><div class="box"><small>العمولة (${r.rate}%)</small><b>${money(r.commission)}</b></div>` : ""}
+</div>
+<table><thead><tr><th>الاسم</th><th>التليفون</th><th>الدبلومة</th><th>الباتش</th><th>الحالة</th>${canFinance ? "<th>المتفق</th><th>المحصّل</th>" : ""}</tr></thead><tbody>${rowsHtml}</tbody></table>
+<p class="ft">تم الإنشاء من نظام CRM-NIQAT — ${new Date().toLocaleDateString("ar-EG")}</p>
+<script>window.onload=function(){setTimeout(function(){window.print()},300)}</script>
+</body></html>`;
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(html); w.document.close(); }
+  }
+  function sendWA(r: Row) {
+    if (pdfInc) openPdf(r);
+    const ph = waPhone(r.phone);
+    const url = `https://wa.me/${ph}?text=${encodeURIComponent(buildMsg(r))}`;
+    window.open(url, "_blank");
+  }
+
   const th: React.CSSProperties = { padding: "9px 12px", textAlign: "start", color: "var(--muted)", fontWeight: 700, fontSize: 12, whiteSpace: "nowrap" };
   const td: React.CSSProperties = { padding: "9px 12px", fontSize: 13, color: "var(--ink)" };
 
@@ -167,6 +226,16 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
                     <tr style={{ background: "var(--bg)" }}>
                       <td colSpan={canFinance ? 8 : 6} style={{ padding: 10 }}>
                         {r.phone && <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>📞 <span dir="ltr">{r.phone}</span></div>}
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+                          <button onClick={() => sendWA(r)} disabled={!r.phone} className="btn" style={{ height: 34, padding: "0 14px", fontSize: 13, background: "#25D366", gap: 6, opacity: r.phone ? 1 : .5 }} title={r.phone ? "" : tr("noPhoneForWa")}>
+                            <svg viewBox="0 0 24 24" width={15} height={15} fill="currentColor"><path d="M12 2a10 10 0 0 0-8.5 15.2L2 22l4.9-1.5A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.9.9.9-2.8-.2-.3A8 8 0 1 1 12 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8 1-.3.2-.5.1a6.5 6.5 0 0 1-1.9-1.2 7.2 7.2 0 0 1-1.3-1.7c-.1-.2 0-.4.1-.5l.4-.4.2-.4v-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3A2.8 2.8 0 0 0 6 8.9c0 1.6 1.2 3.2 1.4 3.4s2.3 3.6 5.6 5c.8.3 1.4.5 1.9.7.8.2 1.5.2 2.1.1.6-.1 1.4-.6 1.6-1.2.2-.6.2-1 .1-1.2z" /></svg>
+                            {tr("waSend")}
+                          </button>
+                          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--ink)", cursor: "pointer" }}>
+                            <input type="checkbox" checked={pdfInc} onChange={(e) => setPdfInc(e.target.checked)} /> {tr("includePdf")}
+                          </label>
+                          {canFinance && <button onClick={() => openPdf(r)} className="btn ghost" style={{ height: 34, padding: "0 12px", fontSize: 12.5 }}>{tr("uniDownload")} PDF</button>}
+                        </div>
                         <div style={{ overflowX: "auto" }}>
                           <table style={{ width: "100%", borderCollapse: "collapse" }}>
                             <thead><tr>
