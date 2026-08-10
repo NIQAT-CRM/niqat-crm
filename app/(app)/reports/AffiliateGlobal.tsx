@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useT } from "@/lib/i18n/client";
+import { useT, useLang } from "@/lib/i18n/client";
 
-type Opt = { v: string; label: string };
+type Opt = { v: string; label: string; dip?: string };
 type Aff = { code: string; name: string; rate?: number; phone?: string };
+type EnrRow = { cid: string; dip: string; batch: string; agreed: number; collected: number };
+type CMeta = { id: string; name: string; phone: string; code: string; stage: string; refunded: boolean };
 type Cust = { id: string; name: string; phone: string; code: string; diploma: string; batch: string; agreed: number; collected: number; paid: boolean; refunded: boolean };
 type Row = { code: string; name: string; phone: string; rate: number; customers: number; paidN: number; notPaidN: number; refundedN: number; sales: number; commission: number; collected: number };
 
@@ -14,15 +16,20 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
   affiliates: Aff[]; diplomas: Opt[]; batches: Opt[]; canFinance: boolean;
 }) {
   const tr = useT();
+  const lang = useLang();
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
-  const [custs, setCusts] = useState<Cust[]>([]);
+  const [cmeta, setCmeta] = useState<CMeta[]>([]);
+  const [enrRows, setEnrRows] = useState<EnrRow[]>([]);
   const [q, setQ] = useState("");
   const [openCode, setOpenCode] = useState<string | null>(null);
+  const [dip, setDip] = useState("");
+  const [batch, setBatch] = useState("");
 
   const affByCode = useMemo(() => new Map(affiliates.map((a) => [a.code.toUpperCase(), a])), [affiliates]);
   const dipName = useMemo(() => new Map(diplomas.map((d) => [d.v, d.label])), [diplomas]);
   const batchName = useMemo(() => new Map(batches.map((b) => [b.v, b.label])), [batches]);
+  const visBatches = dip ? batches.filter((b) => b.dip === dip) : batches;
 
   useEffect(() => {
     (async () => {
@@ -33,7 +40,7 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
           .not("affiliate_code", "is", null).neq("affiliate_code", "");
         const cList = (cs || []) as any[];
         const ids = cList.map((c) => c.id);
-        if (!ids.length) { setCusts([]); setLoading(false); return; }
+        if (!ids.length) { setCmeta([]); setEnrRows([]); setLoading(false); return; }
 
         const { data: enrs } = await supabase.from("enrollments").select("id,customer_id,diploma_id,batch_id").in("customer_id", ids);
         const eList = (enrs || []) as any[];
@@ -52,31 +59,31 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
           (insts || []).forEach((i: any) => { if (i.status === "paid" || i.paid_at) paidByEnr.set(i.enrollment_id, (paidByEnr.get(i.enrollment_id) || 0) + (Number(i.amount) || 0)); });
         }
 
-        const enrByCust = new Map<string, any[]>();
-        eList.forEach((e) => { const arr = enrByCust.get(e.customer_id) || []; arr.push(e); enrByCust.set(e.customer_id, arr); });
-
-        const out: Cust[] = cList.map((c) => {
-          const es = enrByCust.get(c.id) || [];
-          let agreed = 0, collected = 0;
-          const dips = new Set<string>(), bts = new Set<string>();
-          es.forEach((e) => {
-            agreed += agreedByEnr.get(e.id) || 0;
-            collected += paidByEnr.get(e.id) || 0;
-            if (e.diploma_id) dips.add(dipName.get(e.diploma_id) || "");
-            if (e.batch_id) bts.add(batchName.get(e.batch_id) || "");
-          });
-          return {
-            id: c.id, name: c.name || "—", phone: c.phone1 || "", code: (c.affiliate_code || "").trim().toUpperCase(),
-            diploma: Array.from(dips).filter(Boolean).join(" / ") || "—",
-            batch: Array.from(bts).filter(Boolean).join(" / ") || "—",
-            agreed, collected, paid: c.stage === "enrolled", refunded: refSet.has(c.id),
-          };
-        });
-        setCusts(out);
-      } catch { setCusts([]); }
+        setCmeta(cList.map((c) => ({ id: c.id, name: c.name || "—", phone: c.phone1 || "", code: (c.affiliate_code || "").trim().toUpperCase(), stage: c.stage || "", refunded: refSet.has(c.id) })));
+        setEnrRows(eList.map((e) => ({ cid: e.customer_id, dip: e.diploma_id || "", batch: e.batch_id || "", agreed: agreedByEnr.get(e.id) || 0, collected: paidByEnr.get(e.id) || 0 })));
+      } catch { setCmeta([]); setEnrRows([]); }
       setLoading(false);
     })();
-  }, [supabase, canFinance, dipName, batchName]);
+  }, [supabase, canFinance]);
+
+  // تجميع لكل عميل مع تطبيق فلتر الدبلومة/الباتش
+  const custs: Cust[] = useMemo(() => {
+    const byCust = new Map<string, EnrRow[]>();
+    for (const e of enrRows) {
+      if (dip && e.dip !== dip) continue;
+      if (batch && e.batch !== batch) continue;
+      const arr = byCust.get(e.cid) || []; arr.push(e); byCust.set(e.cid, arr);
+    }
+    const out: Cust[] = [];
+    for (const c of cmeta) {
+      const es = byCust.get(c.id);
+      if ((dip || batch) && (!es || !es.length)) continue; // فلتر شغّال → استبعد اللي ملوش اشتراك مطابق
+      let agreed = 0, collected = 0; const dips = new Set<string>(), bts = new Set<string>();
+      (es || []).forEach((e) => { agreed += e.agreed; collected += e.collected; if (e.dip) dips.add(dipName.get(e.dip) || ""); if (e.batch) bts.add(batchName.get(e.batch) || ""); });
+      out.push({ id: c.id, name: c.name, phone: c.phone, code: c.code, diploma: Array.from(dips).filter(Boolean).join(" / ") || "—", batch: Array.from(bts).filter(Boolean).join(" / ") || "—", agreed, collected, paid: c.stage === "enrolled", refunded: c.refunded });
+    }
+    return out;
+  }, [cmeta, enrRows, dip, batch, dipName, batchName]);
 
   const rows: Row[] = useMemo(() => {
     const m = new Map<string, Row>();
@@ -84,7 +91,7 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
       if (!c.code) continue;
       const a = affByCode.get(c.code);
       let r = m.get(c.code);
-      if (!r) { r = { code: c.code, name: a?.name && a.name !== "—" ? a.name : c.code, phone: a?.phone || "", rate: Number(a?.rate) || 0, customers: 0, paidN: 0, notPaidN: 0, refundedN: 0, sales: 0, commission: 0, collected: 0 }; m.set(c.code, r); }
+      if (!r) { r = { code: c.code, name: a?.name && a.name !== "—" ? a.name : "", phone: a?.phone || "", rate: Number(a?.rate) || 0, customers: 0, paidN: 0, notPaidN: 0, refundedN: 0, sales: 0, commission: 0, collected: 0 }; m.set(c.code, r); }
       r.customers++;
       if (c.refunded) { r.refundedN++; continue; }
       if (c.paid) { r.paidN++; r.sales += c.agreed; r.collected += c.collected; }
@@ -101,14 +108,9 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
     if (!s) return true;
     return r.code.toLowerCase().includes(s) || r.name.toLowerCase().includes(s);
   });
+  const totals = useMemo(() => ({ partners: rows.length, customers: rows.reduce((s, r) => s + r.customers, 0), commission: rows.reduce((s, r) => s + r.commission, 0) }), [rows]);
 
-  const totals = useMemo(() => ({
-    partners: rows.length,
-    customers: rows.reduce((s, r) => s + r.customers, 0),
-    commission: rows.reduce((s, r) => s + r.commission, 0),
-  }), [rows]);
-
-  const [pdfInc, setPdfInc] = useState(true);
+  const dName = (r: Row) => r.name || r.code;
 
   function waPhone(raw: string) {
     let d = (raw || "").replace(/\D/g, "");
@@ -123,38 +125,39 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
     const dips = Array.from(new Set(cs.map((c) => c.diploma).filter((x) => x && x !== "—"))).join("، ") || "—";
     const bts = Array.from(new Set(cs.flatMap((c) => (c.batch || "").split(" / ")).filter((x) => x && x !== "—"))).join("، ") || "—";
     const L = [
-      `مساء الخير مهندس/${r.name} 🌟`,
-      `بعد إغلاق الحساب وانتهاء باب التحويل والاسترداد، تم تسوية العمولة الخاصة بحضرتك.`,
-      ``,
-      `🔑 الكود: ${r.code}`,
-      `🎓 الدبلومة: ${dips} — الباتش: ${bts}`,
-      ...(canFinance ? [`📈 نسبة عمولتك: ${r.rate}%`] : []),
-      ``,
+      `مساء الخير مهندس/${dName(r)} 🌟`,
+      `بعد إغلاق الحساب وانتهاء باب التحويل والاسترداد، تم تسوية العمولة الخاصة بحضرتك.`, ``,
+      `🔑 الكود: ${r.code}`, `🎓 الدبلومة: ${dips} — الباتش: ${bts}`,
+      ...(canFinance ? [`📈 نسبة عمولتك: ${r.rate}%`] : []), ``,
       `👥 إجمالي العملاء: ${r.customers} — ✅ دفعوا: ${r.paidN} · ⏳ لسه: ${r.notPaidN}`,
-      ...(canFinance ? [`💰 إجمالي المبيعات: ${money(r.sales)} جنيه`, `💵 عمولتك المستحقة: ${money(r.commission)} جنيه`] : []),
-      ``,
-      `سيتم التحويل خلال أقصاها 15 يوم عمل.`,
-      `نشكر حضرتك على جهودك المستمرة، ونتطلع لمزيد من النجاحات معًا 🤝`,
+      ...(canFinance ? [`💰 إجمالي المبيعات: ${money(r.sales)} جنيه`, `💵 عمولتك المستحقة: ${money(r.commission)} جنيه`] : []), ``,
+      `سيتم التحويل خلال أقصاها 15 يوم عمل.`, `نشكر حضرتك على جهودك المستمرة، ونتطلع لمزيد من النجاحات معًا 🤝`,
     ];
     return L.join("\n");
   }
   function esc(s: string) { return (s || "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string)); }
   function openPdf(r: Row) {
+    const ar = lang === "ar";
+    const L = ar
+      ? { title: "نقاط — تقرير الشريك", name: "الاسم", code: "الكود", phone: "التليفون", cust: "العملاء", paid: "دفعوا", not: "لسه", sales: "المبيعات", comm: "العمولة", dip: "الدبلومة", batch: "الباتش", status: "الحالة", agreed: "المتفق", coll: "المحصّل", total: "الإجمالي", pd: "دفع", ls: "لسه", rf: "مسترد", ft: "تم الإنشاء من نظام CRM-NIQAT" }
+      : { title: "NIQAT — Partner report", name: "Name", code: "Code", phone: "Phone", cust: "Customers", paid: "Paid", not: "Unpaid", sales: "Sales", comm: "Commission", dip: "Diploma", batch: "Batch", status: "Status", agreed: "Agreed", coll: "Collected", total: "Total", pd: "Paid", ls: "Unpaid", rf: "Refunded", ft: "Generated by CRM-NIQAT" };
     const cs = custs.filter((c) => c.code === r.code).sort((a, b) => b.agreed - a.agreed);
-    const rowsHtml = cs.map((c) => `<tr style="${c.refunded ? "opacity:.6" : ""}"><td>${esc(c.name)}</td><td dir="ltr">${esc(c.phone) || "—"}</td><td>${esc(c.diploma)}</td><td dir="ltr">${esc(c.batch)}</td><td>${c.refunded ? "مسترد" : c.paid ? "دفع" : "لسه"}</td>${canFinance ? `<td dir="ltr">${money(c.agreed)}</td><td dir="ltr">${money(c.collected)}</td>` : ""}</tr>`).join("");
-    const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير الشريك — ${esc(r.name)}</title>
-<style>body{font-family:Tajawal,Arial,sans-serif;padding:28px;color:#1a1a1a}h1{color:#F08A24;margin:0 0 4px}.meta{color:#555;font-size:13px;margin-bottom:14px}.sum{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0}.box{border:1px solid #eee;border-radius:10px;padding:10px 16px;min-width:90px}.box small{color:#777;font-size:11px}.box b{display:block;font-size:18px;color:#F08A24;margin-top:2px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px}th,td{border:1px solid #e2e2e2;padding:7px 9px;text-align:right}th{background:#faf5ee;color:#8a5a12}.ft{margin-top:22px;color:#999;font-size:11px}</style>
+    let tAgreed = 0, tColl = 0;
+    const rowsHtml = cs.map((c) => { if (!c.refunded) { tAgreed += c.agreed; tColl += c.collected; } return `<tr style="${c.refunded ? "opacity:.6" : ""}"><td>${esc(c.name)}</td><td dir="ltr">${esc(c.phone) || "—"}</td><td>${esc(c.diploma)}</td><td dir="ltr">${esc(c.batch)}</td><td>${c.refunded ? L.rf : c.paid ? L.pd : L.ls}</td>${canFinance ? `<td dir="ltr">${money(c.agreed)}</td><td dir="ltr">${money(c.collected)}</td>` : ""}</tr>`; }).join("");
+    const totalRow = canFinance ? `<tr style="font-weight:800;background:#faf5ee"><td colspan="5">${L.total}</td><td dir="ltr">${money(tAgreed)}</td><td dir="ltr">${money(tColl)}</td></tr>` : "";
+    const html = `<!doctype html><html dir="${ar ? "rtl" : "ltr"}" lang="${ar ? "ar" : "en"}"><head><meta charset="utf-8"><title>${L.title} — ${esc(dName(r))}</title>
+<style>body{font-family:Tajawal,Arial,sans-serif;padding:28px;color:#1a1a1a}h1{color:#F08A24;margin:0 0 4px}.meta{color:#555;font-size:13px;margin-bottom:14px}.sum{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0}.box{border:1px solid #eee;border-radius:10px;padding:10px 16px;min-width:90px}.box small{color:#777;font-size:11px}.box b{display:block;font-size:18px;color:#F08A24;margin-top:2px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px}th,td{border:1px solid #e2e2e2;padding:7px 9px;text-align:${ar ? "right" : "left"}}th{background:#faf5ee;color:#8a5a12}.ft{margin-top:22px;color:#999;font-size:11px}</style>
 </head><body>
-<h1>نقاط — تقرير الشريك</h1>
-<div class="meta">الاسم: <b>${esc(r.name)}</b> · الكود: <b>${esc(r.code)}</b>${r.phone ? ` · تليفون: ${esc(r.phone)}` : ""}</div>
+<h1>${L.title}</h1>
+<div class="meta">${L.name}: <b>${esc(dName(r))}</b> · ${L.code}: <b>${esc(r.code)}</b>${r.phone ? ` · ${L.phone}: ${esc(r.phone)}` : ""}</div>
 <div class="sum">
-  <div class="box"><small>العملاء</small><b>${r.customers}</b></div>
-  <div class="box"><small>دفعوا</small><b>${r.paidN}</b></div>
-  <div class="box"><small>لسه</small><b>${r.notPaidN}</b></div>
-  ${canFinance ? `<div class="box"><small>المبيعات</small><b>${money(r.sales)}</b></div><div class="box"><small>العمولة (${r.rate}%)</small><b>${money(r.commission)}</b></div>` : ""}
+  <div class="box"><small>${L.cust}</small><b>${r.customers}</b></div>
+  <div class="box"><small>${L.paid}</small><b>${r.paidN}</b></div>
+  <div class="box"><small>${L.not}</small><b>${r.notPaidN}</b></div>
+  ${canFinance ? `<div class="box"><small>${L.sales}</small><b>${money(r.sales)}</b></div><div class="box"><small>${L.comm} (${r.rate}%)</small><b>${money(r.commission)}</b></div>` : ""}
 </div>
-<table><thead><tr><th>الاسم</th><th>التليفون</th><th>الدبلومة</th><th>الباتش</th><th>الحالة</th>${canFinance ? "<th>المتفق</th><th>المحصّل</th>" : ""}</tr></thead><tbody>${rowsHtml}</tbody></table>
-<p class="ft">تم الإنشاء من نظام CRM-NIQAT — ${new Date().toLocaleDateString("ar-EG")}</p>
+<table><thead><tr><th>${L.name}</th><th>${L.phone}</th><th>${L.dip}</th><th>${L.batch}</th><th>${L.status}</th>${canFinance ? `<th>${L.agreed}</th><th>${L.coll}</th>` : ""}</tr></thead><tbody>${rowsHtml}${totalRow}</tbody></table>
+<p class="ft">${L.ft} — ${new Date().toLocaleDateString(ar ? "ar-EG" : "en-GB")}</p>
 <script>window.onload=function(){setTimeout(function(){window.print()},300)}</script>
 </body></html>`;
     const w = window.open("", "_blank");
@@ -163,12 +166,14 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
   function sendWA(r: Row) {
     if (pdfInc) openPdf(r);
     const ph = waPhone(r.phone);
-    const url = `https://wa.me/${ph}?text=${encodeURIComponent(buildMsg(r))}`;
+    const url = ph ? `https://wa.me/${ph}?text=${encodeURIComponent(buildMsg(r))}` : `https://wa.me/?text=${encodeURIComponent(buildMsg(r))}`;
     window.open(url, "_blank");
   }
+  const [pdfInc, setPdfInc] = useState(true);
 
   const th: React.CSSProperties = { padding: "9px 12px", textAlign: "start", color: "var(--muted)", fontWeight: 700, fontSize: 12, whiteSpace: "nowrap" };
   const td: React.CSSProperties = { padding: "9px 12px", fontSize: 13, color: "var(--ink)" };
+  const selSt: React.CSSProperties = { height: 38, padding: "0 10px", borderRadius: 9, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", fontSize: 13 };
 
   if (loading) return <div className="card" style={{ padding: 24, color: "var(--muted)" }}>…</div>;
 
@@ -190,7 +195,19 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
         ))}
       </div>
 
-      <input className="inp" placeholder={tr("affSearchPh")} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 320, marginBottom: 12 }} />
+      {/* الفلاتر: دبلومة أولاً → باتشاتها */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 12 }}>
+        <select value={dip} onChange={(e) => { setDip(e.target.value); setBatch(""); }} style={{ ...selSt, minWidth: 160 }}>
+          <option value="">{tr("allDiplomas")}</option>
+          {diplomas.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
+        </select>
+        <select value={batch} onChange={(e) => setBatch(e.target.value)} style={{ ...selSt, minWidth: 150 }} disabled={!dip}>
+          <option value="">{dip ? tr("allBatches") : tr("selectDiplomaFirst")}</option>
+          {visBatches.map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
+        </select>
+        {(dip || batch) && <button onClick={() => { setDip(""); setBatch(""); }} className="btn ghost" style={{ height: 38, padding: "0 12px", fontSize: 12.5 }}>{tr("clearFilter")}</button>}
+        <input className="inp" placeholder={tr("affSearchPh")} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 280, marginInlineStart: "auto" }} />
+      </div>
 
       {filtered.length === 0 ? (
         <div style={{ padding: 20, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>{tr("noData")}</div>
@@ -199,8 +216,8 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "var(--bg)" }}>
+                <th style={th}>{tr("name")}</th>
                 <th style={th}>{tr("code")}</th>
-                <th style={th}>{tr("affiliate")}</th>
                 <th style={th}>{tr("customerCount")}</th>
                 <th style={th}>✅ {tr("paid")}</th>
                 <th style={th}>⏳ {tr("unpaid")}</th>
@@ -213,8 +230,8 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
               {filtered.map((r) => (
                 <>
                   <tr key={r.code} style={{ borderTop: "1px solid var(--line)", cursor: "pointer" }} onClick={() => setOpenCode(openCode === r.code ? null : r.code)}>
+                    <td style={{ ...td, fontWeight: 700 }}>{r.name || "—"}{r.refundedN > 0 && <span style={{ fontSize: 10.5, color: "#E0483B", marginInlineStart: 6 }}>↩{r.refundedN}</span>}</td>
                     <td style={{ ...td, fontWeight: 800, color: "var(--brand-d)" }} dir="ltr">{r.code}</td>
-                    <td style={{ ...td, fontWeight: 700 }}>{r.name}{r.refundedN > 0 && <span style={{ fontSize: 10.5, color: "#E0483B", marginInlineStart: 6 }}>↩{r.refundedN}</span>}</td>
                     <td style={td}><b>{r.customers}</b></td>
                     <td style={{ ...td, color: "#18A957", fontWeight: 700 }}>{r.paidN}</td>
                     <td style={{ ...td, color: "#C7891A", fontWeight: 700 }}>{r.notPaidN}</td>
@@ -225,16 +242,16 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
                   {openCode === r.code && (
                     <tr style={{ background: "var(--bg)" }}>
                       <td colSpan={canFinance ? 8 : 6} style={{ padding: 10 }}>
-                        {r.phone && <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>📞 <span dir="ltr">{r.phone}</span></div>}
                         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
-                          <button onClick={() => sendWA(r)} disabled={!r.phone} className="btn" style={{ height: 34, padding: "0 14px", fontSize: 13, background: "#25D366", gap: 6, opacity: r.phone ? 1 : .5 }} title={r.phone ? "" : tr("noPhoneForWa")}>
+                          <button onClick={() => sendWA(r)} className="btn" style={{ height: 34, padding: "0 14px", fontSize: 13, background: "#25D366", gap: 6 }}>
                             <svg viewBox="0 0 24 24" width={15} height={15} fill="currentColor"><path d="M12 2a10 10 0 0 0-8.5 15.2L2 22l4.9-1.5A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.9.9.9-2.8-.2-.3A8 8 0 1 1 12 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8 1-.3.2-.5.1a6.5 6.5 0 0 1-1.9-1.2 7.2 7.2 0 0 1-1.3-1.7c-.1-.2 0-.4.1-.5l.4-.4.2-.4v-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3A2.8 2.8 0 0 0 6 8.9c0 1.6 1.2 3.2 1.4 3.4s2.3 3.6 5.6 5c.8.3 1.4.5 1.9.7.8.2 1.5.2 2.1.1.6-.1 1.4-.6 1.6-1.2.2-.6.2-1 .1-1.2z" /></svg>
                             {tr("waSend")}
                           </button>
                           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--ink)", cursor: "pointer" }}>
                             <input type="checkbox" checked={pdfInc} onChange={(e) => setPdfInc(e.target.checked)} /> {tr("includePdf")}
                           </label>
-                          {canFinance && <button onClick={() => openPdf(r)} className="btn ghost" style={{ height: 34, padding: "0 12px", fontSize: 12.5 }}>{tr("uniDownload")} PDF</button>}
+                          <button onClick={() => openPdf(r)} className="btn ghost" style={{ height: 34, padding: "0 12px", fontSize: 12.5 }}>{tr("uniDownload")} PDF</button>
+                          {!r.phone && <span style={{ fontSize: 11.5, color: "#C7891A" }}>⚠️ {tr("noPhoneForWa")}</span>}
                         </div>
                         <div style={{ overflowX: "auto" }}>
                           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -263,6 +280,13 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
                                   {canFinance && <td style={{ ...td, fontSize: 12 }} dir="ltr"><span className="num">{money(c.collected)}</span></td>}
                                 </tr>
                               ))}
+                              {canFinance && (
+                                <tr style={{ borderTop: "2px solid var(--line)", fontWeight: 800, background: "var(--surface)" }}>
+                                  <td style={{ ...td, fontSize: 12 }} colSpan={5}>{tr("totalWord")}</td>
+                                  <td style={{ ...td, fontSize: 12 }} dir="ltr"><span className="num">{money(r.sales)}</span></td>
+                                  <td style={{ ...td, fontSize: 12 }} dir="ltr"><span className="num">{money(r.collected)}</span></td>
+                                </tr>
+                              )}
                             </tbody>
                           </table>
                         </div>
