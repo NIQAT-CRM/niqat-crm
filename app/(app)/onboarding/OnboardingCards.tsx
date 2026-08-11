@@ -1,7 +1,7 @@
 "use client";
 import { confirmDialog } from "@/lib/confirm";
 import { toast } from "@/lib/toast";
-import { useState, useCallback, useMemo, memo } from "react";
+import { useState, useCallback, useMemo, memo, useEffect } from "react";
 import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -218,6 +218,8 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [holdId, setHoldId] = useState<string | null>(null);
   const [holdReason, setHoldReason] = useState("");
+  const [meId, setMeId] = useState<string | null>(null);
+  useEffect(() => { supabase.auth.getUser().then(({ data }) => setMeId(data.user?.id || null)); }, [supabase]);
 
   const toggle = useCallback(async (hid: string, iid: string) => {
     let next = false;
@@ -225,8 +227,8 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
       if (c.handoffId !== hid) return c;
       return { ...c, items: c.items.map((x) => { if (x.id !== iid) return x; next = !x.done; return { ...x, done: next }; }) };
     }));
-    await supabase.from("handoff_items").update({ done: next, done_at: next ? new Date().toISOString() : null }).eq("id", iid);
-  }, [supabase]);
+    await supabase.from("handoff_items").update({ done: next, done_at: next ? new Date().toISOString() : null, done_by: next ? meId : null }).eq("id", iid);
+  }, [supabase, meId]);
 
   const complete = useCallback(async (hid: string, custId: string) => {
     setConfirmId(null);

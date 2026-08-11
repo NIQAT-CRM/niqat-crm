@@ -139,6 +139,22 @@ export default function CustomerDrawer(props: {
   const log = useLogUsage();
   const CTX = "customer_card";
   // أكشنز الكارت: الاسم → (تسجيل + تنفيذ فعلي عبر goTo)
+  async function activateNow() {
+    const ho = props.handoff;
+    const items: any[] = props.accessItems || [];
+    if (!ho || !ho.id) { toast(tr("notHandedOff")); return; }
+    const me = props.user?.id || null;
+    const pending = items.filter((i) => !i.done);
+    if (pending.length) {
+      await supabase.from("handoff_items").update({ done: true, done_at: new Date().toISOString(), done_by: me }).in("id", pending.map((i) => i.id));
+    }
+    await supabase.from("handoffs").update({ status: "done" }).eq("id", ho.id);
+    await supabase.from("audit_log").insert({ customer_id: props.c.id, actor_id: me, action: "handoff", detail: tr("activationDoneToast") });
+    toast(tr("activationDoneToast"));
+    router.refresh();
+  }
+  const showActivate = !!(props.handoff && props.handoff.id && props.handoff.status !== "done");
+
   function cardAction(name: string) {
     log("action", "action:" + name, CTX);
     if (name === "whatsapp") goTo("docs", "panel-whatsapp");
@@ -186,6 +202,12 @@ export default function CustomerDrawer(props: {
         <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
         {tr("qaService")}
       </button>
+      {showActivate && (
+        <button type="button" style={{ ...qbtn, background: "rgba(24,169,87,.12)", color: "var(--green)", borderColor: "rgba(24,169,87,.45)" }} onClick={activateNow} title={tr("qaActivateHint")}>
+          <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M20 6L9 17l-5-5" /></svg>
+          {tr("qaActivate")}
+        </button>
+      )}
     </div>
   );
 
