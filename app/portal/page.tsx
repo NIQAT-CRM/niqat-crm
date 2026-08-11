@@ -8,7 +8,7 @@ const BRAND = "#F08A24";
 
 export default function PortalPage() {
   const supabase = createClient();
-  const [phase, setPhase] = useState<"login" | "code" | "home">("login");
+  const [phase, setPhase] = useState<"login" | "code" | "home" | "consent" | "exam" | "result">("login");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -19,6 +19,14 @@ export default function PortalPage() {
   const [openDip, setOpenDip] = useState<number | null>(0);
   const [appealFor, setAppealFor] = useState<string | null>(null);
   const [appealReason, setAppealReason] = useState("");
+
+  // الاختبار الآمن
+  const [examItem, setExamItem] = useState<any>(null);
+  const [exam, setExam] = useState<any>(null);          // {attempt_id, deadline_at, questions:[{q,body,opts,selected}]}
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [remaining, setRemaining] = useState<number>(0); // ثواني
+  const [examBusy, setExamBusy] = useState(false);
+  const [result, setResult] = useState<any>(null);
 
   useEffect(() => {
     const t = typeof window !== "undefined" ? sessionStorage.getItem(TOKEN_KEY) : null;
@@ -73,6 +81,62 @@ export default function PortalPage() {
     if (token) loadOverview(token);
   }
 
+  // مؤقّت الاختبار — بيعتمد على وقت السيرفر (offset) وبيقدّم تسليم أوتوماتيك عند الصفر
+  useEffect(() => {
+    if (phase !== "exam" || !exam?.deadline_at) return;
+    const offset = Date.parse(exam.server_now || new Date().toISOString()) - Date.now();
+    const tick = () => {
+      const secs = Math.max(0, Math.round((Date.parse(exam.deadline_at) - (Date.now() + offset)) / 1000));
+      setRemaining(secs);
+      if (secs <= 0) doSubmit(true);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, exam]);
+
+  function normOpts(options: any): { key: string; text: string }[] {
+    if (Array.isArray(options)) return options.map((o: any, i: number) =>
+      typeof o === "string" ? { key: String.fromCharCode(97 + i), text: o }
+        : { key: String(o.key ?? o.k ?? o.value ?? o.id ?? String.fromCharCode(97 + i)), text: String(o.text ?? o.label ?? o.body ?? o.title ?? o.value ?? "") });
+    if (options && typeof options === "object") return Object.entries(options).map(([k, v]) => ({ key: k, text: String(v) }));
+    return [];
+  }
+
+  function openConsent(ex: any) { setExamItem(ex); setResult(null); setPhase("consent"); }
+
+  async function startExam() {
+    setExamBusy(true);
+    const { data: r, error } = await supabase.rpc("edu_portal_start_exam", { p_token: token, p_attempt: examItem.attempt_id });
+    setExamBusy(false);
+    if (error || !r) { alert("تعذّر بدء الاختبار: " + (error?.message || "")); setPhase("home"); return; }
+    const qs = (r.questions || []).map((q: any) => ({ q: q.q, body: q.body, opts: normOpts(q.options), selected: q.selected }));
+    const init: Record<string, string> = {};
+    for (const q of qs) if (q.selected) init[q.q] = q.selected;
+    setAnswers(init);
+    setExam({ attempt_id: r.attempt_id, deadline_at: r.deadline_at, server_now: r.server_now, questions: qs });
+    setPhase("exam");
+  }
+
+  async function selectAnswer(qid: string, key: string) {
+    setAnswers((s) => ({ ...s, [qid]: key }));
+    supabase.rpc("edu_portal_save_answer", { p_token: token, p_attempt: exam.attempt_id, p_question: qid, p_key: key });
+  }
+
+  async function doSubmit(auto = false) {
+    if (examBusy || phase !== "exam") return;
+    if (!auto) { const ok = window.confirm("متأكد إنك عايز تسلّم؟ مفيش رجوع بعد التسليم."); if (!ok) return; }
+    setExamBusy(true);
+    const payload = Object.entries(answers).map(([q, k]) => ({ q, k }));
+    const { data: r, error } = await supabase.rpc("edu_portal_submit_exam", { p_token: token, p_attempt: exam.attempt_id, p_answers: payload });
+    setExamBusy(false);
+    if (error) { alert("تعذّر التسليم: " + error.message); return; }
+    setResult(r); setPhase("result");
+  }
+
+  const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+
   // ===== واجهة =====
   const wrap: CSSProperties = { minHeight: "100vh", background: "var(--bg, #0f1419)", color: "var(--text, #e8eef5)", display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 16px" };
   const card: CSSProperties = { width: "100%", maxWidth: 560, background: "var(--card, #1a2230)", border: "1px solid var(--line, #2a3547)", borderRadius: 16, padding: 22 };
@@ -87,7 +151,7 @@ export default function PortalPage() {
     return <span style={chip(fg, bg)}>{lbl[s] || s}</span>;
   };
 
-  if (phase !== "home") {
+  if (phase === "login" || phase === "code") {
     return (
       <div style={wrap}>
         <div style={{ ...card, marginTop: "8vh", textAlign: "center" }}>
@@ -111,6 +175,91 @@ export default function PortalPage() {
             </>
           )}
           {err && <div style={{ color: "#f2a9a0", fontSize: 13, marginTop: 12 }}>{err}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  // ===== شاشة الموافقة قبل الاختبار =====
+  if (phase === "consent") {
+    return (
+      <div style={wrap}>
+        <div style={{ ...card, marginTop: "6vh" }}>
+          <div style={{ fontWeight: 900, fontSize: 18, color: BRAND }}>{examItem?.accreditation || "اختبار الاعتماد"}</div>
+          <div style={{ fontSize: 13.5, color: "var(--muted,#9aa7b6)", marginTop: 14, lineHeight: 1.9 }}>
+            <div>• عدد الأسئلة: {examItem?.num_questions || "—"}.</div>
+            <div>• التايمر بيبدأ أول ما تدوس «ابدأ»، ومبيقفش حتى لو خرجت أو قفلت الصفحة.</div>
+            <div>• لو النت قطع، ارجع وكمّل — الوقت ماشي من مكانه.</div>
+            <div>• مفيش إعادة، والنتيجة نهائية (الاعتراض بالتظلم خلال ٤٨ ساعة).</div>
+            <div>• ممنوع النسخ أو تصوير الشاشة — الشاشة عليها بياناتك.</div>
+          </div>
+          <button style={btn} onClick={startExam} disabled={examBusy}>{examBusy ? "..." : "فهمت وأوافق، ابدأ"}</button>
+          <button onClick={() => setPhase("home")} style={{ background: "none", border: "none", color: "var(--muted,#9aa7b6)", fontSize: 12.5, marginTop: 12, cursor: "pointer", width: "100%" }}>رجوع</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ===== شاشة الاختبار الآمن =====
+  if (phase === "exam" && exam) {
+    const wm = `${data?.name || ""} · ${email} · ${phone}`;
+    const low = remaining <= 60;
+    return (
+      <div
+        style={{ ...wrap, position: "relative", userSelect: "none", WebkitUserSelect: "none" }}
+        onCopy={(e) => e.preventDefault()} onCut={(e) => e.preventDefault()} onContextMenu={(e) => e.preventDefault()}
+      >
+        {/* ووترمارك */}
+        <div aria-hidden style={{ position: "fixed", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 0, opacity: 0.06 }}>
+          {Array.from({ length: 40 }).map((_, i) => (
+            <div key={i} style={{ position: "absolute", top: `${(i * 7) % 100}%`, insetInlineStart: `${(i * 13) % 90}%`, transform: "rotate(-30deg)", fontSize: 13, whiteSpace: "nowrap", color: "#fff", fontWeight: 700 }} dir="ltr">{wm}</div>
+          ))}
+        </div>
+
+        {/* شريط علوي ثابت: تايمر + تسليم */}
+        <div style={{ position: "sticky", top: 0, zIndex: 2, width: "100%", maxWidth: 620, display: "flex", alignItems: "center", gap: 12, background: "var(--card,#1a2230)", border: "1px solid var(--line,#2a3547)", borderRadius: 12, padding: "10px 14px" }}>
+          <span style={{ fontWeight: 800, fontSize: 14 }}>{examItem?.accreditation || "الاختبار"}</span>
+          <span style={{ flex: 1 }} />
+          <span className="num" dir="ltr" style={{ fontWeight: 900, fontSize: 18, color: low ? "#f2a9a0" : BRAND }}>{fmt(remaining)}</span>
+          <button onClick={() => doSubmit(false)} disabled={examBusy} style={{ background: BRAND, color: "#fff", border: "none", borderRadius: 9, padding: "8px 16px", fontWeight: 800, cursor: "pointer" }}>تسليم</button>
+        </div>
+
+        {/* الأسئلة */}
+        <div style={{ width: "100%", maxWidth: 620, marginTop: 14, position: "relative", zIndex: 1 }}>
+          {exam.questions.map((q: any, qi: number) => (
+            <div key={q.q} style={{ ...card, marginBottom: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: 14.5, marginBottom: 12 }}><span style={{ color: BRAND }}>{qi + 1}.</span> {q.body}</div>
+              {q.opts.map((o: { key: string; text: string }) => {
+                const sel = answers[q.q] === o.key;
+                return (
+                  <button key={o.key} onClick={() => selectAnswer(q.q, o.key)}
+                    style={{ width: "100%", textAlign: "start", display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", marginBottom: 8, borderRadius: 10, cursor: "pointer",
+                      border: "1px solid " + (sel ? BRAND : "var(--line,#2a3547)"), background: sel ? BRAND + "22" : "var(--surface,#131a26)", color: "var(--text,#e8eef5)" }}>
+                    <span style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid " + (sel ? BRAND : "var(--line,#2a3547)"), background: sel ? BRAND : "transparent", flexShrink: 0 }} />
+                    <span style={{ fontSize: 13.5 }}>{o.text}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+          <button onClick={() => doSubmit(false)} disabled={examBusy} style={{ ...btn, marginBottom: 30 }}>{examBusy ? "..." : "تسليم الاختبار"}</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ===== شاشة النتيجة =====
+  if (phase === "result" && result) {
+    const passed = result.passed;
+    return (
+      <div style={wrap}>
+        <div style={{ ...card, marginTop: "8vh", textAlign: "center" }}>
+          <div style={{ fontSize: 44 }}>{passed ? "🎉" : "📄"}</div>
+          <div style={{ fontWeight: 900, fontSize: 20, marginTop: 8, color: passed ? "#7ee2a8" : "#f2a9a0" }}>{passed ? "مبروك، نجحت!" : "للأسف، مش مستحق"}</div>
+          <div className="num" dir="ltr" style={{ fontSize: 32, fontWeight: 900, marginTop: 10 }}>{Math.round(result.score_pct)}%</div>
+          <div style={{ fontSize: 13, color: "var(--muted,#9aa7b6)", marginTop: 6 }} dir="ltr">{result.correct} / {result.total}</div>
+          {!passed && <div style={{ fontSize: 12.5, color: "var(--muted,#9aa7b6)", marginTop: 14 }}>تقدر تقدّم تظلم خلال ٤٨ ساعة من الصفحة الرئيسية.</div>}
+          <button style={btn} onClick={() => { setExam(null); setResult(null); if (token) loadOverview(token); }}>رجوع للرئيسية</button>
         </div>
       </div>
     );
@@ -196,7 +345,7 @@ export default function PortalPage() {
                 </div>
 
                 {!submitted && (
-                  <div style={{ marginTop: 10, fontSize: 12.5, color: "var(--muted,#9aa7b6)" }}>🔒 الاختبار المؤمّن جايّ قريباً — هتقدر تبدأه من هنا.</div>
+                  <button onClick={() => openConsent(ex)} style={{ ...btn, marginTop: 10, height: 42 }}>ابدأ الاختبار</button>
                 )}
 
                 {canAppeal && (
