@@ -8,16 +8,19 @@ type WatiTpl = { name: string; body: string; vars: number; params: string[]; sta
 type Ctx = { name: string; phone1: string; diploma: string; batch: string; remaining: string };
 
 
+// cache للقوالب على مستوى الجلسة — يمنع إعادة الجلب البطيء من واتي كل مرة
+let WATI_TPL_CACHE: WatiTpl[] | null = null;
+
 export default function WhatsAppPanel({
-  customerId, meId, ctx, templates,
-}: { customerId: string; meId: string; ctx: Ctx; templates: Tpl[] }) {
+  customerId, meId, ctx, templates, myTeam = "",
+}: { customerId: string; meId: string; ctx: Ctx; templates: Tpl[]; myTeam?: string }) {
   const tr = useT();
-  const [channel, setChannel] = useState<"sales" | "support">("sales");
+  const [channel, setChannel] = useState<"sales" | "support">(myTeam === "support" ? "support" : "sales");
   const [busy, setBusy] = useState(false);
-  const [watiTpls, setWatiTpls] = useState<WatiTpl[]>([]);
+  const [watiTpls, setWatiTpls] = useState<WatiTpl[]>(WATI_TPL_CACHE || []);
   const [tplName, setTplName] = useState("");
   const [tplErr, setTplErr] = useState("");
-  const [loadingTpls, setLoadingTpls] = useState(true);
+  const [loadingTpls, setLoadingTpls] = useState(!WATI_TPL_CACHE);
   const [result, setResult] = useState<string>("");
   const [varMap, setVarMap] = useState<Record<string, string>>({});
   const [customVals, setCustomVals] = useState<Record<string, string>>({});
@@ -56,13 +59,14 @@ export default function WhatsAppPanel({
 
   useEffect(() => {
     let alive = true;
+    if (WATI_TPL_CACHE) { setWatiTpls(WATI_TPL_CACHE); setLoadingTpls(false); return; }
     (async () => {
       try {
         const res = await fetch("/api/wa/templates");
         const data = await res.json().catch(() => ({}));
         if (!alive) return;
         if (!res.ok) { setTplErr(data.error || "تعذّر جلب القوالب"); setWatiTpls([]); }
-        else { setWatiTpls(data.templates || []); setTplErr(""); }
+        else { WATI_TPL_CACHE = data.templates || []; setWatiTpls(WATI_TPL_CACHE || []); setTplErr(""); }
       } catch (e: any) {
         if (alive) setTplErr(e?.message || "تعذّر جلب القوالب");
       } finally {

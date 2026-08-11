@@ -28,13 +28,15 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
   const [enrRows, setEnrRows] = useState<EnrRow[]>([]);
   const [q, setQ] = useState("");
   const [openCode, setOpenCode] = useState<string | null>(null);
-  const [dip, setDip] = useState("");
-  const [batch, setBatch] = useState("");
+  const [dips, setDips] = useState<string[]>([]);
+  const [bsel, setBsel] = useState<string[]>([]);
+  const toggleDip = (v: string) => setDips((a) => a.includes(v) ? a.filter((x) => x !== v) : [...a, v]);
+  const toggleBatch = (v: string) => setBsel((a) => a.includes(v) ? a.filter((x) => x !== v) : [...a, v]);
 
   const affByCode = useMemo(() => new Map(affiliates.map((a) => [a.code.toUpperCase(), a])), [affiliates]);
   const dipName = useMemo(() => new Map(diplomas.map((d) => [d.v, d.label])), [diplomas]);
   const batchName = useMemo(() => new Map(batches.map((b) => [b.v, b.label])), [batches]);
-  const visBatches = dip ? batches.filter((b) => b.dip === dip) : batches;
+  const visBatches = dips.length ? batches.filter((b) => b.dip && dips.includes(b.dip)) : batches;
 
   useEffect(() => {
     (async () => {
@@ -76,20 +78,20 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
   const custs: Cust[] = useMemo(() => {
     const byCust = new Map<string, EnrRow[]>();
     for (const e of enrRows) {
-      if (dip && e.dip !== dip) continue;
-      if (batch && e.batch !== batch) continue;
+      if (dips.length && !dips.includes(e.dip)) continue;
+      if (bsel.length && !bsel.includes(e.batch)) continue;
       const arr = byCust.get(e.cid) || []; arr.push(e); byCust.set(e.cid, arr);
     }
     const out: Cust[] = [];
     for (const c of cmeta) {
       const es = byCust.get(c.id);
-      if ((dip || batch) && (!es || !es.length)) continue; // فلتر شغّال → استبعد اللي ملوش اشتراك مطابق
-      let agreed = 0, collected = 0, usd = false; const dips = new Set<string>(), bts = new Set<string>();
-      (es || []).forEach((e) => { const mult = e.cur === "USD" ? usdRate : 1; if (e.cur === "USD") usd = true; agreed += e.agreed * mult; collected += e.collected * mult; if (e.dip) dips.add(dipName.get(e.dip) || ""); if (e.batch) bts.add(batchName.get(e.batch) || ""); });
-      out.push({ id: c.id, name: c.name, phone: c.phone, code: c.code, diploma: Array.from(dips).filter(Boolean).join(" / ") || "—", batch: Array.from(bts).filter(Boolean).join(" / ") || "—", agreed, collected, paid: c.stage === "enrolled", refunded: c.refunded, usd });
+      if ((dips.length || bsel.length) && (!es || !es.length)) continue; // فلتر شغّال → استبعد اللي ملوش اشتراك مطابق
+      let agreed = 0, collected = 0, usd = false; const dipset = new Set<string>(), bts = new Set<string>();
+      (es || []).forEach((e) => { const mult = e.cur === "USD" ? usdRate : 1; if (e.cur === "USD") usd = true; agreed += e.agreed * mult; collected += e.collected * mult; if (e.dip) dipset.add(dipName.get(e.dip) || ""); if (e.batch) bts.add(batchName.get(e.batch) || ""); });
+      out.push({ id: c.id, name: c.name, phone: c.phone, code: c.code, diploma: Array.from(dipset).filter(Boolean).join(" / ") || "—", batch: Array.from(bts).filter(Boolean).join(" / ") || "—", agreed, collected, paid: c.stage === "enrolled", refunded: c.refunded, usd });
     }
     return out;
-  }, [cmeta, enrRows, dip, batch, dipName, batchName, usdRate]);
+  }, [cmeta, enrRows, dips, bsel, dipName, batchName, usdRate]);
 
   const payoutByCode = useMemo(() => {
     const m = new Map<string, number>();
@@ -223,18 +225,29 @@ ${canFinance && r.hasUsd ? `<div style="font-size:11px;color:#2F6BFF;margin:-4px
         ))}
       </div>
 
-      {/* الفلاتر: دبلومة أولاً → باتشاتها */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 12 }}>
-        <select value={dip} onChange={(e) => { setDip(e.target.value); setBatch(""); }} style={{ ...selSt, minWidth: 160 }}>
-          <option value="">{tr("allDiplomas")}</option>
-          {diplomas.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
-        </select>
-        <select value={batch} onChange={(e) => setBatch(e.target.value)} style={{ ...selSt, minWidth: 150 }} disabled={!dip}>
-          <option value="">{dip ? tr("allBatches") : tr("selectDiplomaFirst")}</option>
-          {visBatches.map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
-        </select>
-        {(dip || batch) && <button onClick={() => { setDip(""); setBatch(""); }} className="btn ghost" style={{ height: 38, padding: "0 12px", fontSize: 12.5 }}>{tr("clearFilter")}</button>}
-        <input className="inp" placeholder={tr("affSearchPh")} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 280, marginInlineStart: "auto" }} />
+      {/* الفلاتر: اختر دبلومات (متعدّد) → باتشاتها (متعدّد) */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--muted)" }}>{tr("diploma")}:</span>
+          {diplomas.map((d) => {
+            const on = dips.includes(d.v);
+            return <button key={d.v} onClick={() => { toggleDip(d.v); }} style={{ height: 30, padding: "0 12px", borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "1px solid " + (on ? "var(--brand)" : "var(--line)"), background: on ? "var(--brand)" : "var(--surface)", color: on ? "#fff" : "var(--muted-d)" }}>{d.label}</button>;
+          })}
+        </div>
+        {dips.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--muted)" }}>{tr("batch")}:</span>
+            {visBatches.map((b) => {
+              const on = bsel.includes(b.v);
+              return <button key={b.v} onClick={() => toggleBatch(b.v)} style={{ height: 28, padding: "0 11px", borderRadius: 20, fontSize: 11.5, fontWeight: 700, cursor: "pointer", border: "1px solid " + (on ? "#2F6BFF" : "var(--line)"), background: on ? "rgba(47,107,255,.12)" : "var(--surface)", color: on ? "#2F6BFF" : "var(--muted-d)" }} dir="ltr">{b.label}</button>;
+            })}
+            {visBatches.length === 0 && <span style={{ fontSize: 11.5, color: "var(--muted)" }}>—</span>}
+          </div>
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {(dips.length > 0 || bsel.length > 0) && <button onClick={() => { setDips([]); setBsel([]); }} className="btn ghost" style={{ height: 32, padding: "0 12px", fontSize: 12 }}>{tr("clearFilter")}</button>}
+          <input className="inp" placeholder={tr("affSearchPh")} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 280, marginInlineStart: "auto" }} />
+        </div>
       </div>
 
       {filtered.length === 0 ? (

@@ -269,7 +269,7 @@ export default function CustomerDrawer(props: {
       </>}
       docs={<>
         <div id="panel-whatsapp">
-          {props.canMessage && <WhatsAppPanel customerId={props.c.id} meId={props.user?.id || ""} ctx={props.waCtx} templates={props.templates as any} />}
+          {props.canMessage && <WhatsAppPanel customerId={props.c.id} meId={props.user?.id || ""} ctx={props.waCtx} templates={props.templates as any} myTeam={props.myTeam || ""} />}
         </div>
 
         <CustomerActivity customerId={props.c.id} meId={props.user?.id || ""} initialTasks={props.tasks} initialNotes={props.notes} />

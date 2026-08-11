@@ -13,6 +13,7 @@ export default function SharedReceiptModal({ onClose }: { onClose: () => void })
   const supabase = createClient();
 
   const [file, setFile] = useState<File | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [currency, setCurrency] = useState("EGP");
   const [note, setNote] = useState("");
   const [rows, setRows] = useState<Alloc[]>([{ customerId: "", customerName: "", phone: "", amount: "" }]);
@@ -134,9 +135,15 @@ export default function SharedReceiptModal({ onClose }: { onClose: () => void })
           {/* رفع الاسكرين */}
           <label style={lbl}>{tr("shrScreenshot")}</label>
           {!file ? (
-            <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: "1.5px dashed var(--line)", borderRadius: 12, padding: "22px 12px", cursor: "pointer", color: "var(--muted)", fontSize: 13, fontWeight: 700 }}>
+            <label
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragEnter={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files?.[0]; if (f && f.type.startsWith("image/")) setFile(f); }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, border: `1.5px dashed ${dragging ? "var(--brand)" : "var(--line)"}`, borderRadius: 12, padding: "22px 12px", cursor: "pointer", color: dragging ? "var(--brand-d)" : "var(--muted)", fontSize: 13, fontWeight: 700, background: dragging ? "var(--brand-soft)" : "transparent", transition: "all .12s" }}>
               <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
               {tr("shrAddScreenshot")}
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)" }}>{tr("dropOrPick")}</span>
               <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </label>
           ) : (
