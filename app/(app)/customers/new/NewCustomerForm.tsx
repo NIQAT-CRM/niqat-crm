@@ -12,7 +12,7 @@ import { useLogUsage } from "../../AiFlags";
 import { receiptFileName, receiptDisplayName } from "@/lib/supabase/receipts";
 
 type Opt = { id: string; name: string };
-type BatchOpt = { id: string; name: string; price?: number; currency?: string; price_egp?: number; price_usd?: number; diploma_id?: string };
+type BatchOpt = { id: string; name: string; price?: number; currency?: string; price_egp?: number; price_usd?: number; diploma_id?: string; status?: string };
 const STAGES = [
   ["contacted", "dashStageContacted"], ["interested", "dashStageInterested"],
   ["enrolled", "dashStageEnrolled"], ["onhold", "dashStageOnhold"],
@@ -574,7 +574,7 @@ export default function NewCustomerForm({
                 /></div>
               <div className="fld"><label>{tr("theBatch")}</label>
                 <SearchSelect
-                  options={batches.filter((b) => !b.diploma_id || b.diploma_id === f.diploma_id).map((b) => ({ value: b.id, label: b.name }))}
+                  options={batches.filter((b) => (!b.diploma_id || b.diploma_id === f.diploma_id) && b.status === "open").map((b) => ({ value: b.id, label: b.name }))}
                   value={f.batch_id} disabled={!f.diploma_id}
                   placeholder={f.diploma_id ? tr("noneDash") : tr("selectDiplomaFirst")} emptyLabel={tr("noneDash")} searchPlaceholder={tr("searchDots")}
                   onChange={(v) => set("batch_id", v)}

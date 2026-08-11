@@ -33,7 +33,7 @@ export default async function NewCustomerPage() {
     .map((r) => r.diploma_id as string);
   const affiliates = Array.isArray(affRow?.value) ? (affRow!.value as any[]) : [];
   const openB = (bts || []).filter((b) => { const s = (b as any).status; return !s || s === "open"; });
-  const mapB = (b: any) => ({ id: b.id, name: b.code, price: Number(b.price) || 0, currency: b.currency || "EGP", price_egp: Number(b.price_egp) || 0, price_usd: Number(b.price_usd) || 0, diploma_id: b.diploma_id || "", kind: b.kind || "diploma" });
+  const mapB = (b: any) => ({ id: b.id, name: b.code, price: Number(b.price) || 0, currency: b.currency || "EGP", price_egp: Number(b.price_egp) || 0, price_usd: Number(b.price_usd) || 0, diploma_id: b.diploma_id || "", kind: b.kind || "diploma", status: b.status || "" });
   return (
     <div style={{ maxWidth: 620 }}>
       <div className="page-h"><h1>{tr("addCust")}</h1></div>

@@ -242,7 +242,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
   return (
     <>
-      <RealtimeRefresh tables={["customers","enrollments","installments","tickets","tasks","follow_ups","communications","customer_addons","refunds","handoffs","handoff_items"]} />
+      <RealtimeRefresh tables={["customers","enrollments","enrollment_finance","installments","tickets","tasks","follow_ups","communications","customer_addons","refunds","handoffs","handoff_items"]} />
       <DrawerScrim label={tr("close")} />
       <aside className="drawer-panel">
         <div className="dr-h">
