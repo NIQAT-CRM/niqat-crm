@@ -52,10 +52,29 @@ export default async function Refunds() {
   const cName = new Map((custs || []).map((c) => [c.id, c.name]));
   const archivedSet = new Set((custs || []).filter((c) => (c as any).archived).map((c) => c.id));
   const rows = (rf || []).filter((r) => !archivedSet.has(r.customer_id));
+  const needTransfer = rows.filter((r) => r.status === "requested").length;
+  const needClose = rows.filter((r) => r.status === "refunded").length;
 
   return (
     <div>
       <div className="page-h"><div><h1>{tr("refunds")}</h1><p>{rows.length} {tr("requestWord")}</p></div></div>
+
+      {(needTransfer > 0 || needClose > 0) && (
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+          {needTransfer > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#FEF6E0", border: "1px solid #E8C766", borderRadius: 12, padding: "12px 16px" }}>
+              <span style={{ fontSize: 22, fontWeight: 800, color: "#B8860B" }} className="num">{needTransfer}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#8a5a12" }}>💸 {tr("refundBannerTransfer")}</span>
+            </div>
+          )}
+          {needClose > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#E8F0FF", border: "1px solid #9DBBFF", borderRadius: 12, padding: "12px 16px" }}>
+              <span style={{ fontSize: 22, fontWeight: 800, color: "#2F6BFF" }} className="num">{needClose}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#2F6BFF" }}>🔒 {tr("refundBannerClose")}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <div className="empty"><b>{tr("noRefundRequests")}</b></div>
