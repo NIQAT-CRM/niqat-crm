@@ -88,8 +88,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const custName = new Map(((profRes.data as any[]) || []).map((c) => [c.id, c.name]));
   const lang = getLang();
   const t = tFor(lang);
-  type NItem = { id: string; kind: "follow" | "handoff" | "overdue"; text: string; href: string; sub: string };
+  type NItem = { id: string; kind: "follow" | "handoff" | "overdue" | "refund"; text: string; href: string; sub: string };
   const notif: NItem[] = [];
+  // إشعارات الريفند المحتاجة إجراء (طلب تحويل / قفل أكسس)
+  const { data: rfNeed } = await supabase.from("refunds").select("id,customer_id,status").in("status", ["requested", "refunded"]).order("id", { ascending: false }).limit(10);
+  for (const r of (rfNeed as any[]) || []) {
+    notif.push({ id: "rf" + r.id, kind: "refund", text: custName.get(r.customer_id) || t("customerFallback"),
+      href: "/refunds", sub: r.status === "requested" ? t("refundNeedsTransferSub") : t("refundNeedsCloseSub") });
+  }
   for (const f of (fuRes.data as any[]) || []) {
     notif.push({ id: "fu" + f.id, kind: "follow", text: custName.get(f.customer_id) || t("customerFallback"),
       href: `/customers/${f.customer_id}`, sub: f.note || t("followDueSub") });
