@@ -818,3 +818,6 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .nav .sub{ display:flex; flex-direction:column; margin-inline-start:16px; padding-inline-start:8px; border-inline-start:2px solid var(--line); margin-block:2px; }
 .nav .sub a{ font-size:13px; padding-block:7px; gap:6px; }
 .nav .sub a.on{ font-weight:800; color:var(--brand-d); }
+
+/* دوران مؤشّر تحميل الفلاتر */
+@keyframes spin { to { transform: rotate(360deg); } }
