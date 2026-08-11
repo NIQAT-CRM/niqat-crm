@@ -77,7 +77,7 @@ function Lead({ rank, name, sub, value, valueColor }: { rank: number; name: stri
 export default function ReportsView({
   canFinance, agreed, collected, overdueN, collectedUsd, agreedUsd, refundReport = null,
   stageRows, totalCust, affRows, salesRows, supportRows, supportTotals, monthly, byDiploma, byService = [],
-  batchOpts, diplomaOpts, affiliates, resetAt = "", insights, showInsights = false,
+  batchOpts, diplomaOpts, affiliates, resetAt = "", insights, showInsights = false, usdRate = 44, affPayouts = [],
 }: {
   canFinance: boolean;
   insights: InsightsData;
@@ -91,6 +91,8 @@ export default function ReportsView({
   batchOpts: { v: string; label: string; dip?: string }[];
   diplomaOpts: { v: string; label: string }[];
   affiliates: { code: string; name: string; rate?: number; discount?: number; phone?: string }[];
+  usdRate?: number;
+  affPayouts?: { code: string; amount: number; paidAt: string; count: number; note: string }[];
   resetAt?: string;
 }) {
   const tr = useT();
@@ -402,7 +404,7 @@ export default function ReportsView({
           <div style={{ marginBottom: 14 }}>
             <SecHead icon="link" tint="#7B61FF" title={tr("affiliateReportTitle")} />
           </div>
-          <AffiliateGlobal affiliates={affiliates} diplomas={diplomaOpts} batches={batchOpts} canFinance={canFinance} />
+          <AffiliateGlobal affiliates={affiliates} diplomas={diplomaOpts} batches={batchOpts} canFinance={canFinance} usdRate={usdRate} payouts={affPayouts} />
         </div>
       )}
     </div>

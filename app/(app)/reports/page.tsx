@@ -249,6 +249,10 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
   const batchOpts = ((batchRes.data as any[]) || []).map((b) => ({ v: b.id, label: b.code, dip: b.diploma_id || "" }));
   const diplomaOpts = diplomas.map((d: any) => ({ v: d.id, label: d.name_ar }));
   const affiliatesList = affList.map((a: any) => ({ code: (a.code || "").toUpperCase(), name: a.name || "—", rate: Number(a.rate) || 0, discount: Number(a.discount) || 0, phone: (a.phone || "").trim() }));
+  const { data: rateRow } = await supabase.from("app_settings").select("value").eq("key", "usd_rate").maybeSingle();
+  const usdRate = Number(rateRow?.value) || 44;
+  const { data: payoutsRows } = await supabase.from("affiliate_payouts").select("code,amount,paid_at,customers_count,note").order("paid_at", { ascending: false });
+  const affPayouts = ((payoutsRows as any[]) || []).map((p) => ({ code: (p.code || "").toUpperCase(), amount: Number(p.amount) || 0, paidAt: p.paid_at, count: p.customers_count || 0, note: p.note || "" }));
 
   // ===== تقرير الاستردادات (لأصحاب صلاحية المالية) =====
   let refundReport: any = null;
@@ -296,7 +300,7 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
       agreedUsd={Math.round(agreedUsd)} collectedUsd={Math.round(collectedUsd)}
       stageRows={stageRows} totalCust={totalCust} affRows={affRows}
       salesRows={salesRows} supportRows={supportRows} supportTotals={supportTotals} monthly={monthly} byDiploma={byDiploma} byService={byService}
-      batchOpts={batchOpts} diplomaOpts={diplomaOpts} affiliates={affiliatesList}
+      batchOpts={batchOpts} diplomaOpts={diplomaOpts} affiliates={affiliatesList} usdRate={usdRate} affPayouts={affPayouts}
       resetAt={resetAt}
       insights={insights}
     />

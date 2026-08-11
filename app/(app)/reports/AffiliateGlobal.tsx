@@ -1,22 +1,27 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useT, useLang } from "@/lib/i18n/client";
+import { toast } from "@/lib/toast";
+import { confirmDialog } from "@/lib/confirm";
 
 type Opt = { v: string; label: string; dip?: string };
 type Aff = { code: string; name: string; rate?: number; phone?: string };
-type EnrRow = { cid: string; dip: string; batch: string; agreed: number; collected: number };
+type Payout = { code: string; amount: number; paidAt: string; count: number; note: string };
+type EnrRow = { cid: string; dip: string; batch: string; agreed: number; collected: number; cur: string };
 type CMeta = { id: string; name: string; phone: string; code: string; stage: string; refunded: boolean };
-type Cust = { id: string; name: string; phone: string; code: string; diploma: string; batch: string; agreed: number; collected: number; paid: boolean; refunded: boolean };
-type Row = { code: string; name: string; phone: string; rate: number; customers: number; paidN: number; notPaidN: number; refundedN: number; sales: number; commission: number; collected: number };
+type Cust = { id: string; name: string; phone: string; code: string; diploma: string; batch: string; agreed: number; collected: number; paid: boolean; refunded: boolean; usd: boolean };
+type Row = { code: string; name: string; phone: string; rate: number; customers: number; paidN: number; notPaidN: number; refundedN: number; sales: number; commission: number; collected: number; hasUsd: boolean; paidOut: number; dueNow: number };
 
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 
-export default function AffiliateGlobal({ affiliates, diplomas, batches, canFinance }: {
-  affiliates: Aff[]; diplomas: Opt[]; batches: Opt[]; canFinance: boolean;
+export default function AffiliateGlobal({ affiliates, diplomas, batches, canFinance, usdRate = 44, payouts = [] }: {
+  affiliates: Aff[]; diplomas: Opt[]; batches: Opt[]; canFinance: boolean; usdRate?: number; payouts?: Payout[];
 }) {
   const tr = useT();
   const lang = useLang();
+  const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [cmeta, setCmeta] = useState<CMeta[]>([]);
@@ -49,18 +54,19 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
         const refSet = new Set((refunds || []).map((r: any) => r.customer_id));
 
         const agreedByEnr = new Map<string, number>();
+        const curByEnr = new Map<string, string>();
         const paidByEnr = new Map<string, number>();
         if (canFinance && enrIds.length) {
           const [{ data: fin }, { data: insts }] = await Promise.all([
-            supabase.from("enrollment_finance").select("enrollment_id,agreed_amount").in("enrollment_id", enrIds),
+            supabase.from("enrollment_finance").select("enrollment_id,agreed_amount,currency").in("enrollment_id", enrIds),
             supabase.from("installments").select("enrollment_id,amount,status,paid_at").in("enrollment_id", enrIds),
           ]);
-          (fin || []).forEach((f: any) => agreedByEnr.set(f.enrollment_id, Number(f.agreed_amount) || 0));
+          (fin || []).forEach((f: any) => { agreedByEnr.set(f.enrollment_id, Number(f.agreed_amount) || 0); curByEnr.set(f.enrollment_id, f.currency || "EGP"); });
           (insts || []).forEach((i: any) => { if (i.status === "paid" || i.paid_at) paidByEnr.set(i.enrollment_id, (paidByEnr.get(i.enrollment_id) || 0) + (Number(i.amount) || 0)); });
         }
 
         setCmeta(cList.map((c) => ({ id: c.id, name: c.name || "—", phone: c.phone1 || "", code: (c.affiliate_code || "").trim().toUpperCase(), stage: c.stage || "", refunded: refSet.has(c.id) })));
-        setEnrRows(eList.map((e) => ({ cid: e.customer_id, dip: e.diploma_id || "", batch: e.batch_id || "", agreed: agreedByEnr.get(e.id) || 0, collected: paidByEnr.get(e.id) || 0 })));
+        setEnrRows(eList.map((e) => ({ cid: e.customer_id, dip: e.diploma_id || "", batch: e.batch_id || "", agreed: agreedByEnr.get(e.id) || 0, collected: paidByEnr.get(e.id) || 0, cur: curByEnr.get(e.id) || "EGP" })));
       } catch { setCmeta([]); setEnrRows([]); }
       setLoading(false);
     })();
@@ -78,12 +84,18 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
     for (const c of cmeta) {
       const es = byCust.get(c.id);
       if ((dip || batch) && (!es || !es.length)) continue; // فلتر شغّال → استبعد اللي ملوش اشتراك مطابق
-      let agreed = 0, collected = 0; const dips = new Set<string>(), bts = new Set<string>();
-      (es || []).forEach((e) => { agreed += e.agreed; collected += e.collected; if (e.dip) dips.add(dipName.get(e.dip) || ""); if (e.batch) bts.add(batchName.get(e.batch) || ""); });
-      out.push({ id: c.id, name: c.name, phone: c.phone, code: c.code, diploma: Array.from(dips).filter(Boolean).join(" / ") || "—", batch: Array.from(bts).filter(Boolean).join(" / ") || "—", agreed, collected, paid: c.stage === "enrolled", refunded: c.refunded });
+      let agreed = 0, collected = 0, usd = false; const dips = new Set<string>(), bts = new Set<string>();
+      (es || []).forEach((e) => { const mult = e.cur === "USD" ? usdRate : 1; if (e.cur === "USD") usd = true; agreed += e.agreed * mult; collected += e.collected * mult; if (e.dip) dips.add(dipName.get(e.dip) || ""); if (e.batch) bts.add(batchName.get(e.batch) || ""); });
+      out.push({ id: c.id, name: c.name, phone: c.phone, code: c.code, diploma: Array.from(dips).filter(Boolean).join(" / ") || "—", batch: Array.from(bts).filter(Boolean).join(" / ") || "—", agreed, collected, paid: c.stage === "enrolled", refunded: c.refunded, usd });
     }
     return out;
-  }, [cmeta, enrRows, dip, batch, dipName, batchName]);
+  }, [cmeta, enrRows, dip, batch, dipName, batchName, usdRate]);
+
+  const payoutByCode = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of payouts) m.set(p.code.toUpperCase(), (m.get(p.code.toUpperCase()) || 0) + p.amount);
+    return m;
+  }, [payouts]);
 
   const rows: Row[] = useMemo(() => {
     const m = new Map<string, Row>();
@@ -91,24 +103,39 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
       if (!c.code) continue;
       const a = affByCode.get(c.code);
       let r = m.get(c.code);
-      if (!r) { r = { code: c.code, name: a?.name && a.name !== "—" ? a.name : "", phone: a?.phone || "", rate: Number(a?.rate) || 0, customers: 0, paidN: 0, notPaidN: 0, refundedN: 0, sales: 0, commission: 0, collected: 0 }; m.set(c.code, r); }
+      if (!r) { r = { code: c.code, name: a?.name && a.name !== "—" ? a.name : "", phone: a?.phone || "", rate: Number(a?.rate) || 0, customers: 0, paidN: 0, notPaidN: 0, refundedN: 0, sales: 0, commission: 0, collected: 0, hasUsd: false, paidOut: 0, dueNow: 0 }; m.set(c.code, r); }
       r.customers++;
+      if (c.usd) r.hasUsd = true;
       if (c.refunded) { r.refundedN++; continue; }
       if (c.paid) { r.paidN++; r.sales += c.agreed; r.collected += c.collected; }
       else r.notPaidN++;
     }
     const arr = Array.from(m.values());
-    arr.forEach((r) => { r.commission = Math.round((r.sales * r.rate) / 100); });
+    arr.forEach((r) => {
+      r.commission = Math.round((r.sales * r.rate) / 100);
+      r.paidOut = Math.round(payoutByCode.get(r.code) || 0);
+      r.dueNow = Math.max(0, r.commission - r.paidOut);
+    });
     arr.sort((a, b) => b.customers - a.customers);
     return arr;
-  }, [custs, affByCode]);
+  }, [custs, affByCode, payoutByCode]);
 
   const filtered = rows.filter((r) => {
     const s = q.trim().toLowerCase();
     if (!s) return true;
     return r.code.toLowerCase().includes(s) || r.name.toLowerCase().includes(s);
   });
-  const totals = useMemo(() => ({ partners: rows.length, customers: rows.reduce((s, r) => s + r.customers, 0), commission: rows.reduce((s, r) => s + r.commission, 0) }), [rows]);
+  const totals = useMemo(() => ({ partners: rows.length, customers: rows.reduce((s, r) => s + r.customers, 0), commission: rows.reduce((s, r) => s + r.dueNow, 0) }), [rows]);
+
+  async function settle(r: Row) {
+    if (r.dueNow <= 0) return toast(tr("affNothingDue"));
+    const ok = await confirmDialog({ message: tr("affSettleConfirm").replace("{a}", money(r.dueNow)).replace("{n}", dName(r)), confirmLabel: tr("affSettleYes"), cancelLabel: tr("cancel") });
+    if (!ok) return;
+    const { data: au } = await supabase.auth.getUser();
+    const { error } = await supabase.from("affiliate_payouts").insert({ code: r.code, amount: r.dueNow, customers_count: r.paidN, paid_by: au?.user?.id || null });
+    if (error) return toast(tr("saveFailed") + error.message);
+    toast(tr("affSettled")); router.refresh();
+  }
 
   const dName = (r: Row) => r.name || r.code;
 
@@ -130,7 +157,7 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
       `🔑 الكود: ${r.code}`, `🎓 الدبلومة: ${dips} — الباتش: ${bts}`,
       ...(canFinance ? [`📈 نسبة عمولتك: ${r.rate}%`] : []), ``,
       `👥 إجمالي العملاء: ${r.customers} — ✅ دفعوا: ${r.paidN} · ⏳ لسه: ${r.notPaidN}`,
-      ...(canFinance ? [`💰 إجمالي المبيعات: ${money(r.sales)} جنيه`, `💵 عمولتك المستحقة: ${money(r.commission)} جنيه`] : []), ``,
+      ...(canFinance ? [`💰 إجمالي المبيعات: ${money(r.sales)} جنيه${r.hasUsd ? " (شامل تحويل الدولار × " + usdRate + ")" : ""}`, `💵 عمولتك المستحقة: ${money(r.dueNow)} جنيه`] : []), ``,
       `سيتم التحويل خلال أقصاها 15 يوم عمل.`, `نشكر حضرتك على جهودك المستمرة، ونتطلع لمزيد من النجاحات معًا 🤝`,
     ];
     return L.join("\n");
@@ -154,8 +181,9 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
   <div class="box"><small>${L.cust}</small><b>${r.customers}</b></div>
   <div class="box"><small>${L.paid}</small><b>${r.paidN}</b></div>
   <div class="box"><small>${L.not}</small><b>${r.notPaidN}</b></div>
-  ${canFinance ? `<div class="box"><small>${L.sales}</small><b>${money(r.sales)}</b></div><div class="box"><small>${L.comm} (${r.rate}%)</small><b>${money(r.commission)}</b></div>` : ""}
+  ${canFinance ? `<div class="box"><small>${L.sales}</small><b>${money(r.sales)}</b></div><div class="box"><small>${L.comm} (${r.rate}%)</small><b>${money(r.dueNow)}</b></div>` : ""}
 </div>
+${canFinance && r.hasUsd ? `<div style="font-size:11px;color:#2F6BFF;margin:-4px 0 8px">💱 ${ar ? "شامل تحويل مبيعات بالدولار × " + usdRate : "Includes USD sales converted × " + usdRate}</div>` : ""}
 <table><thead><tr><th>${L.name}</th><th>${L.phone}</th><th>${L.dip}</th><th>${L.batch}</th><th>${L.status}</th>${canFinance ? `<th>${L.agreed}</th><th>${L.coll}</th>` : ""}</tr></thead><tbody>${rowsHtml}${totalRow}</tbody></table>
 <p class="ft">${L.ft} — ${new Date().toLocaleDateString(ar ? "ar-EG" : "en-GB")}</p>
 <script>window.onload=function(){setTimeout(function(){window.print()},300)}</script>
@@ -222,7 +250,7 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
                 <th style={th}>✅ {tr("paid")}</th>
                 <th style={th}>⏳ {tr("unpaid")}</th>
                 {canFinance && <th style={th}>{tr("salesBaseCol")}</th>}
-                {canFinance && <th style={th}>{tr("commissionCol")}</th>}
+                {canFinance && <th style={th}>{tr("affDueCol")}</th>}
                 <th style={th}></th>
               </tr>
             </thead>
@@ -235,13 +263,34 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
                     <td style={td}><b>{r.customers}</b></td>
                     <td style={{ ...td, color: "#18A957", fontWeight: 700 }}>{r.paidN}</td>
                     <td style={{ ...td, color: "#C7891A", fontWeight: 700 }}>{r.notPaidN}</td>
-                    {canFinance && <td style={td} dir="ltr"><span className="num">{money(r.sales)}</span></td>}
-                    {canFinance && <td style={{ ...td, color: "#18A957", fontWeight: 800 }} dir="ltr"><span className="num">{money(r.commission)}</span></td>}
+                    {canFinance && <td style={td} dir="ltr"><span className="num">{money(r.sales)}</span>{r.hasUsd && <span title={"$ × " + usdRate} style={{ fontSize: 9, color: "#2F6BFF", marginInlineStart: 3 }}>$</span>}</td>}
+                    {canFinance && <td style={{ ...td, color: r.dueNow > 0 ? "#18A957" : "var(--muted)", fontWeight: 800 }} dir="ltr"><span className="num">{money(r.dueNow)}</span></td>}
                     <td style={{ ...td, textAlign: "end", color: "var(--muted)" }}>{openCode === r.code ? "▲" : "▼"}</td>
                   </tr>
                   {openCode === r.code && (
                     <tr style={{ background: "var(--bg)" }}>
                       <td colSpan={canFinance ? 8 : 6} style={{ padding: 10 }}>
+                        {canFinance && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 12, padding: "10px 12px", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 10 }}>
+                            <div style={{ fontSize: 12 }}><span style={{ color: "var(--muted)" }}>{tr("affTotalComm")}: </span><b className="num">{money(r.commission)}</b></div>
+                            <div style={{ fontSize: 12 }}><span style={{ color: "var(--muted)" }}>{tr("affPaidOut")}: </span><b className="num" style={{ color: "#2F6BFF" }}>{money(r.paidOut)}</b></div>
+                            <div style={{ fontSize: 12 }}><span style={{ color: "var(--muted)" }}>{tr("affDueNow")}: </span><b className="num" style={{ color: r.dueNow > 0 ? "#18A957" : "var(--muted)", fontSize: 15 }}>{money(r.dueNow)}</b></div>
+                            {r.hasUsd && <span style={{ fontSize: 10.5, color: "#2F6BFF" }}>💱 {tr("usdConverted").replace("{r}", String(usdRate))}</span>}
+                            <button onClick={() => settle(r)} disabled={r.dueNow <= 0} className="btn" style={{ height: 32, padding: "0 14px", fontSize: 12.5, marginInlineStart: "auto", opacity: r.dueNow > 0 ? 1 : .5 }}>💵 {tr("affSettleBtn")}</button>
+                          </div>
+                        )}
+                        {canFinance && (() => { const ps = payouts.filter((p) => p.code.toUpperCase() === r.code); return ps.length > 0 ? (
+                          <div style={{ marginBottom: 12, fontSize: 12 }}>
+                            <div style={{ fontWeight: 800, color: "var(--muted)", marginBottom: 4 }}>{tr("affSettlements")}:</div>
+                            {ps.map((p, i) => (
+                              <div key={i} style={{ display: "flex", gap: 10, padding: "3px 0", color: "var(--ink)" }}>
+                                <span style={{ color: "var(--muted)" }}>{new Date(p.paidAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB")}</span>
+                                <b className="num">{money(p.amount)} {tr("egp")}</b>
+                                <span style={{ color: "var(--muted)" }}>· {p.count} {tr("receiptsCountWord") || ""}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null; })()}
                         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
                           <button onClick={() => sendWA(r)} className="btn" style={{ height: 34, padding: "0 14px", fontSize: 13, background: "#25D366", gap: 6 }}>
                             <svg viewBox="0 0 24 24" width={15} height={15} fill="currentColor"><path d="M12 2a10 10 0 0 0-8.5 15.2L2 22l4.9-1.5A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.9.9.9-2.8-.2-.3A8 8 0 1 1 12 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8 1-.3.2-.5.1a6.5 6.5 0 0 1-1.9-1.2 7.2 7.2 0 0 1-1.3-1.7c-.1-.2 0-.4.1-.5l.4-.4.2-.4v-.4l-.8-1.8c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3A2.8 2.8 0 0 0 6 8.9c0 1.6 1.2 3.2 1.4 3.4s2.3 3.6 5.6 5c.8.3 1.4.5 1.9.7.8.2 1.5.2 2.1.1.6-.1 1.4-.6 1.6-1.2.2-.6.2-1 .1-1.2z" /></svg>
