@@ -14,6 +14,12 @@ type Perms = {
   canActivations?: boolean;
   canUniversities?: boolean;
   canReceipts?: boolean;
+  canDashboard?: boolean;
+  canCustomers?: boolean;
+  canTasks?: boolean;
+  canBatches?: boolean;
+  canRefunds?: boolean;
+  canArchive?: boolean;
   canEducation?: boolean;
   canFeedback?: boolean;
   isAdmin?: boolean;
@@ -53,13 +59,12 @@ export default function NavLinks(p: Perms) {
   const closeSb = () => document.getElementById("sb")?.classList.remove("open");
 
   const A = !!p.isAdmin; // الأدمن يشوف كل حاجة
-  const main: Item[] = [
-    { href: "/", key: "dash", tk: "dash" },
-    { href: "/customers", key: "users", tk: "customers" },
-  ];
+  const main: Item[] = [];
+  if (A || p.canDashboard !== false) main.push({ href: "/", key: "dash", tk: "dash" });
+  if (A || p.canCustomers !== false) main.push({ href: "/customers", key: "users", tk: "customers" });
   if (A || p.canPipeline) main.push({ href: "/pipeline", key: "pipe", tk: "pipeline" });
-  main.push({ href: "/my-tasks", key: "task", tk: "myTasks", badge: p.dueCount });
-  main.push({ href: "/batches", key: "batch", tk: "batches" });
+  if (A || p.canTasks !== false) main.push({ href: "/my-tasks", key: "task", tk: "myTasks", badge: p.dueCount });
+  if (A || p.canBatches !== false) main.push({ href: "/batches", key: "batch", tk: "batches" });
 
   // الرؤى بقت جزء من صفحة التقارير (نفس صلاحية can_view_reports) — مبقاش بند مستقل
   const teams: Item[] = [];
@@ -67,9 +72,9 @@ export default function NavLinks(p: Perms) {
   if (A || p.canActivations) teams.push({ href: "/onboarding", key: "onb", tk: "onboarding", badge: p.handoffCount });
   // «فريق التعليم» بقى مجموعة منسدلة (تحت) بدل رابط مفرد
   if (A || p.canFeedback) teams.push({ href: "/feedback", key: "feedback", tk: "feedbackNav" });
-  teams.push({ href: "/refunds", key: "refund", tk: "refunds", badge: p.refundCount });
+  if (A || p.canRefunds !== false) teams.push({ href: "/refunds", key: "refund", tk: "refunds", badge: p.refundCount });
   if (p.canReceipts) teams.push({ href: "/screenshots", key: "receipt", tk: "screenshots" });
-  teams.push({ href: "/archive", key: "archive", tk: "archive" });
+  if (A || p.canArchive !== false) teams.push({ href: "/archive", key: "archive", tk: "archive" });
   if (p.canReports) teams.push({ href: "/reports", key: "report", tk: "reports" });
 
   // المستخدمون + سجل الشات بقوا تبويبات جوّه الإعدادات — مبقاش فيه صفحات منفصلة
