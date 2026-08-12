@@ -22,7 +22,7 @@ function cairoTime(iso: string, lang: string): string {
   return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 }
 
-export default function ScreenshotsView({ rows, canCreate = false, canDelete = false }: { rows: Receipt[]; canCreate?: boolean; canDelete?: boolean }) {
+export default function ScreenshotsView({ rows, canCreate = false, canDelete = false, canEdit = false }: { rows: Receipt[]; canCreate?: boolean; canDelete?: boolean; canEdit?: boolean }) {
   const tr = useT();
   const lang = useLang();
   const supabase = createClient();
@@ -122,6 +122,36 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
     toast(tr("deletedM"));
     closeLb();
     router.refresh();
+  }
+
+  // استبدال الصورة (آمن — مايلمسش المبلغ ولا الحالة)
+  const [editAmtFor, setEditAmtFor] = useState<string | null>(null);
+  const [newAmt, setNewAmt] = useState("");
+  const [actBusy, setActBusy] = useState(false);
+  async function replaceImage(r: Receipt, file: File) {
+    if (!file) return;
+    setActBusy(true);
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `${r.isShared ? "shared" : "replace"}/${Date.now()}.${ext}`;
+    const up = await supabase.storage.from("receipts").upload(path, file, { upsert: false });
+    if (up.error) { setActBusy(false); toast(tr("uploadFailed")); return; }
+    const { data, error } = await supabase.rpc("replace_receipt_url", { p_old_url: r.receiptUrl, p_new_url: path });
+    setActBusy(false);
+    if (error || (data && (data as any).ok === false)) { toast(tr("deleteFailed")); return; }
+    toast(tr("imageReplacedOk")); closeLb(); router.refresh();
+  }
+  async function editAmount(r: Receipt) {
+    const v = parseFloat(newAmt);
+    if (isNaN(v) || v < 0) { toast(tr("enterValidAmount")); return; }
+    setActBusy(true);
+    const { data, error } = await supabase.rpc("edit_receipt_amount", { p_url: r.receiptUrl, p_new_amount: v });
+    setActBusy(false);
+    if (error || (data && (data as any).ok === false)) {
+      const e = (data as any)?.error;
+      toast(e === "shared_receipt" ? tr("editSharedFromModal") : tr("deleteFailed"));
+      return;
+    }
+    toast(tr("amountEditedOk")); setEditAmtFor(null); closeLb(); router.refresh();
   }
 
   function monthLabel(m: string) {
@@ -303,7 +333,20 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
 
               <div style={{ padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", gap: 8 }}>
                 <span style={{ fontSize: 12, color: "var(--muted)" }}>{r.ownerName || "—"} · {cairoTime(r.uploadedAt, lang)}</span>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  {canEdit && (
+                    <label className="btn ghost" style={{ fontSize: 13, gap: 6, cursor: actBusy ? "wait" : "pointer" }} title={tr("replaceImageHint")}>
+                      <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
+                      {tr("replaceImage")}
+                      <input type="file" accept="image/*" style={{ display: "none" }} disabled={actBusy} onChange={(e) => { const f = e.target.files?.[0]; if (f) replaceImage(r, f); }} />
+                    </label>
+                  )}
+                  {canEdit && !r.isShared && (
+                    <button onClick={() => { const o = editAmtFor !== r.receiptUrl; setEditAmtFor(o ? r.receiptUrl : null); setNewAmt(o ? String(r.amount ?? "") : ""); }} className="btn ghost" style={{ fontSize: 13, gap: 6 }}>
+                      <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                      {tr("editAmount")}
+                    </button>
+                  )}
                   {canDelete && (
                     <button onClick={() => delReceipt(r)} disabled={delBusy} className="btn ghost" style={{ fontSize: 13, color: "#E0483B", borderColor: "rgba(224,72,59,.35)", gap: 6 }}>
                       <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
@@ -313,6 +356,14 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
                   {!r.isShared && <Link href={`/customers/${r.customerId}`} className="btn" style={{ fontSize: 13 }}>{tr("openCustomerCard")}</Link>}
                 </div>
               </div>
+              {editAmtFor === r.receiptUrl && (
+                <div style={{ padding: "10px 16px", borderTop: "1px solid var(--line)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 700 }}>{tr("editAmount")}:</span>
+                  <input className="inp num" dir="ltr" inputMode="decimal" value={newAmt} onChange={(e) => setNewAmt(e.target.value)} style={{ width: 140 }} placeholder={tr("amountWord")} />
+                  <button onClick={() => editAmount(r)} disabled={actBusy} className="btn" style={{ fontSize: 12.5, height: 34 }}>{actBusy ? "..." : tr("saveChanges")}</button>
+                  <button onClick={() => setEditAmtFor(null)} className="btn ghost" style={{ fontSize: 12.5, height: 34 }}>{tr("cancel")}</button>
+                </div>
+              )}
             </div>
           </div>
         );

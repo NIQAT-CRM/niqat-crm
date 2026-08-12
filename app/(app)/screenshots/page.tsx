@@ -17,6 +17,7 @@ export default async function ScreenshotsPage() {
   if (!prof?.can_view_receipts) redirect("/");
   const canCreate = !!prof?.can_see_finance;
   const canDelete = (prof?.team || "").toLowerCase() === "admin";
+  const canEdit = (prof?.team || "").toLowerCase() === "admin" || !!prof?.can_see_finance;
 
   // كل صور الدفع الفعلي من كل المصادر (أقساط + دفعة أولى + إضافات + تحويلات) — الريفند مستبعد داخل الدالة.
   const { data } = await supabase.rpc("receipts_all", { p_from: "2000-01-01", p_to: "2100-01-01" });
@@ -86,7 +87,7 @@ export default async function ScreenshotsPage() {
       <div style={{ marginBottom: 18 }}>
         <MonthlySales rows={(monthlyRows as any[]) || []} collapsible />
       </div>
-      <ScreenshotsView rows={rows} canCreate={canCreate} canDelete={canDelete} />
+      <ScreenshotsView rows={rows} canCreate={canCreate} canDelete={canDelete} canEdit={canEdit} />
     </div>
   );
 }
