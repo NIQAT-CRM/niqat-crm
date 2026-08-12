@@ -12,7 +12,7 @@ const PERM_KEYS = [
 
 // صلاحيات حسّاسة: الأدمن بس هو اللي يقدر يمنحها (تمنع تصعيد الصلاحيات)
 const ELEVATED_PERMS = ["can_see_finance", "can_manage_users", "can_manage_settings", "can_grant_access"] as const;
-const VALID_TEAMS = ["admin", "sales", "support"];
+const VALID_TEAMS = ["admin", "sales", "support", "accountant"];
 
 // سياسة كلمة سر قوية موحّدة (١٢ حرف + تعقيد) — نفس شروط صفحة الدعوة
 function passwordError(pw: string): string | null {
@@ -96,6 +96,9 @@ export async function POST(req: Request) {
   // 5) تحديث البروفايل (الـ trigger بيعمله تلقائي — هنا بنحدّث الاسم/الفريق/الصلاحيات)
   const update: Record<string, any> = { full_name: fullName, team };
   for (const k of PERM_KEYS) update[k] = !!perms[k];
+  // صلاحيات الرؤية: تتكتب بس لو الفرونت بعتها (عشان الأدوار العادية تفضل default true)
+  const VIEW_KEYS = ["can_view_dashboard","can_view_customers","can_view_tasks","can_view_batches","can_view_refunds","can_view_archive","can_view_pipeline","can_view_support","can_view_activations","can_view_universities","can_view_receipts","can_view_education","can_view_feedback"];
+  for (const k of VIEW_KEYS) if (k in perms) update[k] = !!perms[k];
   // الذكاء الاصطناعي
   update.can_use_ai = !!body.can_use_ai;
   const aiOpts = (body.ai_options && typeof body.ai_options === "object") ? body.ai_options : {};
