@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/lib/i18n/client";
 import { toast } from "@/lib/toast";
 
-type Alloc = { customerId: string; customerName: string; phone: string; amount: string };
+type Inst = { id: string; amount: number; currency: string; due_date: string | null; status: string };
+type Alloc = { customerId: string; customerName: string; phone: string; amount: string; installmentId: string; insts: Inst[] };
 
 export default function SharedReceiptModal({ onClose }: { onClose: () => void }) {
   const tr = useT();
@@ -16,7 +17,7 @@ export default function SharedReceiptModal({ onClose }: { onClose: () => void })
   const [dragging, setDragging] = useState(false);
   const [currency, setCurrency] = useState("EGP");
   const [note, setNote] = useState("");
-  const [rows, setRows] = useState<Alloc[]>([{ customerId: "", customerName: "", phone: "", amount: "" }]);
+  const [rows, setRows] = useState<Alloc[]>([{ customerId: "", customerName: "", phone: "", amount: "", installmentId: "", insts: [] }]);
   const [busy, setBusy] = useState(false);
 
   // بحث العملاء لكل صف
@@ -48,12 +49,28 @@ export default function SharedReceiptModal({ onClose }: { onClose: () => void })
     }, 250);
   }, [supabase]);
 
-  function pickCustomer(idx: number, c: any) {
-    setRows((rs) => rs.map((r, i) => i === idx ? { ...r, customerId: c.id, customerName: c.name || "—", phone: c.phone1 || "" } : r));
+  async function pickCustomer(idx: number, c: any) {
+    setRows((rs) => rs.map((r, i) => i === idx ? { ...r, customerId: c.id, customerName: c.name || "—", phone: c.phone1 || "", installmentId: "", insts: [] } : r));
     setOpenIdx(null); setQuery(""); setResults([]);
+    // جيب الأقساط غير المدفوعة للعميل (عبر الاشتراكات) عشان نربط الدفعة بقسط
+    const { data: enrs } = await supabase.from("enrollments").select("id").eq("customer_id", c.id);
+    const enrIds = ((enrs as any[]) || []).map((e) => e.id);
+    if (!enrIds.length) return;
+    const { data: ins } = await supabase.from("installments")
+      .select("id,amount,currency,due_date,status,enrollment_id")
+      .in("enrollment_id", enrIds).neq("status", "paid").order("due_date", { ascending: true });
+    const list: Inst[] = ((ins as any[]) || []).map((x) => ({ id: x.id, amount: Number(x.amount) || 0, currency: x.currency || "EGP", due_date: x.due_date, status: x.status || "due" }));
+    setRows((rs) => rs.map((r, i) => i === idx ? { ...r, insts: list } : r));
+  }
+  function pickInstallment(idx: number, instId: string) {
+    setRows((rs) => rs.map((r, i) => {
+      if (i !== idx) return r;
+      const inst = r.insts.find((x) => x.id === instId);
+      return { ...r, installmentId: instId, amount: inst ? String(inst.amount) : r.amount };
+    }));
   }
   function setAmount(idx: number, v: string) { setRows((rs) => rs.map((r, i) => i === idx ? { ...r, amount: v } : r)); }
-  function addRow() { setRows((rs) => [...rs, { customerId: "", customerName: "", phone: "", amount: "" }]); }
+  function addRow() { setRows((rs) => [...rs, { customerId: "", customerName: "", phone: "", amount: "", installmentId: "", insts: [] }]); }
   function removeRow(idx: number) { setRows((rs) => rs.length > 1 ? rs.filter((_, i) => i !== idx) : rs); }
 
   async function submit() {
@@ -69,7 +86,7 @@ export default function SharedReceiptModal({ onClose }: { onClose: () => void })
       if (up.error) { setBusy(false); return toast(tr("imgUploadFailed")); }
 
       // 2) إنشاء الإيصال + التوزيعات + تعليم الأقساط (RPC واحد في transaction)
-      const p_allocations = valid.map((r) => ({ customer_id: r.customerId, amount: Number(r.amount), currency }));
+      const p_allocations = valid.map((r) => ({ customer_id: r.customerId, amount: Number(r.amount), currency, installment_id: r.installmentId || "" }));
       const { error } = await supabase.rpc("create_shared_receipt", {
         p_url: path, p_currency: currency, p_note: note.trim(), p_allocations,
       });
@@ -169,13 +186,14 @@ export default function SharedReceiptModal({ onClose }: { onClose: () => void })
           <div style={{ marginTop: 16 }}>
             <label style={lbl}>{tr("shrCustomers")}</label>
             {rows.map((r, idx) => (
-              <div key={idx} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
+              <div key={idx} style={{ marginBottom: 8 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                 <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
                   {r.customerId ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 6, border: "1px solid var(--line)", borderRadius: 9, padding: "8px 10px", height: 40, background: "var(--bg)" }}>
                       <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.customerName}</span>
                       {r.phone && <span className="num" dir="ltr" style={{ fontSize: 11, color: "var(--muted)" }}>{r.phone}</span>}
-                      <button onClick={() => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, customerId: "", customerName: "", phone: "" } : x))} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 16, lineHeight: 1 }}>×</button>
+                      <button onClick={() => setRows((rs) => rs.map((x, i) => i === idx ? { ...x, customerId: "", customerName: "", phone: "", installmentId: "", insts: [] } : x))} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 16, lineHeight: 1 }}>×</button>
                     </div>
                   ) : (
                     <>
@@ -200,6 +218,17 @@ export default function SharedReceiptModal({ onClose }: { onClose: () => void })
                 <input className="inp num" dir="ltr" inputMode="numeric" placeholder={tr("amountWord")} value={r.amount}
                   onChange={(e) => setAmount(idx, e.target.value)} style={{ width: 110, height: 40 }} />
                 <button onClick={() => removeRow(idx)} disabled={rows.length === 1} style={{ height: 40, width: 40, flexShrink: 0, borderRadius: 9, border: "1px solid var(--line)", background: "var(--bg)", color: rows.length === 1 ? "var(--line)" : "#E0483B", cursor: rows.length === 1 ? "not-allowed" : "pointer", fontSize: 16 }}>×</button>
+                </div>
+                {r.customerId && r.insts.length > 0 && (
+                  <div style={{ marginTop: 6 }}>
+                    <select className="inp" value={r.installmentId} onChange={(e) => pickInstallment(idx, e.target.value)} style={{ height: 34, fontSize: 12.5, width: "100%" }}>
+                      <option value="">{tr("shrCashNoInst")}</option>
+                      {r.insts.map((it) => (
+                        <option key={it.id} value={it.id}>{tr("shrLinkInst")}: {nf.format(it.amount)} {it.currency === "USD" ? "USD" : tr("egp")}{it.due_date ? " · " + String(it.due_date).slice(0, 10) : ""}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             ))}
             <button onClick={addRow} className="btn ghost" style={{ height: 36, padding: "0 12px", fontSize: 12.5, gap: 6 }}>
