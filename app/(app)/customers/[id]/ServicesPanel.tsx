@@ -373,6 +373,7 @@ export default function ServicesPanel({
                 </div>
                 {moving && (() => {
                   const isSupport = myTeam === "support" || myTeam === "admin";
+                  const isAdmin = myTeam === "admin";
                   const isFirst = (e.transferCount || 0) === 0;
                   const openB = batchOpts.filter((b) => b.dip === e.diplomaId && b.status === "open" && !b.done && b.v !== e.batchId);
                   const batchPicker = (
@@ -413,6 +414,17 @@ export default function ServicesPanel({
                     <div><button className="btn ghost" onClick={resetMove} style={{ height: 36, padding: "0 14px" }}>{tr("close")}</button></div>
                   </>);
 
+                  // (٠) أدمن → نقل مباشر دايماً، من غير أي قيود (رسوم/مرة أولى)
+                  if (isAdmin) {
+                    return box(<>
+                      {batchPicker}
+                      <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.6 }}>{tr("adminDirectTransferNote")}</div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button className="btn" onClick={() => doDirectTransfer(e)} disabled={busy || !moveTo} style={{ height: 38, flex: 1 }}>{busy ? "..." : tr("confirmFreeTransfer")}</button>
+                        <button className="btn ghost" onClick={resetMove} style={{ height: 38, padding: "0 14px" }}>{tr("cancel")}</button>
+                      </div>
+                    </>);
+                  }
                   // (١) أول نقلة + دعم/أدمن → نقل مباشر مجاني
                   if (isFirst && isSupport) {
                     return box(<>
