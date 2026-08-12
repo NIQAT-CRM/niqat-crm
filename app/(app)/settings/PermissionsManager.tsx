@@ -24,6 +24,12 @@ const PERMS: [string, string][] = [
   ["can_view_receipts", "رؤية الإيصالات"],
   ["can_view_education", "رؤية فريق التعليم"],
   ["can_view_feedback", "رؤية الفيدباك"],
+  ["can_view_dashboard", "رؤية الرئيسية"],
+  ["can_view_customers", "رؤية العملاء"],
+  ["can_view_tasks", "رؤية المهام"],
+  ["can_view_batches", "رؤية الباتشات"],
+  ["can_view_refunds", "رؤية المستردات"],
+  ["can_view_archive", "رؤية الأرشيف"],
 ];
 
 export default function PermissionsManager({ profiles }: { profiles: Profile[] }) {

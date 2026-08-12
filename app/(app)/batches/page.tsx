@@ -1,9 +1,12 @@
+import { hasPerm } from "@/lib/authz";
+import NoAccess from "../NoAccess";
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import BatchesView from "./BatchesView";
 export const dynamic = "force-dynamic";
 
 export default async function Batches() {
+  if (!(await hasPerm("can_view_batches"))) return <NoAccess />;
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

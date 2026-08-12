@@ -1,3 +1,5 @@
+import { hasPerm } from "@/lib/authz";
+import NoAccess from "../NoAccess";
 import Link from "next/link";
 import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
@@ -6,6 +8,7 @@ import EmptyState from "../EmptyState";
 export const dynamic = "force-dynamic";
 
 export default async function Archive() {
+  if (!(await hasPerm("can_view_archive"))) return <NoAccess />;
   const supabase = createClient();
   const { data: rows } = await supabase
     .from("customers")

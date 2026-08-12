@@ -9,7 +9,7 @@ import { toast } from "@/lib/toast";
 type Profile = { id: string; full_name: string | null; team: string | null; [k: string]: any };
 
 const TEAMS: [string, string][] = [
-  ["admin", "teamAdmin"], ["sales", "teamSales"], ["support", "teamSupport"], ["ops", "teamOps"],
+  ["admin", "teamAdmin"], ["sales", "teamSales"], ["support", "teamSupport"], ["accountant", "teamAccountant"], ["ops", "teamOps"],
 ];
 const PERMS: [string, string][] = [
   ["can_edit_customers", "permEditCustomers"],
@@ -31,9 +31,16 @@ const PERMS: [string, string][] = [
   ["can_view_receipts", "permViewReceipts"],
   ["can_view_education", "permViewEducation"],
   ["can_view_feedback", "permViewFeedback"],
+  ["can_view_dashboard", "permViewDashboard"],
+  ["can_view_customers", "permViewCustomers"],
+  ["can_view_tasks", "permViewTasks"],
+  ["can_view_batches", "permViewBatches"],
+  ["can_view_refunds", "permViewRefunds"],
+  ["can_view_archive", "permViewArchive"],
 ];
 const PRESET: Record<string, string[]> = {
   sales: ["can_edit_customers", "can_message", "can_view_reports"],
+  accountant: ["can_view_receipts", "can_see_finance"],
   support: ["can_manage_tickets", "can_grant_access", "can_message"],
   admin: PERMS.map((p) => p[0]),
   ops: ["can_edit_customers", "can_view_reports", "can_manage_batches", "can_message"],
@@ -164,10 +171,14 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
     if (!f.full_name.trim()) return toast(tr("enterMemberName"));
     if (!f.email.trim()) return toast(tr("enterEmail"));
     setAdding(true);
+    // للمحاسب: نكتب صلاحيات الرؤية صراحةً حسب التوجل (مش نسيبها default true) عشان مايشوفش غير المسموح
+    const VIEW_COLS = ["can_view_dashboard","can_view_customers","can_view_tasks","can_view_batches","can_view_refunds","can_view_archive","can_view_pipeline","can_view_support","can_view_activations","can_view_universities","can_view_reports","can_view_education","can_view_feedback","can_view_receipts"];
+    const permsToSend: Record<string, boolean> = { ...perms };
+    if (f.team === "accountant") { for (const c of VIEW_COLS) permsToSend[c] = !!perms[c]; }
     try {
       const res = await fetch("/api/team", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...f, perms, can_use_ai: newAi, ai_options: newAi ? newAiOpts : {} }),
+        body: JSON.stringify({ ...f, perms: permsToSend, can_use_ai: newAi, ai_options: newAi ? newAiOpts : {} }),
       });
       const data = await res.json();
       setAdding(false);

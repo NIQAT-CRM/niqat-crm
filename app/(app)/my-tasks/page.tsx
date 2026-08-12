@@ -1,9 +1,12 @@
+import { hasPerm } from "@/lib/authz";
+import NoAccess from "../NoAccess";
 import { createClient } from "@/lib/supabase/server";
 import RealtimeRefresh from "../RealtimeRefresh";
 import TaskList from "./TaskList";
 export const dynamic = "force-dynamic";
 
 export default async function MyTasks() {
+  if (!(await hasPerm("can_view_tasks"))) return <NoAccess />;
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

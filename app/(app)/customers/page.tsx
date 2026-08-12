@@ -1,3 +1,5 @@
+import { hasPerm } from "@/lib/authz";
+import NoAccess from "../NoAccess";
 import Link from "next/link";
 import RealtimeRefresh from "../RealtimeRefresh";
 import { t as tr } from "@/lib/i18n";
@@ -23,6 +25,7 @@ type SP = { q?: string; stage?: string; owner?: string; dip?: string; spec?: str
 const LIST_LIMIT = 50;
 
 export default async function Customers({ searchParams }: { searchParams: SP }) {
+  if (!(await hasPerm("can_view_customers"))) return <NoAccess />;
   const STAGE_OPTS = Object.entries(STAGES).map(([v, x]) => ({ v, label: tr(x.labelKey) }));
   const q = (searchParams?.q || "").trim();
   const f = searchParams || {};

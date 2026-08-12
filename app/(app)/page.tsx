@@ -1,3 +1,5 @@
+import { hasPerm } from "@/lib/authz";
+import NoAccess from "./NoAccess";
 import Link from "next/link";
 import RealtimeRefresh from "./RealtimeRefresh";
 import { createClient } from "@/lib/supabase/server";
@@ -38,6 +40,7 @@ function periodRange(period: string): { from: string; to: string } | null {
 }
 
 export default async function Dashboard({ searchParams }: { searchParams?: { period?: string } }) {
+  if (!(await hasPerm("can_view_dashboard"))) return <NoAccess />;
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
