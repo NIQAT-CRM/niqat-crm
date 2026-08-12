@@ -382,6 +382,7 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
         {grp(tr("teamAdmin"), "admin")}
         {grp(tr("teamSales"), "sales")}
         {grp(tr("teamSupport"), "support")}
+        {grp(tr("teamAccountant"), "accountant")}
         {grp(tr("teamOps"), "ops")}
       </div>
     </div>

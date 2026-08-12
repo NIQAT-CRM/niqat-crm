@@ -22,7 +22,7 @@ function cairoTime(iso: string, lang: string): string {
   return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 }
 
-export default function ScreenshotsView({ rows, canCreate = false, canDelete = false, canEdit = false }: { rows: Receipt[]; canCreate?: boolean; canDelete?: boolean; canEdit?: boolean }) {
+export default function ScreenshotsView({ rows, canCreate = false, canDelete = false, canEdit = false, canOpenCustomer = true }: { rows: Receipt[]; canCreate?: boolean; canDelete?: boolean; canEdit?: boolean; canOpenCustomer?: boolean }) {
   const tr = useT();
   const lang = useLang();
   const supabase = createClient();
@@ -275,7 +275,7 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
                   <span style={{ fontSize: 11, color: "var(--muted)" }}>{r.ownerName || "—"}</span>
                   {r.isShared
                     ? <button onClick={() => setLbIdx(i)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, color: "var(--brand-d)", padding: 0 }}>{tr("shrDetails")}</button>
-                    : <Link href={`/customers/${r.customerId}`} style={{ fontSize: 11, fontWeight: 700, color: "var(--brand-d)" }}>{tr("openCustomerCard")}</Link>}
+                    : canOpenCustomer ? <Link href={`/customers/${r.customerId}`} style={{ fontSize: 11, fontWeight: 700, color: "var(--brand-d)" }}>{tr("openCustomerCard")}</Link> : null}
                 </div>
               </div>
             </div>
@@ -309,7 +309,7 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
                   <div style={{ fontSize: 11, fontWeight: 800, color: "var(--muted)", marginBottom: 6 }}>{tr("shrCustomers")} ({r.allocations!.length})</div>
                   {r.allocations!.map((a, ai) => (
                     <div key={ai} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: ai < r.allocations!.length - 1 ? "1px solid var(--line)" : "none" }}>
-                      <Link href={`/customers/${a.customerId}`} style={{ fontSize: 12.5, fontWeight: 700, color: "var(--brand-d)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</Link>
+                      {canOpenCustomer ? <Link href={`/customers/${a.customerId}`} style={{ fontSize: 12.5, fontWeight: 700, color: "var(--brand-d)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</Link> : <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.name}</span>}
                       <b className="num" style={{ fontSize: 12.5, color: "var(--green)", flexShrink: 0 }} dir="ltr">{fmtMoney(a.amount, a.currency)}</b>
                     </div>
                   ))}
@@ -353,7 +353,7 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
                       {tr("deleteReceipt")}
                     </button>
                   )}
-                  {!r.isShared && <Link href={`/customers/${r.customerId}`} className="btn" style={{ fontSize: 13 }}>{tr("openCustomerCard")}</Link>}
+                  {!r.isShared && canOpenCustomer && <Link href={`/customers/${r.customerId}`} className="btn" style={{ fontSize: 13 }}>{tr("openCustomerCard")}</Link>}
                 </div>
               </div>
               {editAmtFor === r.receiptUrl && (

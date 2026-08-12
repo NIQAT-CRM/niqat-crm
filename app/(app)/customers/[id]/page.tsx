@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { hasPerm } from "@/lib/authz";
+import NoAccess from "../../NoAccess";
 import RealtimeRefresh from "../../RealtimeRefresh";
 import { createClient } from "@/lib/supabase/server";
 import CustomerDrawer from "./CustomerDrawer";
@@ -32,6 +34,7 @@ const TK: Record<string, { labelKey: string; color: string }> = {
 };
 
 export default async function CustomerDetail({ params }: { params: { id: string } }) {
+  if (!(await hasPerm("can_view_customers"))) return <NoAccess />;
   const supabase = createClient();
   const tr = tFor(getLang());
   const { data: { user } } = await supabase.auth.getUser();
