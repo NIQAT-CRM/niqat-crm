@@ -44,6 +44,7 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
   useEffect(() => () => { if (payUrl) URL.revokeObjectURL(payUrl); }, [payUrl]);
   const [editAgreedId, setEditAgreedId] = useState<string | null>(null);
   const [editAgreedVal, setEditAgreedVal] = useState("");
+  const [editAgreedCur, setEditAgreedCur] = useState("EGP");
   // (أ) تعديل الدبلومة/الباتش للاشتراك
   const [editEnr, setEditEnr] = useState<string | null>(null);
   const [edDip, setEdDip] = useState("");
@@ -216,12 +217,17 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
   async function saveAgreed(e: Enr) {
     const amt = Number(editAgreedVal);
     if (isNaN(amt) || amt < 0) return toast(tr("enterValidAmount"));
+    const cur = editAgreedCur || e.currency || "EGP";
     setBusy("agreed");
     const { error } = await supabase.from("enrollment_finance")
-      .upsert({ enrollment_id: e.id, agreed_amount: amt, currency: e.currency || "EGP" }, { onConflict: "enrollment_id" });
+      .upsert({ enrollment_id: e.id, agreed_amount: amt, currency: cur }, { onConflict: "enrollment_id" });
+    // لو العملة اتغيّرت → غيّرها في كل أقساط الاشتراك كمان عشان تفضل متسقة
+    if (cur !== (e.currency || "EGP")) {
+      await supabase.from("installments").update({ currency: cur }).eq("enrollment_id", e.id);
+    }
     setBusy(null);
     if (error) return toast(tr("updateFailed") + error.message);
-    await logAudit("agreed_edit", `${tr("agreedAmountUpdated")}: ${money(e.agreed, e.currency)} → ${money(amt, e.currency)}`);
+    await logAudit("agreed_edit", `${tr("agreedAmountUpdated")}: ${money(e.agreed, e.currency)} → ${money(amt, cur)}`);
     setEditAgreedId(null);
     toast(tr("agreedAmountUpdated"));
     router.refresh();
@@ -257,12 +263,16 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
                 <div style={{ display: "flex", gap: 12, fontSize: 12.5 }}>
                   <span style={{ color: "var(--muted)" }}>{tr("agreed")}: {editAgreedId === e.id ? (
                     <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-                      <input className="inp num" style={{ width: 100, height: 32, fontSize: 13 }} value={editAgreedVal} onChange={ev => setEditAgreedVal(ev.target.value)} />
+                      <input className="inp num" style={{ width: 90, height: 32, fontSize: 13 }} value={editAgreedVal} onChange={ev => setEditAgreedVal(ev.target.value)} />
+                      <select className="inp" style={{ width: 70, height: 32, fontSize: 12 }} value={editAgreedCur} onChange={ev => setEditAgreedCur(ev.target.value)}>
+                        <option value="EGP">{tr("egp")}</option>
+                        <option value="USD">USD</option>
+                      </select>
                       <button onClick={() => saveAgreed(e)} disabled={busy === "agreed"} className="btn" style={{ height: 32, padding: "0 10px", fontSize: 12 }}>{tr("save")}</button>
                       <button onClick={() => setEditAgreedId(null)} className="btn ghost" style={{ height: 32, padding: "0 10px", fontSize: 12 }}>{tr("cancel")}</button>
                     </span>
                   ) : (
-                    <b className="num" style={{ color: "var(--ink)", cursor: "pointer" }} onClick={() => { setEditAgreedId(e.id); setEditAgreedVal(String(e.agreed)); }}>{money(e.agreed, e.currency)}</b>
+                    <b className="num" style={{ color: "var(--ink)", cursor: "pointer" }} onClick={() => { setEditAgreedId(e.id); setEditAgreedVal(String(e.agreed)); setEditAgreedCur(e.currency || "EGP"); }}>{money(e.agreed, e.currency)}</b>
                   )}</span>
                   <span style={{ color: "var(--green)" }}>{tr("paid")}: <b className="num">{money(paid, e.currency)}</b></span>
                   <span style={{ color: "var(--amber)" }}>{tr("remaining")}: <b className="num">{money(remaining, e.currency)}</b></span>
