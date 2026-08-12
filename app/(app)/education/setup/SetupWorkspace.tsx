@@ -66,7 +66,7 @@ export default function SetupWorkspace({ diplomas, batches }: { diplomas: Dip[];
     setBusy(true);
     const sem = sems.find((s) => s.id === semId);
     const { data, error } = await supabase.from("edu_diploma_tasks")
-      .insert({ semester_id: semId, title, description: d.d.trim() || null, sort: sem?.tasks.length || 0 })
+      .insert({ semester_id: semId, title, description: d.d.trim(), sort: sem?.tasks.length || 0 })
       .select("id, title, description, sort").single();
     setBusy(false);
     if (error) { toast(error.message); return; }
