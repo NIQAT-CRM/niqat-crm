@@ -15,9 +15,10 @@ export default async function ScreenshotsPage() {
   const { data: prof } = await supabase.from("profiles")
     .select("can_view_receipts,can_see_finance,team,can_view_customers").eq("id", user?.id || "").maybeSingle();
   if (!prof?.can_view_receipts) redirect("/");
-  const canCreate = !!prof?.can_see_finance;
+  const isAccountant = (prof?.team || "").toLowerCase() === "accountant";
+  const canCreate = !!prof?.can_see_finance && !isAccountant;
   const canDelete = (prof?.team || "").toLowerCase() === "admin";
-  const canEdit = (prof?.team || "").toLowerCase() === "admin" || !!prof?.can_see_finance;
+  const canEdit = ((prof?.team || "").toLowerCase() === "admin" || !!prof?.can_see_finance) && !isAccountant;
   const canOpenCustomer = (prof?.team || "").toLowerCase() === "admin" || prof?.can_view_customers !== false;
 
   // كل صور الدفع الفعلي من كل المصادر (أقساط + دفعة أولى + إضافات + تحويلات) — الريفند مستبعد داخل الدالة.
