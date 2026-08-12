@@ -79,14 +79,27 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     }
     // (2) الاشتراك → العميل (فقط للاشتراكات اللي عليها أقساط غير مدفوعة)
     const enrIds = Array.from(enrFlags.keys());
+    const candByCust = new Map<string, { due: boolean; over: boolean }>();
     for (let c = 0; c < enrIds.length; c += CHUNK) {
       const { data } = await supabase.from("enrollments").select("id,customer_id").in("id", enrIds.slice(c, c + CHUNK));
       for (const e of (data as any[]) || []) {
         const cid = e.customer_id; if (!cid) continue;
         const fl = enrFlags.get(e.id); if (!fl) continue;
-        payBalanceSet.add(cid);                  // أي قسط غير مدفوع = عليه متبقّي
-        if (fl.due) payDueSet.add(cid);
-        if (fl.over) payOverdueSet.add(cid);
+        const cur = candByCust.get(cid) || { due: false, over: false };
+        cur.due = cur.due || fl.due; cur.over = cur.over || fl.over;
+        candByCust.set(cid, cur);
+      }
+    }
+    // (3) فلترة بالمرحلة: العملاء المسجّلين فعلاً بس (enrolled) — المهتم/الجديد مش قسط
+    const candIds = Array.from(candByCust.keys());
+    for (let c = 0; c < candIds.length; c += CHUNK) {
+      const { data } = await supabase.from("customers").select("id,stage").in("id", candIds.slice(c, c + CHUNK));
+      for (const cust of (data as any[]) || []) {
+        if (cust.stage !== "enrolled") continue;      // مش مسجّل → استبعده من فلاتر الدفع
+        const fl = candByCust.get(cust.id); if (!fl) continue;
+        payBalanceSet.add(cust.id);                   // مسجّل وعليه قسط غير مدفوع
+        if (fl.due) payDueSet.add(cust.id);
+        if (fl.over) payOverdueSet.add(cust.id);
       }
     }
   }
@@ -283,7 +296,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     name: c.name || "", diploma: (custDips.get(c.id) || []).join(" / "),
     specialty: spName.get(c.specialty_id) || "",
     phone1: c.phone1 || "", phone2: c.phone2 || "", email: c.email || "", company: c.company || "",
-    stage: tr((STAGES[c.stage] || STAGES.interested).labelKey), owner: pName.get(c.owner_id) || tr("unassigned"),
+    stage: tr((STAGES[c.stage] || STAGES.interested).labelKey), rawStage: c.stage, owner: pName.get(c.owner_id) || tr("unassigned"),
     ...(canFinance ? { remaining: money(remMap.get(c.id) || 0) + " " + (curMap.get(c.id) || "EGP") } : {}),
   }));
   const exportHeaders: [string, string][] = [
@@ -341,7 +354,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
               const dips = custDips.get(r.id) || [];
               const bts = custBatches.get(r.id) || [];
               const rem = remMap.get(r.id) || 0;
-              const od = overdueSet.has(r.id);
+              const od = overdueSet.has(r.id) && (r as any).rawStage === "enrolled";
               return (
                 <tr key={r.id}>
                   <td style={{ textAlign: "center" }}><RowCheck id={r.id} /></td>
