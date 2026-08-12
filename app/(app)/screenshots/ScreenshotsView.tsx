@@ -1,6 +1,9 @@
 "use client";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { confirmDialog } from "@/lib/confirm";
+import { toast } from "@/lib/toast";
 import { createClient } from "@/lib/supabase/client";
 import { useT, useLang } from "@/lib/i18n/client";
 import SharedReceiptModal from "./SharedReceiptModal";
@@ -19,10 +22,12 @@ function cairoTime(iso: string, lang: string): string {
   return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 }
 
-export default function ScreenshotsView({ rows, canCreate = false }: { rows: Receipt[]; canCreate?: boolean }) {
+export default function ScreenshotsView({ rows, canCreate = false, canDelete = false }: { rows: Receipt[]; canCreate?: boolean; canDelete?: boolean }) {
   const tr = useT();
   const lang = useLang();
   const supabase = createClient();
+  const router = useRouter();
+  const [delBusy, setDelBusy] = useState(false);
   const [selDay, setSelDay] = useState<string>("");
   const [signed, setSigned] = useState<Record<string, string>>({});
   const [lbIdx, setLbIdx] = useState<number | null>(null);
@@ -104,6 +109,20 @@ export default function ScreenshotsView({ rows, canCreate = false }: { rows: Rec
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, [lbIdx, prevImg, nextImg, closeLb]);
+
+  async function delReceipt(r: Receipt) {
+    const msg = r.isShared
+      ? tr("delShrConfirm").replace("{n}", String(r.allocations?.length || 0))
+      : tr("delReceiptConfirm");
+    if (!await confirmDialog(msg, true)) return;
+    setDelBusy(true);
+    const { data, error } = await supabase.rpc("delete_receipt", { p_url: r.receiptUrl });
+    setDelBusy(false);
+    if (error || (data && (data as any).ok === false)) { toast(tr("deleteFailed")); return; }
+    toast(tr("deletedM"));
+    closeLb();
+    router.refresh();
+  }
 
   function monthLabel(m: string) {
     const [y, mm] = m.split("-").map(Number);
@@ -282,9 +301,17 @@ export default function ScreenshotsView({ rows, canCreate = false }: { rows: Rec
                 </button>
               </div>
 
-              <div style={{ padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)" }}>
+              <div style={{ padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", gap: 8 }}>
                 <span style={{ fontSize: 12, color: "var(--muted)" }}>{r.ownerName || "—"} · {cairoTime(r.uploadedAt, lang)}</span>
-                {!r.isShared && <Link href={`/customers/${r.customerId}`} className="btn" style={{ fontSize: 13 }}>{tr("openCustomerCard")}</Link>}
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {canDelete && (
+                    <button onClick={() => delReceipt(r)} disabled={delBusy} className="btn ghost" style={{ fontSize: 13, color: "#E0483B", borderColor: "rgba(224,72,59,.35)", gap: 6 }}>
+                      <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
+                      {tr("deleteReceipt")}
+                    </button>
+                  )}
+                  {!r.isShared && <Link href={`/customers/${r.customerId}`} className="btn" style={{ fontSize: 13 }}>{tr("openCustomerCard")}</Link>}
+                </div>
               </div>
             </div>
           </div>
