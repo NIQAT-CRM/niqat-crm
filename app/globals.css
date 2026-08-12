@@ -821,3 +821,7 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 
 /* دوران مؤشّر تحميل الفلاتر */
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* كروت الإيصالات: hover + عناصر قائمة الإجراءات */
+.rcpt-card:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,.10); }
+.mnu-item:hover { background: var(--bg); }

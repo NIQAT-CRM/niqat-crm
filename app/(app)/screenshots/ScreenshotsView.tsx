@@ -126,6 +126,7 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
 
   // استبدال الصورة (آمن — مايلمسش المبلغ ولا الحالة)
   const [editAmtFor, setEditAmtFor] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [newAmt, setNewAmt] = useState("");
   const [actBusy, setActBusy] = useState(false);
   async function replaceImage(r: Receipt, file: File) {
@@ -247,7 +248,7 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(190px,1fr))", gap: 14 }}>
           {dayRows.map((r, i) => (
-            <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, overflow: "hidden", boxShadow: "var(--sh)" }}>
+            <div key={i} className="rcpt-card" style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, overflow: "hidden", boxShadow: "var(--sh)", transition: "transform .12s, box-shadow .12s" }}>
               <div onClick={() => setLbIdx(i)} style={{ cursor: "zoom-in", height: 160, background: "var(--bg)", display: "grid", placeItems: "center", overflow: "hidden" }}>
                 {signed[r.receiptUrl]
                   ? <img src={signed[r.receiptUrl]} alt={r.customerName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -261,13 +262,14 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
                   </>
                 ) : (
                   <>
-                    <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.customerName}</div>
+                    <span style={{ display: "inline-block", fontSize: 10, fontWeight: 800, background: "rgba(24,169,87,.12)", color: "var(--green)", borderRadius: 20, padding: "2px 8px", marginBottom: 4 }}>✓ {tr("paid")}</span>
+                    <div title={r.customerName} style={{ fontWeight: 800, color: "var(--ink)", fontSize: 13.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", direction: "ltr", textAlign: lang === "ar" ? "right" : "left" }}>{r.customerName}</div>
                     <div className="n" style={{ fontSize: 12, color: "var(--muted)", direction: "ltr", textAlign: lang === "ar" ? "right" : "left" }}>{r.phone1}</div>
                   </>
                 )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 7, gap: 6 }}>
                   {r.hasAmount && r.amount != null
-                    ? <b style={{ color: "var(--green)", fontSize: 13 }} className="n">{fmtMoney(r.amount, r.currency)}</b>
+                    ? <b style={{ color: "var(--green)", fontSize: 16, fontWeight: 800 }} className="n">{fmtMoney(r.amount, r.currency)}</b>
                     : <span style={{ fontSize: 11, color: "var(--muted)" }}>—</span>}
                   <span style={{ fontSize: 11, color: "var(--muted)" }}>{cairoTime(r.uploadedAt, lang)}</span>
                 </div>
@@ -333,27 +335,39 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
 
               <div style={{ padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", gap: 8 }}>
                 <span style={{ fontSize: 12, color: "var(--muted)" }}>{r.ownerName || "—"} · {cairoTime(r.uploadedAt, lang)}</span>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  {canEdit && (
-                    <label className="btn ghost" style={{ fontSize: 13, gap: 6, cursor: actBusy ? "wait" : "pointer" }} title={tr("replaceImageHint")}>
-                      <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
-                      {tr("replaceImage")}
-                      <input type="file" accept="image/*" style={{ display: "none" }} disabled={actBusy} onChange={(e) => { const f = e.target.files?.[0]; if (f) replaceImage(r, f); }} />
-                    </label>
-                  )}
-                  {canEdit && !r.isShared && (
-                    <button onClick={() => { const o = editAmtFor !== r.receiptUrl; setEditAmtFor(o ? r.receiptUrl : null); setNewAmt(o ? String(r.amount ?? "") : ""); }} className="btn ghost" style={{ fontSize: 13, gap: 6 }}>
-                      <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
-                      {tr("editAmount")}
-                    </button>
-                  )}
-                  {canDelete && (
-                    <button onClick={() => delReceipt(r)} disabled={delBusy} className="btn ghost" style={{ fontSize: 13, color: "#E0483B", borderColor: "rgba(224,72,59,.35)", gap: 6 }}>
-                      <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
-                      {tr("deleteReceipt")}
-                    </button>
-                  )}
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {!r.isShared && canOpenCustomer && <Link href={`/customers/${r.customerId}`} className="btn" style={{ fontSize: 13 }}>{tr("openCustomerCard")}</Link>}
+                  {(canEdit || canDelete) && (
+                    <div style={{ position: "relative" }}>
+                      <button onClick={() => setMenuOpen((v) => !v)} className="btn ghost" title={tr("moreActions")} style={{ width: 40, padding: 0, justifyContent: "center", fontSize: 20, lineHeight: 1 }}>⋯</button>
+                      {menuOpen && (
+                        <>
+                          <div onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 1 }} />
+                          <div style={{ position: "absolute", bottom: "calc(100% + 6px)", insetInlineEnd: 0, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "0 10px 30px rgba(0,0,0,.18)", padding: 6, minWidth: 190, zIndex: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+                            {canEdit && (
+                              <label className="mnu-item" style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", borderRadius: 8, fontSize: 13, cursor: actBusy ? "wait" : "pointer", color: "var(--ink)" }}>
+                                <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
+                                {tr("replaceImage")}
+                                <input type="file" accept="image/*" style={{ display: "none" }} disabled={actBusy} onChange={(e) => { const f = e.target.files?.[0]; setMenuOpen(false); if (f) replaceImage(r, f); }} />
+                              </label>
+                            )}
+                            {canEdit && !r.isShared && (
+                              <button onClick={() => { setMenuOpen(false); const o = editAmtFor !== r.receiptUrl; setEditAmtFor(o ? r.receiptUrl : null); setNewAmt(o ? String(r.amount ?? "") : ""); }} className="mnu-item" style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", borderRadius: 8, fontSize: 13, cursor: "pointer", color: "var(--ink)", background: "none", border: "none", textAlign: "start", width: "100%" }}>
+                                <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                                {tr("editAmount")}
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button onClick={() => { setMenuOpen(false); delReceipt(r); }} disabled={delBusy} className="mnu-item" style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", borderRadius: 8, fontSize: 13, cursor: "pointer", color: "#E0483B", background: "none", border: "none", textAlign: "start", width: "100%" }}>
+                                <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
+                                {tr("deleteReceipt")}
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               {editAmtFor === r.receiptUrl && (
