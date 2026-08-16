@@ -45,14 +45,27 @@ export async function filteredCustomerIds(sp: CustFilterSP): Promise<string[]> {
       if (rows.length < PAGE) break;
     }
     const enrIds = Array.from(enrFlags.keys());
+    const candByCust = new Map<string, { due: boolean; over: boolean }>();
     for (let c = 0; c < enrIds.length; c += CHUNK) {
       const { data } = await supabase.from("enrollments").select("id,customer_id").in("id", enrIds.slice(c, c + CHUNK));
       for (const e of (data as any[]) || []) {
         const cid = e.customer_id; if (!cid) continue;
         const fl = enrFlags.get(e.id); if (!fl) continue;
-        payBalanceSet.add(cid);
-        if (fl.due) payDueSet.add(cid);
-        if (fl.over) payOverdueSet.add(cid);
+        const cur = candByCust.get(cid) || { due: false, over: false };
+        cur.due = cur.due || fl.due; cur.over = cur.over || fl.over;
+        candByCust.set(cid, cur);
+      }
+    }
+    // فلترة بالمرحلة: المسجّلين فعلاً (enrolled) بس — مطابق لصفحة العملاء
+    const candIds = Array.from(candByCust.keys());
+    for (let c = 0; c < candIds.length; c += CHUNK) {
+      const { data } = await supabase.from("customers").select("id,stage").in("id", candIds.slice(c, c + CHUNK));
+      for (const cust of (data as any[]) || []) {
+        if (cust.stage !== "enrolled") continue;
+        const fl = candByCust.get(cust.id); if (!fl) continue;
+        payBalanceSet.add(cust.id);
+        if (fl.due) payDueSet.add(cust.id);
+        if (fl.over) payOverdueSet.add(cust.id);
       }
     }
   }
