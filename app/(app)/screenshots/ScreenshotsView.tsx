@@ -22,7 +22,7 @@ function cairoTime(iso: string, lang: string): string {
   return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 }
 
-export default function ScreenshotsView({ rows, canCreate = false, canDelete = false, canEdit = false, canOpenCustomer = true }: { rows: Receipt[]; canCreate?: boolean; canDelete?: boolean; canEdit?: boolean; canOpenCustomer?: boolean }) {
+export default function ScreenshotsView({ rows, canCreate = false, canDelete = false, canEdit = false, canOpenCustomer = true, refunds = [] }: { rows: Receipt[]; canCreate?: boolean; canDelete?: boolean; canEdit?: boolean; canOpenCustomer?: boolean; refunds?: { amount: number; currency: string; createdAt: string }[] }) {
   const tr = useT();
   const lang = useLang();
   const supabase = createClient();
@@ -94,6 +94,16 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
     for (const r of dayRows) { if (r.hasAmount && r.amount != null) { if (r.currency === "USD") usd += r.amount; else egp += r.amount; } }
     return { egp, usd, count: dayRows.length };
   }, [dayRows]);
+
+  // مرتجعات الشهر المختار (حسب تاريخ الطلب) — بتتصفّر مع كل شهر
+  const refundMonth = useMemo(() => {
+    let egp = 0, usd = 0, cnt = 0;
+    for (const r of refunds) {
+      if (!r.createdAt || r.createdAt.slice(0, 7) !== selMonth) continue;
+      if (r.currency === "USD") usd += r.amount; else egp += r.amount; cnt++;
+    }
+    return { egp, usd, cnt };
+  }, [refunds, selMonth]);
 
   // ===== lightbox: تنقّل بين صور نفس اليوم =====
   const closeLb = useCallback(() => setLbIdx(null), []);
@@ -240,6 +250,18 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
           <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--muted)", marginBottom: 8 }}>{tr("count")}</div>
           <div className="n" style={{ fontSize: 28, fontWeight: 800, color: "var(--ink)", lineHeight: 1.1, direction: "ltr", textAlign: lang === "ar" ? "right" : "left" }}>{nf.format(totals.count)}</div>
         </div>
+        {/* مرتجعات الشهر */}
+        {(canEdit || canCreate) && (
+          <div style={{ background: "var(--surface)", border: "1px solid #E0483B33", borderRadius: 16, padding: "16px 18px", boxShadow: "var(--sh)", position: "relative", overflow: "hidden" }}>
+            <span style={{ position: "absolute", insetInlineStart: 0, top: 0, bottom: 0, width: 4, background: "#E0483B" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: "#E0483B" }}>↩ {tr("refundsMonthCard")}</span>
+              {refundMonth.cnt > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: "#E0483B", background: "#E0483B18", borderRadius: 20, padding: "3px 10px" }}>{refundMonth.cnt}</span>}
+            </div>
+            <div className="n" style={{ fontSize: 28, fontWeight: 800, color: "#E0483B", lineHeight: 1.1, direction: "ltr", textAlign: lang === "ar" ? "right" : "left" }}>−{nf.format(refundMonth.egp)}{refundMonth.usd > 0 ? ` · −$${nf.format(refundMonth.usd)}` : ""}</div>
+            <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 4 }}>{selMonth}</div>
+          </div>
+        )}
       </div>
 
       {/* ===== معرض إيصالات اليوم ===== */}

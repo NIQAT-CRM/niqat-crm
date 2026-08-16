@@ -126,6 +126,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
 
   // ===== المالية: إجماليات مفصولة بالعملة (من دالة fin_totals) + تنبيهات =====
   let egpCollected = 0, egpDue = 0, usdCollected = 0, usdDue = 0;
+  let egpRefund = 0, usdRefund = 0, refundCnt = 0;
   let monthlyRows: any[] = [];
   let overdueInst: any[] = [], soonInst: any[] = [];
   let refundGroups: { diploma: string; batch: string; egp: number; usd: number; count: number }[] = [];
@@ -136,6 +137,13 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
     for (const r of (ft as any[]) || []) {
       if (r.currency === "USD") { usdCollected = Number(r.collected) || 0; usdDue = Number(r.due) || 0; }
       else { egpCollected += Number(r.collected) || 0; egpDue += Number(r.due) || 0; }
+    }
+    // إجمالي المرتجعات في الفترة (حسب تاريخ الطلب) — للكارت
+    const { data: rt } = await supabase.rpc("refunds_total", rpcArgs || {});
+    for (const r of (rt as any[]) || []) {
+      if (r.currency === "USD") usdRefund = Number(r.total) || 0;
+      else egpRefund += Number(r.total) || 0;
+      refundCnt += Number(r.cnt) || 0;
     }
     // تنبيهات: أقساط غير مدفوعة ليها تاريخ استحقاق لغاية +7 أيام (عددها طبيعي صغير)
     const { data: al } = await supabase.from("installments")
@@ -415,6 +423,27 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+          {canFinance && (
+            <div className="card" style={{ padding: 20, flex: "1 1 240px", display: "flex", flexDirection: "column", background: "linear-gradient(135deg,#E0483B10,#E0483B08)", border: "1px solid #E0483B33" }}>
+              <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 6, color: "#E0483B" }}>↩ {tr("refundsThisPeriod")}</span>
+                {refundCnt > 0 && <span className="chip" style={{ background: "#E0483B22", color: "#E0483B" }}>{refundCnt}</span>}
+              </div>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 14 }}>
+                <div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 2 }}>{tr("egpShort")}</div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "#E0483B", lineHeight: 1 }}>−<CountUp value={egpRefund} /></div>
+                </div>
+                {usdRefund > 0 && (
+                  <div style={{ borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+                    <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 2 }}>USD</div>
+                    <div style={{ fontSize: 32, fontWeight: 800, color: "#E0483B", lineHeight: 1 }}>−$<CountUp value={usdRefund} /></div>
+                  </div>
+                )}
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{tr("refundsNetNote")}</div>
               </div>
             </div>
           )}

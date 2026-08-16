@@ -80,6 +80,14 @@ export default async function ScreenshotsPage() {
   // التجميع الشهري (يستخدم الدالة الموجودة receipts_monthly — قراءة فقط، مفيش تعديل داتابيز)
   const { data: monthlyRows } = await supabase.rpc("receipts_monthly");
 
+  // المرتجعات (حسب تاريخ الطلب) — للكارت في صفحة الإيصالات؛ للمالية بس
+  let refundsList: { amount: number; currency: string; createdAt: string }[] = [];
+  if (canEdit || canCreate) {
+    const { data: rfs } = await supabase.from("refunds")
+      .select("amount,currency,created_at,status").in("status", ["requested", "refunded", "closed"]);
+    refundsList = ((rfs as any[]) || []).map((r) => ({ amount: Number(r.amount) || 0, currency: r.currency || "EGP", createdAt: r.created_at }));
+  }
+
   return (
     <div className="page-h" style={{ display: "block" }}>
       <RealtimeRefresh tables={["installments","customer_docs","customer_addons","enrollment_finance","addon_finance","receipts","receipt_allocations"]} />
@@ -89,7 +97,7 @@ export default async function ScreenshotsPage() {
       <div style={{ marginBottom: 18 }}>
         <MonthlySales rows={(monthlyRows as any[]) || []} collapsible />
       </div>
-      <ScreenshotsView rows={rows} canCreate={canCreate} canDelete={canDelete} canEdit={canEdit} canOpenCustomer={canOpenCustomer} />
+      <ScreenshotsView rows={rows} canCreate={canCreate} canDelete={canDelete} canEdit={canEdit} canOpenCustomer={canOpenCustomer} refunds={refundsList} />
     </div>
   );
 }
