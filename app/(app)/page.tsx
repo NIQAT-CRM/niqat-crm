@@ -1,4 +1,5 @@
 import { hasPerm } from "@/lib/authz";
+import { receiptMonthlyTotals, receiptTodayTotals } from "@/lib/receiptsData";
 import NoAccess from "./NoAccess";
 import Link from "next/link";
 import RealtimeRefresh from "./RealtimeRefresh";
@@ -131,7 +132,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
   let refundGroups: { diploma: string; batch: string; egp: number; usd: number; count: number }[] = [];
   if (canFinance) {
     const { data: ft } = await supabase.rpc("fin_totals", rpcArgs);
-    const { data: mr } = await supabase.rpc("receipts_monthly");
+    const mr = await receiptMonthlyTotals(supabase);
     monthlyRows = (mr as any[]) || [];
     for (const r of (ft as any[]) || []) {
       if (r.currency === "USD") { usdCollected = Number(r.collected) || 0; usdDue = Number(r.due) || 0; }
@@ -323,33 +324,11 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
     { label: tr("openTk"), value: tkRes.count ?? 0, color: "#E0483B", icon: "ticket" },
   ];
 
-  // تحصيلات النهاردة = نفس مصدر صفحة الإيصالات (receipts_all) — أدق لأن المبالغ اتراجعت
+  // تحصيلات النهاردة = المصدر الموحّد (نفس صفحة الإيصالات: فردي منزوع التكرار + مشترك)
   let todayEgp = 0, todayUsd = 0, todayCount = 0;
   if (canDailySales) {
-    const cairoKey = (isoV: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(isoV));
-    const cairoToday = cairoKey(new Date().toISOString());
-    const base = new Date(cairoToday + "T12:00:00Z");
-    const dFrom = new Date(base.getTime() - 86400000).toISOString().slice(0, 10);
-    const dTo = new Date(base.getTime() + 86400000).toISOString().slice(0, 10);
-    const { data: rec } = await supabase.rpc("receipts_all", { p_from: dFrom, p_to: dTo });
-    const seen = new Set<string>();
-    for (const r of ((rec as any[]) || [])) {
-      if (!r.receipt_url || r.amount == null) continue;
-      if (cairoKey(r.uploaded_at) !== cairoToday) continue;
-      if (seen.has(r.receipt_url)) continue;
-      seen.add(r.receipt_url);
-      const amt = Number(r.amount) || 0;
-      if (r.currency === "USD") todayUsd += amt; else todayEgp += amt;
-      todayCount++;
-    }
-    // + الإيصالات المشتركة الجديدة (مش داخلة في receipts_all) — عشان توتال اليوم يساوي صفحة الإيصالات
-    const { data: shrToday } = await supabase.from("receipts").select("total_amount,currency,created_at").gte("created_at", dFrom);
-    for (const r of ((shrToday as any[]) || [])) {
-      if (cairoKey(r.created_at) !== cairoToday) continue;
-      const amt = Number(r.total_amount) || 0;
-      if (r.currency === "USD") todayUsd += amt; else todayEgp += amt;
-      todayCount++;
-    }
+    const t = await receiptTodayTotals(supabase);
+    todayEgp = t.egp; todayUsd = t.usd; todayCount = t.cnt;
   }
 
   // التخصصات الهندسية: المسجّلين لكل تخصص (من دالة القاعدة)
