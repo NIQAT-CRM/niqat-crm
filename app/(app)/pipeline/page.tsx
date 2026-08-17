@@ -34,7 +34,7 @@ export default async function Pipeline({ searchParams }: { searchParams: { q?: s
 
   // اشتراكات عملاء البورد فقط (تجنّب حد الـ 1000 صف اللي كان بيخفي دبلومات)
   const { data: enr } = boardIds.length
-    ? await supabase.from("enrollments").select("customer_id, diplomas(name_ar), batches(code)").in("customer_id", boardIds).order("enrolled_at", { ascending: true })
+    ? await supabase.from("enrollments").select("customer_id, diplomas(name_ar), batches(code)").neq("status", "refunded").in("customer_id", boardIds).order("enrolled_at", { ascending: true })
     : { data: [] as any[] };
 
   const pName = new Map((profs || []).map((p) => [p.id, p.full_name]));

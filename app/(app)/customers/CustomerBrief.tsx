@@ -42,7 +42,7 @@ export default function CustomerBrief({ customerId, canFinance }: { customerId: 
       const [spRes, ownRes, enrRes, trRes] = await Promise.all([
         cc.specialty_id ? supabase.from("specialties").select("name_ar").eq("id", cc.specialty_id).maybeSingle() : Promise.resolve({ data: null }),
         cc.owner_id ? supabase.from("profiles").select("full_name").eq("id", cc.owner_id).maybeSingle() : Promise.resolve({ data: null }),
-        supabase.from("enrollments").select("id, diplomas(name_ar), batches(code)").eq("customer_id", customerId),
+        supabase.from("enrollments").select("id, diplomas(name_ar), batches(code)").neq("status", "refunded").eq("customer_id", customerId),
         supabase.from("audit_log").select("detail,at").eq("customer_id", customerId).eq("action", "batch_transfer").order("at", { ascending: false }),
       ]);
       const enrList = ((enrRes as any).data as any[]) || [];

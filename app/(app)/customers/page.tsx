@@ -109,7 +109,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     const set = new Set<string>();
     const P = 1000, C = 60000;
     for (let from = 0; from < C; from += P) {
-      const { data } = await supabase.from("enrollments").select("customer_id").in(col, vals).range(from, from + P - 1);
+      const { data } = await supabase.from("enrollments").select("customer_id").neq("status", "refunded").in(col, vals).range(from, from + P - 1);
       const rows = (data as any[]) || [];
       for (const r of rows) if (r.customer_id) set.add(r.customer_id);
       if (rows.length < P) break;
@@ -197,7 +197,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
 
   const custIds = customers.map((c) => c.id);
   const enrRes = custIds.length
-    ? await supabase.from("enrollments").select("id,customer_id,diploma_id,batch_id, diplomas(name_ar), batches(code)").in("customer_id", custIds)
+    ? await supabase.from("enrollments").select("id,customer_id,diploma_id,batch_id, diplomas(name_ar), batches(code)").neq("status", "refunded").in("customer_id", custIds)
     : ({ data: [] } as any);
 
   const pName = new Map(((profRes.data as any[]) || []).map((p) => [p.id, p.full_name]));
