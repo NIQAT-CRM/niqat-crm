@@ -276,7 +276,7 @@ export default function ServicesPanel({
             <div className="frow">
               <div className="fld"><label>{tr("theBatch")}</label>
                 <SearchSelect
-                  options={batchOpts.filter((b) => b.dip === svDip && b.status === "open" && !b.done).map((b) => ({ value: b.v, label: b.label }))}
+                  options={batchOpts.filter((b) => b.dip === svDip && b.status === "open" && (myTeam === "admin" || !b.done)).map((b) => ({ value: b.v, label: b.label + (b.done ? " · " + tr("endedWord") : "") }))}
                   value={svBatch} onChange={(v) => setSvBatch(v)}
                   placeholder={tr("noBatch")} emptyLabel={tr("noBatch")} searchPlaceholder={tr("searchDots")}
                 /></div>
@@ -355,7 +355,7 @@ export default function ServicesPanel({
                       <label style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700, display: "block", marginBottom: 3 }}>{tr("batch")}</label>
                       <select className="inp" value={edBatch2} onChange={(ev) => setEdBatch2(ev.target.value)} style={{ width: "100%", height: 36 }}>
                         <option value="">{tr("selectDash")}</option>
-                        {batchOpts.filter((b) => (!edDip2 || b.dip === edDip2) && b.status === "open" && !b.done).map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
+                        {batchOpts.filter((b) => (!edDip2 || b.dip === edDip2) && b.status === "open" && (myTeam === "admin" || !b.done)).map((b) => <option key={b.v} value={b.v}>{b.label}{b.done ? " · " + tr("endedWord") : ""}</option>)}
                       </select>
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
