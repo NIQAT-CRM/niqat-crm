@@ -9,9 +9,9 @@ import FileDrop from "@/lib/ui/FileDrop";
 type Addon = { id: string; type: string; name: string; amount: number; free: boolean; note: string; paid: boolean; shot_url?: string };
 
 const TYPES = [
-  { key: "accred", labelKey: "addonAccred", color: "#7B61FF" },
-  { key: "project", labelKey: "addonProject", color: "#0FA3A3" },
-  { key: "library", labelKey: "addonLibrary", color: "#E6A700" },
+  { key: "accred", labelKey: "addonAccred", color: "var(--purple)" },
+  { key: "project", labelKey: "addonProject", color: "var(--teal)" },
+  { key: "library", labelKey: "addonLibrary", color: "var(--amber)" },
 ];
 
 export default function AddonsPanel({

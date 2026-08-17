@@ -13,7 +13,7 @@ function money(n: number, cur: string) {
 
 const STATUS: Record<string, { labelKey: string; color: string; bg: string }> = {
   requested: { labelKey: "refundRequested2", color: "#B8860B", bg: "#FEF6E0" },
-  refunded: { labelKey: "refundDone2", color: "#2F6BFF", bg: "#E8F0FF" },
+  refunded: { labelKey: "refundDone2", color: "var(--blue)", bg: "#E8F0FF" },
   closed: { labelKey: "archived", color: "#94A2BB", bg: "#EEF1F6" },
 };
 
@@ -67,13 +67,13 @@ export default async function Refunds() {
           {needTransfer > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#FEF6E0", border: "1px solid #E8C766", borderRadius: 12, padding: "12px 16px" }}>
               <span style={{ fontSize: 22, fontWeight: 800, color: "#B8860B" }} className="num">{needTransfer}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#8a5a12" }}>💸 {tr("refundBannerTransfer")}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--brand-d)" }}>💸 {tr("refundBannerTransfer")}</span>
             </div>
           )}
           {needClose > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#E8F0FF", border: "1px solid #9DBBFF", borderRadius: 12, padding: "12px 16px" }}>
-              <span style={{ fontSize: 22, fontWeight: 800, color: "#2F6BFF" }} className="num">{needClose}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#2F6BFF" }}>🔒 {tr("refundBannerClose")}</span>
+              <span style={{ fontSize: 22, fontWeight: 800, color: "var(--blue)" }} className="num">{needClose}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--blue)" }}>🔒 {tr("refundBannerClose")}</span>
             </div>
           )}
         </div>

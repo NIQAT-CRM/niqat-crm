@@ -104,10 +104,10 @@ export default async function Finance() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 20 }}>
-        <Kpi label={tr("totalAgreed")} value={money(agreed, "EGP")} color="#2F6BFF" />
-        <Kpi label={tr("collected")} value={money(collected, "EGP")} color="#18A957" />
-        <Kpi label={tr("remaining")} value={money(outstanding, "EGP")} color="#E6A700" />
-        <Kpi label={tr("overdueInstallments")} value={String(overdueN)} color="#E0483B" />
+        <Kpi label={tr("totalAgreed")} value={money(agreed, "EGP")} color="var(--blue)" />
+        <Kpi label={tr("collected")} value={money(collected, "EGP")} color="var(--green)" />
+        <Kpi label={tr("remaining")} value={money(outstanding, "EGP")} color="var(--amber)" />
+        <Kpi label={tr("overdueInstallments")} value={String(overdueN)} color="var(--red)" />
       </div>
 
       <CollectionsTable rows={rows} />

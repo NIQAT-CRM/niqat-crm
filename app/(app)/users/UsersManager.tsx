@@ -203,7 +203,7 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
         <div style={{ marginInlineStart: "auto", display: "flex", gap: 8 }}>
           <button onClick={() => (editId === u.id ? setEditId(null) : startEdit(u))} style={{ background: "none", border: "none", color: "var(--brand)", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>{tr("edit")}</button>
           <button onClick={() => startPw(u)} style={{ background: "none", border: "none", color: "var(--blue)", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>{tr("resetPassword")}</button>
-          <button onClick={() => removeUser(u)} disabled={busy === u.id + "del"} style={{ background: "none", border: "none", color: "#E0483B", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>{tr("delete")}</button>
+          <button onClick={() => removeUser(u)} disabled={busy === u.id + "del"} style={{ background: "none", border: "none", color: "var(--red)", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>{tr("delete")}</button>
         </div>
       </div>
       {editId === u.id && (

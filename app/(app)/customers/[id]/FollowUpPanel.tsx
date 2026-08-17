@@ -57,7 +57,7 @@ export default function FollowUpPanel({
           background: overdue ? "#FDECEA" : "rgba(240,138,36,.07)",
         }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 700, color: overdue ? "#E0483B" : "var(--ink)" }}>
+            <div style={{ fontWeight: 700, color: overdue ? "var(--red)" : "var(--ink)" }}>
               {overdue ? "⏰ " + tr("overdue") + " — " : "📅 "}<span className="num">{fmt(open.due_at)}</span>
             </div>
             {open.note && <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>{open.note}</div>}

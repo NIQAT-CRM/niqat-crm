@@ -155,7 +155,7 @@ export default function AccessPanel({
         {handoff && (
           <span className="stg" style={
             handoff.status === "done"
-              ? { background: "#18A95722", color: "#18A957" }
+              ? { background: "#18A95722", color: "var(--green)" }
               : { background: "#E6A70022", color: "#B8860B" }
           }>
             {handoff.status === "done" ? tr("accDone") : tr("accPending")}

@@ -9,8 +9,8 @@ type Row = {
 };
 
 const STATUS: Record<string, { labelKey: string; color: string }> = {
-  requested: { labelKey: "refundRequested2", color: "#E6A700" },
-  refunded: { labelKey: "refundDone2", color: "#2F6BFF" },
+  requested: { labelKey: "refundRequested2", color: "var(--amber)" },
+  refunded: { labelKey: "refundDone2", color: "var(--blue)" },
   closed: { labelKey: "archived", color: "#94A2BB" },
 };
 

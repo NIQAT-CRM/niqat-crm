@@ -463,7 +463,7 @@ export default function NewCustomerForm({
         {/* ============ خطوة 1: بيانات العميل ============ */}
         {step === 1 && (
           <div className="fade-in">
-            <Head icon="user" tint="#2F6BFF" title={tr("basicData")} />
+            <Head icon="user" tint="var(--blue)" title={tr("basicData")} />
             <div className="fld"><label>{tr("name")} *</label>
               <input className="inp" value={f.name} onChange={(e) => setName(e.target.value)} placeholder={tr("nameEnOnlyPh")} dir="ltr" /></div>
             <div className="frow">{PhoneField(tr("phone1"), "phone1", dial1, setDial1)}{PhoneField(tr("phone2"), "phone2", dial2, setDial2)}</div>
@@ -506,7 +506,7 @@ export default function NewCustomerForm({
             )}
 
             <div style={{ height: 1, background: "var(--line)", margin: "18px 0" }} />
-            <Head icon="briefcase" tint="#7B61FF" title={tr("salesData")} />
+            <Head icon="briefcase" tint="var(--purple)" title={tr("salesData")} />
             <div className="frow">
               {I(tr("company"), "company")}
               <div className="fld"><label>{tr("stage")}</label>
@@ -517,7 +517,7 @@ export default function NewCustomerForm({
             <div>
               {I(tr("affiliateCode"), "affiliate_code", true)}
               {affMatch && <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: "var(--green)", marginTop: -6, marginBottom: 8 }}><Ic name="check" size={14} /> {affMatch.name} — {tr("discountWord")} {discPct}%</div>}
-              {affUnknown && <div style={{ fontSize: 12.5, color: "#E0483B", marginTop: -6, marginBottom: 8 }}>{tr("codeNotInList")}</div>}
+              {affUnknown && <div style={{ fontSize: 12.5, color: "var(--red)", marginTop: -6, marginBottom: 8 }}>{tr("codeNotInList")}</div>}
             </div>
             <div className="frow">
               <div className="fld"><label>{tr("source")}</label>
@@ -547,7 +547,7 @@ export default function NewCustomerForm({
               </div>
             ) : (
             <>
-            <Head icon="graduation" tint="#F08A24" title={tr("subscriptionOpt")} />
+            <Head icon="graduation" tint="var(--brand)" title={tr("subscriptionOpt")} />
             {/* اختيار نوع الاشتراك: دبلومة أو خدمة (اعتماد/مشروع) */}
             <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
               {([["diploma", tr("subModeDiploma")], ["service", tr("subModeService")]] as const).map(([m, lbl]) => (
@@ -736,7 +736,7 @@ export default function NewCustomerForm({
             </>
             )}
 
-            <Head icon="note" tint="#0FA3A3" title={tr("initialNote")} />
+            <Head icon="note" tint="var(--teal)" title={tr("initialNote")} />
             <textarea className="inp" rows={2} value={f.note} onChange={(e) => set("note", e.target.value)} placeholder={tr("customerNotesPh")} />
           </div>
         )}
@@ -759,7 +759,7 @@ export default function NewCustomerForm({
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} className="card"
             style={{ padding: 20, width: "100%", maxWidth: 440, maxHeight: "90vh", overflow: "auto" }}>
-            <Head icon="check" tint="#18A957" title={tr("activationChecklistTitle")} />
+            <Head icon="check" tint="var(--green)" title={tr("activationChecklistTitle")} />
             <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 14, marginTop: -8 }}>{tr("activationChecklistHint")}</div>
 
             {/* الدبلومة (ثابتة) */}

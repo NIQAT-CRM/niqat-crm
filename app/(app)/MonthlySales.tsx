@@ -44,7 +44,7 @@ export default function MonthlySales({ rows, collapsible = false }: { rows: Row[
                       <span className="n">{nf.format(r.egp)}</span> {tr("egp")}
                     </span>
                     {Number(r.usd) > 0 && (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(47,107,255,.12)", color: "#2F6BFF", padding: "2px 8px", borderRadius: 20, fontSize: 12, fontWeight: 800, direction: "ltr" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(47,107,255,.12)", color: "var(--blue)", padding: "2px 8px", borderRadius: 20, fontSize: 12, fontWeight: 800, direction: "ltr" }}>
                         $<span className="n">{nf.format(r.usd)}</span>
                       </span>
                     )}

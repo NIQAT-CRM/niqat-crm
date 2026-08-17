@@ -160,7 +160,7 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
   const visBatches = dip ? batches.filter((b) => (b as any).dip === dip) : batches;
 
   const statusLabel = (s: string) => s === "paid" ? tr("payFullyPaid") : s === "partial" ? tr("payPartial") : tr("unpaid");
-  const statusColor = (s: string) => s === "paid" ? "#18A957" : s === "partial" ? "#E6A700" : "#E0483B";
+  const statusColor = (s: string) => s === "paid" ? "var(--green)" : s === "partial" ? "var(--amber)" : "var(--red)";
   const shownCust = custRows
     .filter((c) => (pay ? c.status === pay : true))
     .filter((c) => (onlySel && selCodes.size > 0 ? selCodes.has(c.code.toUpperCase()) || selCodes.has(c.code) : true));
@@ -193,14 +193,14 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
       {/* حالة: مفيش باتش مختار → نظرة عامة */}
       {!batchId && (
         <div className="card" style={{ padding: 18 }}>
-          <AffHead icon="users" tint="#2F6BFF" title={tr("overallOverview")} />
+          <AffHead icon="users" tint="var(--blue)" title={tr("overallOverview")} />
           <p style={{ fontSize: 13, color: "var(--muted)", margin: "6px 0 12px" }}>{tr("affReportPickBatch")}</p>
           {affRows.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 22, marginBottom: 14 }}>
-                <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("customerCount")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#2F6BFF" }}><CountUp value={affRows.reduce((a, r) => a + r.customers, 0)} /></div></div>
-                <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("enrolledCol")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#18A957" }}><CountUp value={affRows.reduce((a, r) => a + r.enrolled, 0)} /></div></div>
-                <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("refundWord")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#E0483B" }}><CountUp value={affRows.reduce((a, r) => a + r.refunded, 0)} /></div></div>
+                <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("customerCount")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "var(--blue)" }}><CountUp value={affRows.reduce((a, r) => a + r.customers, 0)} /></div></div>
+                <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("enrolledCol")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "var(--green)" }}><CountUp value={affRows.reduce((a, r) => a + r.enrolled, 0)} /></div></div>
+                <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("refundWord")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "var(--red)" }}><CountUp value={affRows.reduce((a, r) => a + r.refunded, 0)} /></div></div>
               </div>
               {[...affRows].sort((a, b) => b.enrolled - a.enrolled).slice(0, 10).map((r) => (
                 <BarRow key={r.code}
@@ -234,7 +234,7 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
                     <td className="px-4 py-3 num font-bold">{r.customers}</td>
                     <td className="px-4 py-3 num font-bold text-green">{r.enrolled}</td>
                     <td className="px-4 py-3"><span style={{ fontSize: 10.5, fontWeight: 800, padding: "2px 9px", borderRadius: 20, background: cvColor.bg, color: cvColor.fg }} className="num">{cv}%</span></td>
-                    <td className="px-4 py-3 num font-bold" style={{ color: "#E0483B" }}>{r.refunded}</td>
+                    <td className="px-4 py-3 num font-bold" style={{ color: "var(--red)" }}>{r.refunded}</td>
                   </tr>
                   );
                 })}
@@ -250,13 +250,13 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
       {batchId && !loading && (
         <>
           <div className="card" style={{ padding: 18 }}>
-            <AffHead icon="coins" tint="#18A957" title={tr("commissionSummary")} count={sumRows.length}
+            <AffHead icon="coins" tint="var(--green)" title={tr("commissionSummary")} count={sumRows.length}
               extra={canFinance && sumRows.length > 0 ? (
                 <ExportButton filename={`affiliate-commissions-${batches.find((b) => b.v === batchId)?.label || batchId}`}
                   headers={[tr("code"), tr("affiliate"), tr("commissionPct"), tr("salesBaseCol"), tr("commissionCol"), tr("collected"), tr("customerCount"), tr("refundWord")]}
                   rows={sumRows.map((r) => [r.code, r.name, r.rate + "%", money(r.base), money(r.commission), money(r.collected), r.customers, r.refunded])} />
               ) : undefined} />
-            {!canFinance && <p style={{ fontSize: 12.5, color: "#E6A700", margin: "6px 0 0" }}>{tr("commissionNeedsFinance")}</p>}
+            {!canFinance && <p style={{ fontSize: 12.5, color: "var(--amber)", margin: "6px 0 0" }}>{tr("commissionNeedsFinance")}</p>}
             {selCodes.size > 0 && (
               <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 12, padding: "9px 12px", background: "var(--brand-soft, #FFF4E8)", border: "1px solid var(--line)", borderRadius: 10 }}>
                 <span style={{ fontSize: 13, fontWeight: 800, color: "var(--brand)" }}>{tr("selectedWord")}: {selCodes.size}</span>
@@ -292,7 +292,7 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
                       {canFinance && <td className="px-4 py-3 num font-bold text-green" dir="ltr">{money(r.commission)}</td>}
                       {canFinance && <td className="px-4 py-3 num" dir="ltr" style={{ color: "var(--muted)" }}>{money(r.collected)}</td>}
                       <td className="px-4 py-3 num font-bold">{r.customers}</td>
-                      <td className="px-4 py-3 num" style={{ color: "#E0483B" }}>{r.refunded}</td>
+                      <td className="px-4 py-3 num" style={{ color: "var(--red)" }}>{r.refunded}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -303,7 +303,7 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
           {/* تفاصيل العملاء (يتأثر بفلتر حالة الدفع) */}
           {custRows.length > 0 && (
             <div className="card" style={{ padding: 18 }}>
-              <AffHead icon="list" tint="#F08A24" title={tr("customerDetail")} count={shownCust.length} />
+              <AffHead icon="list" tint="var(--brand)" title={tr("customerDetail")} count={shownCust.length} />
               <div className="tbl-wrap" style={{ marginTop: 12 }}>
                 <table style={{ minWidth: 620 }}>
                   <thead><tr>
@@ -318,7 +318,7 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
                     {shownCust.length === 0 && <tr><td colSpan={6} className="px-4 py-6 text-center" style={{ color: "var(--muted)" }}>{tr("noData")}</td></tr>}
                     {shownCust.map((c) => (
                       <tr key={c.id} className="border-t border-line" style={{ opacity: c.refunded ? 0.55 : 1 }}>
-                        <td className="px-4 py-3">{c.name}{c.refunded && <span className="chip" style={{ marginInlineStart: 6, background: "#E0483B1a", color: "#E0483B" }}>{tr("refundWord")}</span>}</td>
+                        <td className="px-4 py-3">{c.name}{c.refunded && <span className="chip" style={{ marginInlineStart: 6, background: "#E0483B1a", color: "var(--red)" }}>{tr("refundWord")}</span>}</td>
                         <td className="px-4 py-3 font-bold text-brand">{c.code}</td>
                         <td className="px-4 py-3">{c.diploma}</td>
                         {canFinance && <td className="px-4 py-3 num" dir="ltr">{money(c.base)}</td>}

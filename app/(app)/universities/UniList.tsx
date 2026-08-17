@@ -6,10 +6,10 @@ import { useT, useLang } from "@/lib/i18n/client";
 type Uni = { id: string; name_ar: string; name_en: string; college: string; department: string; status: string };
 
 const ST: Record<string, { k: string; c: string; bg: string }> = {
-  active:      { k: "uniStActive",      c: "#18A957", bg: "rgba(24,169,87,.12)" },
-  inactive:    { k: "uniStInactive",    c: "#E0483B", bg: "rgba(224,72,59,.12)" },
-  negotiating: { k: "uniStNegotiating", c: "#C7891A", bg: "rgba(240,168,36,.16)" },
-  signed:      { k: "uniStSigned",      c: "#2F6BFF", bg: "rgba(47,107,255,.12)" },
+  active:      { k: "uniStActive",      c: "var(--green)", bg: "rgba(24,169,87,.12)" },
+  inactive:    { k: "uniStInactive",    c: "var(--red)", bg: "rgba(224,72,59,.12)" },
+  negotiating: { k: "uniStNegotiating", c: "var(--amber)", bg: "rgba(240,168,36,.16)" },
+  signed:      { k: "uniStSigned",      c: "var(--blue)", bg: "rgba(47,107,255,.12)" },
 };
 
 export default function UniList({ items, canManage }: { items: Uni[]; canManage: boolean }) {

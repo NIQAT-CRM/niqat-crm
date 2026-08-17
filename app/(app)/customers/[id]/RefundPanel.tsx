@@ -19,8 +19,8 @@ function money(n: number, cur: string) {
 }
 
 const STATUS: Record<string, { labelKey: string; color: string }> = {
-  requested: { labelKey: "refundRequested", color: "#E6A700" },
-  refunded: { labelKey: "refundDone", color: "#2F6BFF" },
+  requested: { labelKey: "refundRequested", color: "var(--amber)" },
+  refunded: { labelKey: "refundDone", color: "var(--blue)" },
   closed: { labelKey: "refundClosed", color: "#94A2BB" },
 };
 

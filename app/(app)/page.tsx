@@ -14,10 +14,10 @@ import MonthlySales from "./MonthlySales";
 export const dynamic = "force-dynamic";
 
 const STAGES = [
-  { key: "contacted", labelKey: "dashStageContacted", color: "#0FA3A3" },
-  { key: "interested", labelKey: "dashStageInterested", color: "#7B61FF" },
-  { key: "enrolled", labelKey: "dashStageEnrolled", color: "#18A957" },
-  { key: "onhold", labelKey: "dashStageOnhold", color: "#E6A700" },
+  { key: "contacted", labelKey: "dashStageContacted", color: "var(--teal)" },
+  { key: "interested", labelKey: "dashStageInterested", color: "var(--purple)" },
+  { key: "enrolled", labelKey: "dashStageEnrolled", color: "var(--green)" },
+  { key: "onhold", labelKey: "dashStageOnhold", color: "var(--amber)" },
 ];
 const DC = ["#F08A24", "#2F6BFF", "#0FA3A3", "#7B61FF", "#18A957", "#E6A700", "#E0483B"];
 const fmtDate = (d: string) => { try { return new Date(d).toLocaleDateString("ar-EG", { month: "short", day: "numeric" }); } catch { return d; } };
@@ -212,7 +212,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
 
   const overdueRows = overdueInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customerFallback"), `${tr("overdueInstSub")} · ${fmtDate(i.due_date)}`, "#E5484D", { label: tr("badgeOverdue"), bg: "var(--red-soft)", fg: "var(--red)" }, "wallet") : null; }).filter(Boolean);
   const soonRows = soonInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customerFallback"), `${tr("dueOn")} ${fmtDate(i.due_date)}`, "#F5A623", { label: tr("badgeSoon"), bg: "#FFFAEB", fg: "#B54708" }, "calendarCheck") : null; }).filter(Boolean);
-  const followRows = followItems.map((f) => actionRow(f.customer_id, cName.get(f.customer_id) || tr("customerFallback"), f.note || tr("followDueSub"), "#2F6BFF", { label: tr("badgeFollow"), bg: "#EFF6FF", fg: "#2F6BFF" }, "calendarCheck"));
+  const followRows = followItems.map((f) => actionRow(f.customer_id, cName.get(f.customer_id) || tr("customerFallback"), f.note || tr("followDueSub"), "#2F6BFF", { label: tr("badgeFollow"), bg: "#EFF6FF", fg: "var(--blue)" }, "calendarCheck"));
   const handoffRows = handoffItems.map((h) => actionRow(h.customer_id, cName.get(h.customer_id) || tr("customerFallback"), tr("awaitAccessSub"), "#F08A24", { label: tr("badgeActivate"), bg: "var(--brand-soft)", fg: "var(--brand-d)" }, "check"));
 
   // كل صفوف الإجراءات مجمّعة (المالية أولاً لمن يملك الصلاحية)
@@ -220,7 +220,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
 
   const logRow = (l: any, idx: number) => (
     <div key={idx} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "9px 0", borderBottom: "1px solid var(--line)" }}>
-      <span style={{ marginTop: 5, width: 7, height: 7, borderRadius: "50%", background: "#18A957", flexShrink: 0 }} />
+      <span style={{ marginTop: 5, width: 7, height: 7, borderRadius: "50%", background: "var(--green)", flexShrink: 0 }} />
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 13, color: "var(--ink)" }}>{l.action}{l.detail ? ` — ${l.detail}` : ""}</div>
         <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
@@ -317,11 +317,11 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
   const heroLabels = monthKeys.map((k) => new Intl.DateTimeFormat("ar-EG", { month: "short", timeZone: "Africa/Cairo" }).format(new Date(Number(k.slice(0, 4)), Number(k.slice(5, 7)) - 1, 1)));
 
   const generalKpis = [
-    { label: tr("totalCust"), value: total, color: "#2F6BFF", icon: "users", trend: custTrend },
-    { label: tr("newLeads"), value: leads, color: "#F08A24", icon: "target" },
-    { label: tr("convRate"), value: conv, suffix: "%", color: "#18A957", icon: "trending" },
-    { label: tr("tasksToday"), value: tasksToday ?? 0, color: "#7B61FF", icon: "check" },
-    { label: tr("openTk"), value: tkRes.count ?? 0, color: "#E0483B", icon: "ticket" },
+    { label: tr("totalCust"), value: total, color: "var(--blue)", icon: "users", trend: custTrend },
+    { label: tr("newLeads"), value: leads, color: "var(--brand)", icon: "target" },
+    { label: tr("convRate"), value: conv, suffix: "%", color: "var(--green)", icon: "trending" },
+    { label: tr("tasksToday"), value: tasksToday ?? 0, color: "var(--purple)", icon: "check" },
+    { label: tr("openTk"), value: tkRes.count ?? 0, color: "var(--red)", icon: "ticket" },
   ];
 
   // تحصيلات النهاردة = المصدر الموحّد (نفس صفحة الإيصالات: فردي منزوع التكرار + مشترك)
@@ -351,15 +351,15 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
             {tr("myWork")}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 16 }}>
-            <Link href={`/customers?owner=${myUid}`} style={{ textDecoration: "none" }}><Kpi label={tr("myCustomers")} value={myCustCount} color="#2F6BFF" icon="users" /></Link>
-            <Kpi label={tr("myFollowToday")} value={myFollowToday} color="#E6A700" icon="calendarCheck" />
-            <Link href="/my-tasks" style={{ textDecoration: "none" }}><Kpi label={tr("myTasks")} value={myTasksOpen} color="#7B61FF" icon="check" /></Link>
-            <Kpi label={tr("myPipelineTotal")} value={myCustCount} color="#18A957" icon="funnel" animate={false} />
+            <Link href={`/customers?owner=${myUid}`} style={{ textDecoration: "none" }}><Kpi label={tr("myCustomers")} value={myCustCount} color="var(--blue)" icon="users" /></Link>
+            <Kpi label={tr("myFollowToday")} value={myFollowToday} color="var(--amber)" icon="calendarCheck" />
+            <Link href="/my-tasks" style={{ textDecoration: "none" }}><Kpi label={tr("myTasks")} value={myTasksOpen} color="var(--purple)" icon="check" /></Link>
+            <Kpi label={tr("myPipelineTotal")} value={myCustCount} color="var(--green)" icon="funnel" animate={false} />
           </div>
           {/* مساري */}
           <div className="card" style={{ padding: 18 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-              <span style={{ width: 30, height: 30, borderRadius: 9, display: "grid", placeItems: "center", background: "rgba(24,169,87,.12)", color: "#18A957" }}><LineIcon name="funnel" size={17} /></span>
+              <span style={{ width: 30, height: 30, borderRadius: 9, display: "grid", placeItems: "center", background: "rgba(24,169,87,.12)", color: "var(--green)" }}><LineIcon name="funnel" size={17} /></span>
               <h3 style={{ margin: 0, fontSize: 15 }}>{tr("myPipeline")}</h3><span className="chip" style={{ marginInlineStart: 2 }}>{myCustCount}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
@@ -379,18 +379,18 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--muted)", fontSize: 13, marginBottom: 14, fontWeight: 700 }}><LineIcon name="wallet" size={16} /> {tr("financeOverview")}</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, flex: 1 }}>
                 {[
-                  { badge: tr("egpShort"), pre: "", collected: egpCollected, due: egpDue, accent: "#0FA3A3" },
-                  { badge: "USD", pre: "$", collected: usdCollected, due: usdDue, accent: "#2F6BFF" },
+                  { badge: tr("egpShort"), pre: "", collected: egpCollected, due: egpDue, accent: "var(--teal)" },
+                  { badge: "USD", pre: "$", collected: usdCollected, due: usdDue, accent: "var(--blue)" },
                 ].map((c) => (
                   <div key={c.badge} style={{ background: "rgba(127,127,127,0.06)", border: "1px solid var(--line)", borderRadius: 14, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
                     <span style={{ alignSelf: "flex-start", fontSize: 11.5, fontWeight: 800, color: c.accent, background: c.accent + "1a", padding: "2px 10px", borderRadius: 20 }}>{c.pre}{c.badge}</span>
                     <div>
                       <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 2 }}>{tr("revenue")}</div>
-                      <div style={{ fontSize: 24, fontWeight: 800, color: "#18A957", lineHeight: 1.1 }}>{c.pre}<CountUp value={c.collected} /></div>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: "var(--green)", lineHeight: 1.1 }}>{c.pre}<CountUp value={c.collected} /></div>
                     </div>
                     <div style={{ borderTop: "1px dashed var(--line)", paddingTop: 8 }}>
                       <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 2 }}>{tr("outstanding")}</div>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: "#E6A700", lineHeight: 1.1 }}>{c.pre}<CountUp value={c.due} /></div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: "var(--amber)", lineHeight: 1.1 }}>{c.pre}<CountUp value={c.due} /></div>
                     </div>
                   </div>
                 ))}
@@ -398,19 +398,19 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
             </div>
           )}
           {canDailySales && (
-            <div className="card" style={{ padding: 20, flex: "1 1 240px", display: "flex", flexDirection: "column", background: "linear-gradient(135deg,#18A95712,#0FA3A312)", border: "1px solid #18A95733" }}>
+            <div className="card" style={{ padding: 20, flex: "1 1 240px", display: "flex", flexDirection: "column", background: "linear-gradient(135deg,#18A95712,#0FA3A312)", border: "1px solid var(--green)33" }}>
               <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 6, color: "#18A957" }}><LineIcon name="dot" size={13} />{tr("todayCollections")}</span>
-                {todayCount > 0 && <span className="chip" style={{ background: "#18A95722", color: "#18A957" }}>{todayCount}</span>}
+                <span style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 6, color: "var(--green)" }}><LineIcon name="dot" size={13} />{tr("todayCollections")}</span>
+                {todayCount > 0 && <span className="chip" style={{ background: "#18A95722", color: "var(--green)" }}>{todayCount}</span>}
               </div>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 14 }}>
                 <div>
                   <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 2 }}>{tr("egpShort")}</div>
-                  <div style={{ fontSize: 32, fontWeight: 800, color: "#18A957", lineHeight: 1 }}><CountUp value={todayEgp} /></div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "var(--green)", lineHeight: 1 }}><CountUp value={todayEgp} /></div>
                 </div>
                 <div style={{ borderTop: "1px solid var(--line)", paddingTop: 12 }}>
                   <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 2 }}>USD</div>
-                  <div style={{ fontSize: 32, fontWeight: 800, color: "#0FA3A3", lineHeight: 1 }}>$<CountUp value={todayUsd} /></div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "var(--teal)", lineHeight: 1 }}>$<CountUp value={todayUsd} /></div>
                 </div>
               </div>
             </div>
@@ -491,7 +491,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
                   return (
                     <div key={x.name} className="spec-row">
                       <div className="spec-top">
-                        <span className="spec-name">{i === 0 && <span style={{ color: "#E6A700", display: "inline-flex", marginInlineEnd: 4 }}><LineIcon name="trophy" size={12} /></span>}{x.name}</span>
+                        <span className="spec-name">{i === 0 && <span style={{ color: "var(--amber)", display: "inline-flex", marginInlineEnd: 4 }}><LineIcon name="trophy" size={12} /></span>}{x.name}</span>
                         <b className="spec-val num">{x.n}</b>
                       </div>
                       <div className="spec-track"><i style={{ width: w + "%", background: `linear-gradient(90deg,${col},${col}bb)` }} /></div>
@@ -593,8 +593,8 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
                         <td style={{ fontWeight: 700 }}>{g.diploma}</td>
                         <td>{g.batch}</td>
                         <td className="num"><span dir="ltr">{g.count}</span></td>
-                        <td className="num" style={{ color: g.egp > 0 ? "#E0483B" : "var(--muted)" }}><span dir="ltr">{g.egp > 0 ? new Intl.NumberFormat("en").format(Math.round(g.egp)) : "—"}</span></td>
-                        <td className="num" style={{ color: g.usd > 0 ? "#E0483B" : "var(--muted)" }}><span dir="ltr">{g.usd > 0 ? "$" + new Intl.NumberFormat("en").format(Math.round(g.usd)) : "—"}</span></td>
+                        <td className="num" style={{ color: g.egp > 0 ? "var(--red)" : "var(--muted)" }}><span dir="ltr">{g.egp > 0 ? new Intl.NumberFormat("en").format(Math.round(g.egp)) : "—"}</span></td>
+                        <td className="num" style={{ color: g.usd > 0 ? "var(--red)" : "var(--muted)" }}><span dir="ltr">{g.usd > 0 ? "$" + new Intl.NumberFormat("en").format(Math.round(g.usd)) : "—"}</span></td>
                       </tr>
                     ))}
                   </tbody>

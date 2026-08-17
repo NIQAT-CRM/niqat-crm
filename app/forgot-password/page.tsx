@@ -53,7 +53,7 @@ export default function ForgotPasswordPage() {
 
         {sent ? (
           <div style={{ textAlign: "center", padding: "10px 0" }}>
-            <div style={{ width: 54, height: 54, borderRadius: "50%", background: "rgba(24,169,87,.14)", color: "#18A957", display: "grid", placeItems: "center", margin: "8px auto 14px" }}>
+            <div style={{ width: 54, height: 54, borderRadius: "50%", background: "rgba(24,169,87,.14)", color: "var(--green)", display: "grid", placeItems: "center", margin: "8px auto 14px" }}>
               <svg viewBox="0 0 24 24" width={28} height={28} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4z" opacity="0" /><path d="m22 6-10 7L2 6" /><path d="M2 6h20v12H2z" /></svg>
             </div>
             <h2>{T.sentTitle}</h2>

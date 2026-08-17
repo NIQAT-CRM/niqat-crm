@@ -24,16 +24,16 @@ type Ticket = {
 };
 
 const STATUSES = [
-  { key: "open", labelKey: "openLabel", color: "#2F6BFF" },
-  { key: "progress", labelKey: "inProgressLabel", color: "#E6A700" },
-  { key: "resolved", labelKey: "resolvedLabel", color: "#18A957" },
+  { key: "open", labelKey: "openLabel", color: "var(--blue)" },
+  { key: "progress", labelKey: "inProgressLabel", color: "var(--amber)" },
+  { key: "resolved", labelKey: "resolvedLabel", color: "var(--green)" },
   { key: "closed", labelKey: "closedLabel", color: "#94A2BB" },
 ];
 
 const PRC: Record<string, string> = {
-  high: "#E0483B",
-  medium: "#E6A700",
-  low: "#0FA3A3",
+  high: "var(--red)",
+  medium: "var(--amber)",
+  low: "var(--teal)",
   normal: "#94A2BB",
 };
 

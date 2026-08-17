@@ -5,10 +5,10 @@ import { useT } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 
 const STG: Record<string, { k: string; c: string }> = {
-  contacted: { k: "dashStageContacted", c: "#0FA3A3" },
-  interested: { k: "dashStageInterested", c: "#7B61FF" },
-  enrolled: { k: "dashStageEnrolled", c: "#18A957" },
-  onhold: { k: "dashStageOnhold", c: "#E6A700" },
+  contacted: { k: "dashStageContacted", c: "var(--teal)" },
+  interested: { k: "dashStageInterested", c: "var(--purple)" },
+  enrolled: { k: "dashStageEnrolled", c: "var(--green)" },
+  onhold: { k: "dashStageOnhold", c: "var(--amber)" },
 };
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 function waLink(p: string) { const d = (p || "").replace(/\D/g, ""); return d ? "https://wa.me/" + d : "#"; }
@@ -139,7 +139,7 @@ export default function CustomerBrief({ customerId, canFinance }: { customerId: 
                     <Row label={t("collected")} value={money(data.paid)} />
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", fontSize: 13.5 }}>
                       <span style={{ color: "var(--muted)" }}>{t("remaining")}</span>
-                      <b style={{ color: data.remaining > 0 ? "#E0483B" : "#18A957" }} dir="ltr">{money(data.remaining)}</b>
+                      <b style={{ color: data.remaining > 0 ? "var(--red)" : "var(--green)" }} dir="ltr">{money(data.remaining)}</b>
                     </div>
                     {data.nextDue && <Row label={t("nextDueLabel")} value={data.nextDue} />}
                   </div>

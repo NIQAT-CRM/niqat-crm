@@ -13,10 +13,10 @@ import { receiptSignedUrl } from "@/lib/supabase/receipts";
 export const dynamic = "force-dynamic";
 
 const STAGE: Record<string, { labelKey: string; color: string }> = {
-  contacted: { labelKey: "dashStageContacted", color: "#0FA3A3" },
-  interested: { labelKey: "dashStageInterested", color: "#7B61FF" },
-  enrolled: { labelKey: "dashStageEnrolled", color: "#18A957" },
-  onhold: { labelKey: "dashStageOnhold", color: "#E6A700" },
+  contacted: { labelKey: "dashStageContacted", color: "var(--teal)" },
+  interested: { labelKey: "dashStageInterested", color: "var(--purple)" },
+  enrolled: { labelKey: "dashStageEnrolled", color: "var(--green)" },
+  onhold: { labelKey: "dashStageOnhold", color: "var(--amber)" },
 };
 
 const AUDIT_KEYS: Record<string, string> = {
@@ -29,8 +29,8 @@ const AUDIT_KEYS: Record<string, string> = {
 };
 
 const TK: Record<string, { labelKey: string; color: string }> = {
-  open: { labelKey: "openLabel", color: "#2F6BFF" }, progress: { labelKey: "inProgressLabel", color: "#E6A700" },
-  resolved: { labelKey: "resolvedLabel", color: "#18A957" }, closed: { labelKey: "closedLabel", color: "#94A2BB" },
+  open: { labelKey: "openLabel", color: "var(--blue)" }, progress: { labelKey: "inProgressLabel", color: "var(--amber)" },
+  resolved: { labelKey: "resolvedLabel", color: "var(--green)" }, closed: { labelKey: "closedLabel", color: "#94A2BB" },
 };
 
 export default async function CustomerDetail({ params }: { params: { id: string } }) {
@@ -236,8 +236,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     : (c.stage === "enrolled") ? "paid_need"
     : "not_paid";
   const ACCESS_UI: Record<string, { k: string; bg: string; color: string; icon: string }> = {
-    active: { k: "accessActive", bg: "rgba(24,169,87,.14)", color: "#18A957", icon: "✓" },
-    awaiting: { k: "accessAwaiting", bg: "rgba(47,107,255,.12)", color: "#2F6BFF", icon: "⏳" },
+    active: { k: "accessActive", bg: "rgba(24,169,87,.14)", color: "var(--green)", icon: "✓" },
+    awaiting: { k: "accessAwaiting", bg: "rgba(47,107,255,.12)", color: "var(--blue)", icon: "⏳" },
     paid_need: { k: "accessPaidNeed", bg: "rgba(230,167,0,.14)", color: "#a5790a", icon: "●" },
     not_paid: { k: "accessNotPaid", bg: "var(--muted-soft)", color: "var(--muted)", icon: "🔒" },
   };

@@ -46,21 +46,21 @@ const TL_ICONS: Record<string, ReactNode> = {
 };
 function tlVisual(action: string): { icon: string; color: string; bg: string } {
   const m: Record<string, { icon: string; color: string }> = {
-    installment_paid: { icon: "money", color: "#18A957" },
-    installment_add: { icon: "add", color: "#F08A24" },
-    enrollment_add: { icon: "add", color: "#F08A24" },
-    create: { icon: "check", color: "#18A957" },
+    installment_paid: { icon: "money", color: "var(--green)" },
+    installment_add: { icon: "add", color: "var(--brand)" },
+    enrollment_add: { icon: "add", color: "var(--brand)" },
+    create: { icon: "check", color: "var(--green)" },
     update: { icon: "edit", color: "#7A8699" },
     agreed_edit: { icon: "edit", color: "#7A8699" },
-    stage_change: { icon: "user", color: "#7B61FF" },
-    stage_paid: { icon: "user", color: "#18A957" },
-    handoff: { icon: "arrow", color: "#2F6BFF" },
-    handoff_requested: { icon: "arrow", color: "#2F6BFF" },
-    batch_transfer: { icon: "arrow", color: "#2F6BFF" },
-    handoff_canceled: { icon: "x", color: "#E0483B" },
-    refund_cancel: { icon: "x", color: "#E0483B" },
-    refund_request: { icon: "refund", color: "#E6A700" },
-    refunded: { icon: "refund", color: "#E6A700" },
+    stage_change: { icon: "user", color: "var(--purple)" },
+    stage_paid: { icon: "user", color: "var(--green)" },
+    handoff: { icon: "arrow", color: "var(--blue)" },
+    handoff_requested: { icon: "arrow", color: "var(--blue)" },
+    batch_transfer: { icon: "arrow", color: "var(--blue)" },
+    handoff_canceled: { icon: "x", color: "var(--red)" },
+    refund_cancel: { icon: "x", color: "var(--red)" },
+    refund_request: { icon: "refund", color: "var(--amber)" },
+    refunded: { icon: "refund", color: "var(--amber)" },
   };
   const v = m[action] || { icon: "dot", color: "#94A2BB" };
   return { icon: v.icon, color: v.color, bg: v.color + "1a" };
@@ -276,7 +276,7 @@ export default function CustomerDrawer(props: {
 
         <div className="card" style={{ padding: 18, marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-            <Sec icon="ticket" bg="rgba(47,107,255,.12)" color="#2F6BFF" title={tr("supportTickets")} count={(props.tickets || []).length} />
+            <Sec icon="ticket" bg="rgba(47,107,255,.12)" color="var(--blue)" title={tr("supportTickets")} count={(props.tickets || []).length} />
             <a href={`/support/new?customer=${props.c.id}`} className="btn" style={{ height: 32, padding: "0 12px", fontSize: 13 }}>+ {tr("ticket")}</a>
           </div>
           {(!props.tickets || props.tickets.length === 0) ? (
@@ -335,7 +335,7 @@ export default function CustomerDrawer(props: {
       ops={<div className="px-5 py-5">
         {props.canFinance && (
           <>
-            <Sec icon="refund" bg="rgba(47,107,255,.12)" color="#2F6BFF" title={tr("refundAccTitle")} />
+            <Sec icon="refund" bg="rgba(47,107,255,.12)" color="var(--blue)" title={tr("refundAccTitle")} />
             <div className="card" style={{ padding: 14, marginBottom: 14 }}>
               <RefundPanel customerId={props.c.id} refunds={props.refunds} refundServices={props.refundServices} allServicesClosed={props.allServicesClosed} meId={props.user?.id || ""} tableMissing={props.refundTableMissing} accessItems={props.accessItems} />
             </div>

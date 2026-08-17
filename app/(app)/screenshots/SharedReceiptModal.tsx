@@ -217,7 +217,7 @@ export default function SharedReceiptModal({ onClose }: { onClose: () => void })
                 </div>
                 <input className="inp num" dir="ltr" inputMode="numeric" placeholder={tr("amountWord")} value={r.amount}
                   onChange={(e) => setAmount(idx, e.target.value)} style={{ width: 110, height: 40 }} />
-                <button onClick={() => removeRow(idx)} disabled={rows.length === 1} style={{ height: 40, width: 40, flexShrink: 0, borderRadius: 9, border: "1px solid var(--line)", background: "var(--bg)", color: rows.length === 1 ? "var(--line)" : "#E0483B", cursor: rows.length === 1 ? "not-allowed" : "pointer", fontSize: 16 }}>×</button>
+                <button onClick={() => removeRow(idx)} disabled={rows.length === 1} style={{ height: 40, width: 40, flexShrink: 0, borderRadius: 9, border: "1px solid var(--line)", background: "var(--bg)", color: rows.length === 1 ? "var(--line)" : "var(--red)", cursor: rows.length === 1 ? "not-allowed" : "pointer", fontSize: 16 }}>×</button>
                 </div>
                 {r.customerId && r.insts.length > 0 && (
                   <div style={{ marginTop: 6 }}>

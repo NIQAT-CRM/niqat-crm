@@ -153,7 +153,7 @@ export default function GradingWorkspace({ batches }: { batches: BatchOpt[] }) {
                     style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", background: "none", border: "none", cursor: "pointer", textAlign: "start" }}>
                     <span style={{ fontWeight: 700, fontSize: 13.5, color: "var(--ink)", flex: 1 }}>{c.name}</span>
                     {st?.pct != null && <span className="chip" style={{ background: "var(--muted-soft)", color: "var(--muted)" }}>{Math.round(st.pct)}%</span>}
-                    {locked && <span className="chip" style={{ background: "#e7f7ec", color: "#18794e" }}>{tr("eduLocked")}</span>}
+                    {locked && <span className="chip" style={{ background: "var(--green-soft)", color: "var(--green)" }}>{tr("eduLocked")}</span>}
                   </button>
 
                   {isOpen && (

@@ -5,10 +5,10 @@ import Link from "next/link";
 type Item = { id: string; kind: "follow" | "handoff" | "overdue" | "refund"; text: string; href: string; sub: string };
 
 const META: Record<string, { color: string; label: string }> = {
-  follow: { color: "#7B61FF", label: "متابعة" },
-  handoff: { color: "#F08A24", label: "تسليم" },
-  overdue: { color: "#E0483B", label: "قسط متأخر" },
-  refund: { color: "#2F6BFF", label: "استرداد" },
+  follow: { color: "var(--purple)", label: "متابعة" },
+  handoff: { color: "var(--brand)", label: "تسليم" },
+  overdue: { color: "var(--red)", label: "قسط متأخر" },
+  refund: { color: "var(--blue)", label: "استرداد" },
 };
 
 const SEEN_KEY = "niqat_notif_seen";

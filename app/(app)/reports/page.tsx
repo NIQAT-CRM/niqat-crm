@@ -23,10 +23,10 @@ function periodRange(period: string): { from: string; to: string } | null {
 }
 
 const STAGES: Record<string, { labelKey: string; color: string }> = {
-  contacted: { labelKey: "dashStageContacted", color: "#0FA3A3" },
-  interested: { labelKey: "dashStageInterested", color: "#7B61FF" },
-  enrolled: { labelKey: "dashStageEnrolled", color: "#18A957" },
-  onhold: { labelKey: "dashStageOnhold", color: "#E6A700" },
+  contacted: { labelKey: "dashStageContacted", color: "var(--teal)" },
+  interested: { labelKey: "dashStageInterested", color: "var(--purple)" },
+  enrolled: { labelKey: "dashStageEnrolled", color: "var(--green)" },
+  onhold: { labelKey: "dashStageOnhold", color: "var(--amber)" },
 };
 const DC = ["#F08A24", "#2F6BFF", "#0FA3A3", "#7B61FF", "#18A957", "#E6A700", "#E0483B"];
 

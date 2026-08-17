@@ -93,7 +93,7 @@ export default function AppealsManager({ appeals, members }: { appeals: Appeal[]
                     <textarea value={resp[a.id] || ""} onChange={(e) => setResp((s) => ({ ...s, [a.id]: e.target.value }))}
                       placeholder={tr("eduResponsePh")} rows={2} style={ta} />
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button className="btn sm" disabled={bk} onClick={() => decide(a, "upheld")} style={{ background: "#18794e", borderColor: "#18794e", color: "#fff" }}>{tr("eduUphold")}</button>
+                      <button className="btn sm" disabled={bk} onClick={() => decide(a, "upheld")} style={{ background: "var(--green)", borderColor: "var(--green)", color: "#fff" }}>{tr("eduUphold")}</button>
                       <button className="btn ghost sm" disabled={bk} onClick={() => decide(a, "rejected")}>{tr("eduReject")}</button>
                     </div>
                   </div>

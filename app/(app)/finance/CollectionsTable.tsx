@@ -16,7 +16,7 @@ function money(n: number, cur: string) {
 }
 
 const STATE: Record<string, { labelKey: string; color: string; bg: string }> = {
-  overdue: { labelKey: "overdueWord", color: "#E0483B", bg: "#FDECEA" },
+  overdue: { labelKey: "overdueWord", color: "var(--red)", bg: "#FDECEA" },
   soon: { labelKey: "within7days", color: "#B8860B", bg: "#FEF6E0" },
   upcoming: { labelKey: "upcomingWord", color: "#5B6B85", bg: "#EEF1F6" },
 };

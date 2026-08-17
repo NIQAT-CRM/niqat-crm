@@ -13,7 +13,7 @@ type Proto = { id: string; file_url: string; signed_at: string | null; expires_a
 
 const STATUSES = ["active", "inactive", "negotiating", "signed"] as const;
 const STK: Record<string, string> = { active: "uniStActive", inactive: "uniStInactive", negotiating: "uniStNegotiating", signed: "uniStSigned" };
-const STC: Record<string, string> = { active: "#18A957", inactive: "#E0483B", negotiating: "#C7891A", signed: "#2F6BFF" };
+const STC: Record<string, string> = { active: "var(--green)", inactive: "var(--red)", negotiating: "var(--amber)", signed: "var(--blue)" };
 
 export default function InstitutionDrawer({ uni, protocols, canManage }: { uni: Uni; protocols: Proto[]; canManage: boolean }) {
   const tr = useT();
@@ -133,7 +133,7 @@ export default function InstitutionDrawer({ uni, protocols, canManage }: { uni: 
               {canManage && (
                 <div style={{ display: "flex", gap: 8, marginTop: 18, borderTop: "1px solid var(--line)", paddingTop: 16 }}>
                   <button onClick={() => { setF(uni); setEditing(true); }} className="btn">{tr("edit")}</button>
-                  <button onClick={del} disabled={busy} className="btn ghost" style={{ color: "#E0483B", borderColor: "#E0483B" }}>{tr("delete")}</button>
+                  <button onClick={del} disabled={busy} className="btn ghost" style={{ color: "var(--red)", borderColor: "var(--red)" }}>{tr("delete")}</button>
                 </div>
               )}
             </>
@@ -188,7 +188,7 @@ export default function InstitutionDrawer({ uni, protocols, canManage }: { uni: 
                       {p.notes && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{p.notes}</div>}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: expired ? "#E0483B" : "#18A957", background: expired ? "rgba(224,72,59,.12)" : "rgba(24,169,87,.12)", borderRadius: 20, padding: "2px 10px" }}>{expired ? tr("uniProtoExpired") : tr("uniProtoValid")}</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: expired ? "var(--red)" : "var(--green)", background: expired ? "rgba(224,72,59,.12)" : "rgba(24,169,87,.12)", borderRadius: 20, padding: "2px 10px" }}>{expired ? tr("uniProtoExpired") : tr("uniProtoValid")}</span>
                       <button onClick={() => download(p.file_url)} className="btn ghost" style={{ height: 32, padding: "0 12px", fontSize: 12.5 }}>{tr("uniDownload")}</button>
                     </div>
                   </div>

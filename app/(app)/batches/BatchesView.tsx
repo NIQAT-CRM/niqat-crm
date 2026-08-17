@@ -14,7 +14,7 @@ export type B = {
 };
 
 function statusMeta(tr: (k: string) => string, status: string) {
-  if (status === "open" || !status) return { l: tr("batchOpen"), c: "#18A957" };
+  if (status === "open" || !status) return { l: tr("batchOpen"), c: "var(--green)" };
   return { l: tr("batchEnded"), c: "#94A2BB" };
 }
 

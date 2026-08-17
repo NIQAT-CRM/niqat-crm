@@ -249,10 +249,10 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
         </div>
         {/* الدولار */}
         <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, padding: "16px 18px", boxShadow: "var(--sh)", position: "relative", overflow: "hidden" }}>
-          <span style={{ position: "absolute", insetInlineStart: 0, top: 0, bottom: 0, width: 4, background: "#2F6BFF" }} />
+          <span style={{ position: "absolute", insetInlineStart: 0, top: 0, bottom: 0, width: 4, background: "var(--blue)" }} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>{tr("total")}</span>
-            <span style={{ fontSize: 11, fontWeight: 800, color: "#2F6BFF", background: "rgba(47,107,255,.12)", borderRadius: 20, padding: "3px 10px" }}>{tr("usd")}</span>
+            <span style={{ fontSize: 11, fontWeight: 800, color: "var(--blue)", background: "rgba(47,107,255,.12)", borderRadius: 20, padding: "3px 10px" }}>{tr("usd")}</span>
           </div>
           <div className="n" style={{ fontSize: 28, fontWeight: 800, color: totals.usd > 0 ? "var(--green)" : "var(--muted)", lineHeight: 1.1, direction: "ltr", textAlign: lang === "ar" ? "right" : "left" }}>{nf.format(totals.usd)}</div>
         </div>
@@ -380,7 +380,7 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
                               </button>
                             )}
                             {canDelete && (
-                              <button onClick={() => { setMenuOpen(false); delReceipt(r); }} disabled={delBusy} className="mnu-item" style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", borderRadius: 8, fontSize: 13, cursor: "pointer", color: "#E0483B", background: "none", border: "none", textAlign: "start", width: "100%" }}>
+                              <button onClick={() => { setMenuOpen(false); delReceipt(r); }} disabled={delBusy} className="mnu-item" style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", borderRadius: 8, fontSize: 13, cursor: "pointer", color: "var(--red)", background: "none", border: "none", textAlign: "start", width: "100%" }}>
                                 <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
                                 {tr("deleteReceipt")}
                               </button>

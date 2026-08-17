@@ -25,10 +25,10 @@ const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 
 
 // مراحل قاعدة البيانات (stage_t) + ألوان وتسميات البروتوتايب
 const STAGES = [
-  { key: "contacted", labelKey: "dashStageContacted", color: "#0FA3A3" },
-  { key: "interested", labelKey: "dashStageInterested", color: "#7B61FF" },
-  { key: "enrolled", labelKey: "dashStageEnrolled", color: "#18A957" },
-  { key: "onhold", labelKey: "dashStageOnhold", color: "#E6A700" },
+  { key: "contacted", labelKey: "dashStageContacted", color: "var(--teal)" },
+  { key: "interested", labelKey: "dashStageInterested", color: "var(--purple)" },
+  { key: "enrolled", labelKey: "dashStageEnrolled", color: "var(--green)" },
+  { key: "onhold", labelKey: "dashStageOnhold", color: "var(--amber)" },
 ];
 
 const AV = ["#F08A24", "#0FA3A3", "#2F6BFF", "#7B61FF", "#18A957", "#E0483B", "#E6A700"];
@@ -201,7 +201,7 @@ export default function PipelineBoard({ initial, canFinance = false }: { initial
                       {canFinance && (Number(c.value) > 0 || Number(c.paid) > 0) && (() => {
                         const agreed = Number(c.value) || 0, paid = Number(c.paid) || 0;
                         const st = agreed > 0 && paid >= agreed ? "paid" : paid > 0 ? "partial" : "unpaid";
-                        const col = st === "paid" ? "#18A957" : st === "partial" ? "#E6A700" : "#94A2BB";
+                        const col = st === "paid" ? "var(--green)" : st === "partial" ? "var(--amber)" : "#94A2BB";
                         return (
                           <div className="pc-money">
                             <span className="pc-dot" style={{ background: col }} />

@@ -154,7 +154,7 @@ export default function AccreditationsManager({ accreditations, settings }: { ac
                 </div>
                 <div style={{ marginTop: 6, paddingInlineStart: 18, display: "flex", flexDirection: "column", gap: 3 }}>
                   {optText(q.options).map((o: any, oi: number) => (
-                    <div key={oi} style={{ fontSize: 12.5, color: o.key === q.correct_key ? "#18794e" : "var(--muted)", fontWeight: o.key === q.correct_key ? 700 : 400 }}>
+                    <div key={oi} style={{ fontSize: 12.5, color: o.key === q.correct_key ? "var(--green)" : "var(--muted)", fontWeight: o.key === q.correct_key ? 700 : 400 }}>
                       {o.key === q.correct_key ? "✓ " : "• "}{o.text}
                     </div>
                   ))}

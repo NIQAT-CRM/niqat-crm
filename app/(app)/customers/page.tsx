@@ -12,10 +12,10 @@ import { BulkSelectProvider, RowCheck, SelectAllHeader, BulkBar } from "./BulkSe
 export const dynamic = "force-dynamic";
 
 const STAGES: Record<string, { labelKey: string; color: string }> = {
-  contacted: { labelKey: "dashStageContacted", color: "#0FA3A3" },
-  interested: { labelKey: "dashStageInterested", color: "#7B61FF" },
-  enrolled: { labelKey: "dashStageEnrolled", color: "#18A957" },
-  onhold: { labelKey: "dashStageOnhold", color: "#E6A700" },
+  contacted: { labelKey: "dashStageContacted", color: "var(--teal)" },
+  interested: { labelKey: "dashStageInterested", color: "var(--purple)" },
+  enrolled: { labelKey: "dashStageEnrolled", color: "var(--green)" },
+  onhold: { labelKey: "dashStageOnhold", color: "var(--amber)" },
 };
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -382,7 +382,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
                   {canFinance && (
                     <td className="num" style={{ fontWeight: 700 }}>
                       {rem > 0 ? <span dir="ltr">{curMap.get(r.id) === "USD" ? "$" + money(rem) : money(rem) + " " + tr("egpShort")}</span> : "—"}
-                      {od && <span className="stg" style={{ background: "#FDECEA", color: "#E0483B", marginInlineStart: 6, fontSize: 10 }}>{tr("overdueTag")}</span>}
+                      {od && <span className="stg" style={{ background: "#FDECEA", color: "var(--red)", marginInlineStart: 6, fontSize: 10 }}>{tr("overdueTag")}</span>}
                     </td>
                   )}
                   <td>{pName.get(r.owner_id) || tr("unassigned")}</td>

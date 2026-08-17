@@ -175,7 +175,7 @@ export default function AffiliateGlobal({ affiliates, diplomas, batches, canFina
     const rowsHtml = cs.map((c) => { if (!c.refunded) { tAgreed += c.agreed; tColl += c.collected; } return `<tr style="${c.refunded ? "opacity:.6" : ""}"><td>${esc(c.name)}</td><td dir="ltr">${esc(c.phone) || "—"}</td><td>${esc(c.diploma)}</td><td dir="ltr">${esc(c.batch)}</td><td>${c.refunded ? L.rf : c.paid ? L.pd : L.ls}</td>${canFinance ? `<td dir="ltr">${money(c.agreed)}</td><td dir="ltr">${money(c.collected)}</td>` : ""}</tr>`; }).join("");
     const totalRow = canFinance ? `<tr style="font-weight:800;background:#faf5ee"><td colspan="5">${L.total}</td><td dir="ltr">${money(tAgreed)}</td><td dir="ltr">${money(tColl)}</td></tr>` : "";
     const html = `<!doctype html><html dir="${ar ? "rtl" : "ltr"}" lang="${ar ? "ar" : "en"}"><head><meta charset="utf-8"><title>${L.title} — ${esc(dName(r))}</title>
-<style>body{font-family:Tajawal,Arial,sans-serif;padding:28px;color:#1a1a1a}h1{color:#F08A24;margin:0 0 4px}.meta{color:#555;font-size:13px;margin-bottom:14px}.sum{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0}.box{border:1px solid #eee;border-radius:10px;padding:10px 16px;min-width:90px}.box small{color:#777;font-size:11px}.box b{display:block;font-size:18px;color:#F08A24;margin-top:2px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px}th,td{border:1px solid #e2e2e2;padding:7px 9px;text-align:${ar ? "right" : "left"}}th{background:#faf5ee;color:#8a5a12}.ft{margin-top:22px;color:#999;font-size:11px}</style>
+<style>body{font-family:Tajawal,Arial,sans-serif;padding:28px;color:#1a1a1a}h1{color:#F08A24;margin:0 0 4px}.meta{color:#555;font-size:13px;margin-bottom:14px}.sum{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0}.box{border:1px solid #eee;border-radius:10px;padding:10px 16px;min-width:90px}.box small{color:#777;font-size:11px}.box b{display:block;font-size:18px;color:var(--brand);margin-top:2px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px}th,td{border:1px solid #e2e2e2;padding:7px 9px;text-align:${ar ? "right" : "left"}}th{background:#faf5ee;color:#8a5a12}.ft{margin-top:22px;color:#999;font-size:11px}</style>
 </head><body>
 <h1>${L.title}</h1>
 <div class="meta">${L.name}: <b>${esc(dName(r))}</b> · ${L.code}: <b>${esc(r.code)}</b>${r.phone ? ` · ${L.phone}: ${esc(r.phone)}` : ""}</div>
@@ -215,8 +215,8 @@ ${canFinance && r.hasUsd ? `<div style="font-size:11px;color:#2F6BFF;margin:-4px
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10, marginBottom: 14 }}>
         {[
           { l: tr("affTotalPartners"), v: money(totals.partners), c: "var(--brand-d)" },
-          { l: tr("affTotalCustomers"), v: money(totals.customers), c: "#2F6BFF" },
-          ...(canFinance ? [{ l: tr("affTotalCommission"), v: money(totals.commission) + " " + tr("egp"), c: "#18A957" }] : []),
+          { l: tr("affTotalCustomers"), v: money(totals.customers), c: "var(--blue)" },
+          ...(canFinance ? [{ l: tr("affTotalCommission"), v: money(totals.commission) + " " + tr("egp"), c: "var(--green)" }] : []),
         ].map((k, i) => (
           <div key={i} style={{ background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
             <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 700, marginBottom: 4 }}>{k.l}</div>
@@ -239,7 +239,7 @@ ${canFinance && r.hasUsd ? `<div style="font-size:11px;color:#2F6BFF;margin:-4px
             <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--muted)" }}>{tr("batch")}:</span>
             {visBatches.map((b) => {
               const on = bsel.includes(b.v);
-              return <button key={b.v} onClick={() => toggleBatch(b.v)} style={{ height: 28, padding: "0 11px", borderRadius: 20, fontSize: 11.5, fontWeight: 700, cursor: "pointer", border: "1px solid " + (on ? "#2F6BFF" : "var(--line)"), background: on ? "rgba(47,107,255,.12)" : "var(--surface)", color: on ? "#2F6BFF" : "var(--muted-d)" }} dir="ltr">{b.label}</button>;
+              return <button key={b.v} onClick={() => toggleBatch(b.v)} style={{ height: 28, padding: "0 11px", borderRadius: 20, fontSize: 11.5, fontWeight: 700, cursor: "pointer", border: "1px solid " + (on ? "var(--blue)" : "var(--line)"), background: on ? "rgba(47,107,255,.12)" : "var(--surface)", color: on ? "var(--blue)" : "var(--muted-d)" }} dir="ltr">{b.label}</button>;
             })}
             {visBatches.length === 0 && <span style={{ fontSize: 11.5, color: "var(--muted)" }}>—</span>}
           </div>
@@ -271,13 +271,13 @@ ${canFinance && r.hasUsd ? `<div style="font-size:11px;color:#2F6BFF;margin:-4px
               {filtered.map((r) => (
                 <>
                   <tr key={r.code} style={{ borderTop: "1px solid var(--line)", cursor: "pointer" }} onClick={() => setOpenCode(openCode === r.code ? null : r.code)}>
-                    <td style={{ ...td, fontWeight: 700 }}>{r.name || "—"}{r.refundedN > 0 && <span style={{ fontSize: 10.5, color: "#E0483B", marginInlineStart: 6 }}>↩{r.refundedN}</span>}</td>
+                    <td style={{ ...td, fontWeight: 700 }}>{r.name || "—"}{r.refundedN > 0 && <span style={{ fontSize: 10.5, color: "var(--red)", marginInlineStart: 6 }}>↩{r.refundedN}</span>}</td>
                     <td style={{ ...td, fontWeight: 800, color: "var(--brand-d)" }} dir="ltr">{r.code}</td>
                     <td style={td}><b>{r.customers}</b></td>
-                    <td style={{ ...td, color: "#18A957", fontWeight: 700 }}>{r.paidN}</td>
-                    <td style={{ ...td, color: "#C7891A", fontWeight: 700 }}>{r.notPaidN}</td>
-                    {canFinance && <td style={td} dir="ltr"><span className="num">{money(r.sales)}</span>{r.hasUsd && <span title={"$ × " + usdRate} style={{ fontSize: 9, color: "#2F6BFF", marginInlineStart: 3 }}>$</span>}</td>}
-                    {canFinance && <td style={{ ...td, color: r.dueNow > 0 ? "#18A957" : "var(--muted)", fontWeight: 800 }} dir="ltr"><span className="num">{money(r.dueNow)}</span></td>}
+                    <td style={{ ...td, color: "var(--green)", fontWeight: 700 }}>{r.paidN}</td>
+                    <td style={{ ...td, color: "var(--amber)", fontWeight: 700 }}>{r.notPaidN}</td>
+                    {canFinance && <td style={td} dir="ltr"><span className="num">{money(r.sales)}</span>{r.hasUsd && <span title={"$ × " + usdRate} style={{ fontSize: 9, color: "var(--blue)", marginInlineStart: 3 }}>$</span>}</td>}
+                    {canFinance && <td style={{ ...td, color: r.dueNow > 0 ? "var(--green)" : "var(--muted)", fontWeight: 800 }} dir="ltr"><span className="num">{money(r.dueNow)}</span></td>}
                     <td style={{ ...td, textAlign: "end", color: "var(--muted)" }}>{openCode === r.code ? "▲" : "▼"}</td>
                   </tr>
                   {openCode === r.code && (
@@ -286,9 +286,9 @@ ${canFinance && r.hasUsd ? `<div style="font-size:11px;color:#2F6BFF;margin:-4px
                         {canFinance && (
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 12, padding: "10px 12px", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 10 }}>
                             <div style={{ fontSize: 12 }}><span style={{ color: "var(--muted)" }}>{tr("affTotalComm")}: </span><b className="num">{money(r.commission)}</b></div>
-                            <div style={{ fontSize: 12 }}><span style={{ color: "var(--muted)" }}>{tr("affPaidOut")}: </span><b className="num" style={{ color: "#2F6BFF" }}>{money(r.paidOut)}</b></div>
-                            <div style={{ fontSize: 12 }}><span style={{ color: "var(--muted)" }}>{tr("affDueNow")}: </span><b className="num" style={{ color: r.dueNow > 0 ? "#18A957" : "var(--muted)", fontSize: 15 }}>{money(r.dueNow)}</b></div>
-                            {r.hasUsd && <span style={{ fontSize: 10.5, color: "#2F6BFF" }}>💱 {tr("usdConverted").replace("{r}", String(usdRate))}</span>}
+                            <div style={{ fontSize: 12 }}><span style={{ color: "var(--muted)" }}>{tr("affPaidOut")}: </span><b className="num" style={{ color: "var(--blue)" }}>{money(r.paidOut)}</b></div>
+                            <div style={{ fontSize: 12 }}><span style={{ color: "var(--muted)" }}>{tr("affDueNow")}: </span><b className="num" style={{ color: r.dueNow > 0 ? "var(--green)" : "var(--muted)", fontSize: 15 }}>{money(r.dueNow)}</b></div>
+                            {r.hasUsd && <span style={{ fontSize: 10.5, color: "var(--blue)" }}>💱 {tr("usdConverted").replace("{r}", String(usdRate))}</span>}
                             <button onClick={() => settle(r)} disabled={r.dueNow <= 0} className="btn" style={{ height: 32, padding: "0 14px", fontSize: 12.5, marginInlineStart: "auto", opacity: r.dueNow > 0 ? 1 : .5 }}>💵 {tr("affSettleBtn")}</button>
                           </div>
                         )}
@@ -313,7 +313,7 @@ ${canFinance && r.hasUsd ? `<div style="font-size:11px;color:#2F6BFF;margin:-4px
                             <input type="checkbox" checked={pdfInc} onChange={(e) => setPdfInc(e.target.checked)} /> {tr("includePdf")}
                           </label>
                           <button onClick={() => openPdf(r)} className="btn ghost" style={{ height: 34, padding: "0 12px", fontSize: 12.5 }}>{tr("uniDownload")} PDF</button>
-                          {!r.phone && <span style={{ fontSize: 11.5, color: "#C7891A" }}>⚠️ {tr("noPhoneForWa")}</span>}
+                          {!r.phone && <span style={{ fontSize: 11.5, color: "var(--amber)" }}>⚠️ {tr("noPhoneForWa")}</span>}
                         </div>
                         <div style={{ overflowX: "auto" }}>
                           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -334,9 +334,9 @@ ${canFinance && r.hasUsd ? `<div style="font-size:11px;color:#2F6BFF;margin:-4px
                                   <td style={{ ...td, fontSize: 12 }}>{c.diploma}</td>
                                   <td style={{ ...td, fontSize: 12 }} dir="ltr">{c.batch}</td>
                                   <td style={{ ...td, fontSize: 11.5 }}>
-                                    {c.refunded ? <span style={{ color: "#E0483B", fontWeight: 700 }}>↩ {tr("refundedBadge")}</span>
-                                      : c.paid ? <span style={{ color: "#18A957", fontWeight: 700 }}>✅ {tr("paid")}</span>
-                                        : <span style={{ color: "#C7891A", fontWeight: 700 }}>⏳ {tr("unpaid")}</span>}
+                                    {c.refunded ? <span style={{ color: "var(--red)", fontWeight: 700 }}>↩ {tr("refundedBadge")}</span>
+                                      : c.paid ? <span style={{ color: "var(--green)", fontWeight: 700 }}>✅ {tr("paid")}</span>
+                                        : <span style={{ color: "var(--amber)", fontWeight: 700 }}>⏳ {tr("unpaid")}</span>}
                                   </td>
                                   {canFinance && <td style={{ ...td, fontSize: 12 }} dir="ltr"><span className="num">{money(c.agreed)}</span></td>}
                                   {canFinance && <td style={{ ...td, fontSize: 12 }} dir="ltr"><span className="num">{money(c.collected)}</span></td>}

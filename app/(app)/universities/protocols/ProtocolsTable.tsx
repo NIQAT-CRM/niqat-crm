@@ -41,7 +41,7 @@ export default function ProtocolsTable({ rows }: { rows: Row[] }) {
                 <td style={{ padding: "10px 14px", color: "var(--ink)" }}>{fmt(r.signed_at)}</td>
                 <td style={{ padding: "10px 14px", color: "var(--ink)" }}>{fmt(r.expires_at)}</td>
                 <td style={{ padding: "10px 14px" }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: ex ? "#E0483B" : "#18A957", background: ex ? "rgba(224,72,59,.12)" : "rgba(24,169,87,.12)", borderRadius: 20, padding: "2px 10px" }}>{ex ? tr("uniProtoExpired") : tr("uniProtoValid")}</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: ex ? "var(--red)" : "var(--green)", background: ex ? "rgba(224,72,59,.12)" : "rgba(24,169,87,.12)", borderRadius: 20, padding: "2px 10px" }}>{ex ? tr("uniProtoExpired") : tr("uniProtoValid")}</span>
                 </td>
                 <td style={{ padding: "10px 14px", textAlign: "end" }}>
                   <button onClick={() => download(r.file_url)} className="btn ghost" style={{ height: 30, padding: "0 12px", fontSize: 12.5 }}>{tr("uniDownload")}</button>

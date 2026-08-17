@@ -179,27 +179,27 @@ export default function ReportsView({
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 16 }}>
-                <KpiCard label={tr("totalAgreed")} color="#2F6BFF"><CountUp value={agreed} prefix="EGP " /></KpiCard>
-                <KpiCard label={tr("totalCollected")} color="#18A957"><CountUp value={collected} prefix="EGP " /></KpiCard>
-                <KpiCard label={tr("remaining")} color="#E6A700"><CountUp value={agreed - collected} prefix="EGP " /></KpiCard>
-                <KpiCard label={tr("overdueInstallments")} color="#E0483B"><CountUp value={overdueN} /></KpiCard>
+                <KpiCard label={tr("totalAgreed")} color="var(--blue)"><CountUp value={agreed} prefix="EGP " /></KpiCard>
+                <KpiCard label={tr("totalCollected")} color="var(--green)"><CountUp value={collected} prefix="EGP " /></KpiCard>
+                <KpiCard label={tr("remaining")} color="var(--amber)"><CountUp value={agreed - collected} prefix="EGP " /></KpiCard>
+                <KpiCard label={tr("overdueInstallments")} color="var(--red)"><CountUp value={overdueN} /></KpiCard>
               </div>
 
               {(collectedUsd > 0 || agreedUsd > 0) && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 16 }}>
-                  <KpiCard label={tr("totalAgreed") + " ($)"} color="#2F6BFF"><CountUp value={agreedUsd} prefix="$ " /></KpiCard>
-                  <KpiCard label={tr("totalCollected") + " ($)"} color="#18A957"><CountUp value={collectedUsd} prefix="$ " /></KpiCard>
+                  <KpiCard label={tr("totalAgreed") + " ($)"} color="var(--blue)"><CountUp value={agreedUsd} prefix="$ " /></KpiCard>
+                  <KpiCard label={tr("totalCollected") + " ($)"} color="var(--green)"><CountUp value={collectedUsd} prefix="$ " /></KpiCard>
                 </div>
               )}
 
               {/* منحنى التحصيل */}
               <div className="card" style={{ padding: 18, marginBottom: 16 }}>
-                <SecHead icon="trending" tint="#18A957" title={tr("collectionTrend")}
+                <SecHead icon="trending" tint="var(--green)" title={tr("collectionTrend")}
                   extra={<button onClick={resetMeasurement} disabled={resetting} className="btn ghost" style={{ height: 30, padding: "0 12px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 5 }}>
                     <Icon name="refresh" size={13} /> {resetting ? "..." : tr("resetMeasurement")}
                   </button>} />
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "12px 0 4px" }}>
-                  <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("periodTotal")}: <b className="num" style={{ color: "#18A957" }} dir="ltr">{fmt(periodTotal)} {tr("egpShort")}</b></span>
+                  <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("periodTotal")}: <b className="num" style={{ color: "var(--green)" }} dir="ltr">{fmt(periodTotal)} {tr("egpShort")}</b></span>
                   <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("avgPerMonth")}: <b className="num" style={{ color: "var(--ink)" }} dir="ltr">{fmt(avgPerMonth)} {tr("egpShort")}</b></span>
                 </div>
                 <div style={{ marginTop: 6 }}><ApexArea data={monthlyLabeled.map((m) => m.value)} labels={monthlyLabeled.map((m) => m.label)} name={tr("collectionWord")} color="#12B76A" /></div>
@@ -210,7 +210,7 @@ export default function ReportsView({
           {/* توزيع المراحل (بالطول) + كل الدبلومات */}
           <div className="grid6 g3-6" style={{ alignItems: "start" }}>
             <div className="card" style={{ padding: 18 }}>
-              <SecHead icon="bars" tint="#7B61FF" title={tr("stageDistribution")} count={totalCust} />
+              <SecHead icon="bars" tint="var(--purple)" title={tr("stageDistribution")} count={totalCust} />
               <div className="vfunnel">
                 {stageRows.map((s) => {
                   const max = Math.max(...stageRows.map((x) => x.n), 1);
@@ -226,7 +226,7 @@ export default function ReportsView({
               </div>
             </div>
             <div className="card" style={{ padding: 18 }}>
-              <SecHead icon="pie" tint="#F08A24" title={tr("topDiplomas")} count={byDiploma.length} />
+              <SecHead icon="pie" tint="var(--brand)" title={tr("topDiplomas")} count={byDiploma.length} />
               {byDiploma.length === 0 ? (
                 <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12 }}>{tr("noEnrolls")}</div>
               ) : (
@@ -248,7 +248,7 @@ export default function ReportsView({
               )}
             </div>
             <div className="card" style={{ padding: 18 }}>
-              <SecHead icon="pie" tint="#2F6BFF" title={tr("topServices")} count={byService.length} />
+              <SecHead icon="pie" tint="var(--blue)" title={tr("topServices")} count={byService.length} />
               {byService.length === 0 ? (
                 <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12 }}>{tr("noServices")}</div>
               ) : (
@@ -280,15 +280,15 @@ export default function ReportsView({
         <div className="fade-in">
           {/* المبيعات — ليدربورد */}
           <div className="card" style={{ padding: 18, marginBottom: 16 }}>
-            <SecHead icon="target" tint="#2F6BFF" title={tr("salesTeamPerf")} count={salesRows.length}
+            <SecHead icon="target" tint="var(--blue)" title={tr("salesTeamPerf")} count={salesRows.length}
               extra={<ExportButton filename="sales-team"
                 headers={[tr("teamMember"), tr("customerCount"), tr("enrolledCol"), tr("convRate"), ...(canFinance ? ["EGP", "USD"] : [])]}
                 rows={salesRows.map((s) => [s.name, s.customers, s.enrolled, s.conv + "%", ...(canFinance ? [s.collectedEgp, s.collectedUsd] : [])])} />} />
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 20, margin: "14px 0 6px" }}>
-              <MiniStat label={tr("customerCount")} value={salesTot.customers} color="#2F6BFF" />
-              <MiniStat label={tr("enrolledCol")} value={salesTot.enrolled} color="#18A957" />
-              <MiniStat label={tr("convRate")} value={salesConv} color="#E6A700" suffix="%" />
+              <MiniStat label={tr("customerCount")} value={salesTot.customers} color="var(--blue)" />
+              <MiniStat label={tr("enrolledCol")} value={salesTot.enrolled} color="var(--green)" />
+              <MiniStat label={tr("convRate")} value={salesConv} color="var(--amber)" suffix="%" />
             </div>
 
             {salesRanked.length === 0 ? (
@@ -305,7 +305,7 @@ export default function ReportsView({
                     <Lead key={s.name} rank={i + 1} name={s.name}
                       sub={`${s.customers} ${tr("customerCount")} · ${s.conv}% ${tr("convRate")}`}
                       value={canFinance ? fmt(s.collectedEgp) + " " + tr("egpShort") + (s.collectedUsd > 0 ? " · $" + fmt(s.collectedUsd) : "") : String(s.enrolled)}
-                      valueColor={canFinance ? "#18A957" : "#2F6BFF"} />
+                      valueColor={canFinance ? "var(--green)" : "var(--blue)"} />
                   ))}
                 </div>
               </>
@@ -314,16 +314,16 @@ export default function ReportsView({
 
           {/* الدعم — ليدربورد */}
           <div className="card" style={{ padding: 18 }}>
-            <SecHead icon="headset" tint="#18A957" title={tr("supportTeamPerf")} count={supportRows.length}
+            <SecHead icon="headset" tint="var(--green)" title={tr("supportTeamPerf")} count={supportRows.length}
               extra={<ExportButton filename="support-team"
                 headers={[tr("teamMember"), tr("activationsDone"), tr("ticketsTotal"), tr("ticketsOpen"), tr("ticketsClosed")]}
                 rows={supportRows.map((s) => [s.name, s.activations || 0, s.total, s.open, s.closed])} />} />
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 20, margin: "14px 0 6px" }}>
-              <MiniStat label={tr("activationsDone")} value={supTot.activations} color="#18A957" />
+              <MiniStat label={tr("activationsDone")} value={supTot.activations} color="var(--green)" />
               <MiniStat label={tr("ticketsTotal")} value={supTot.total} color="var(--ink)" />
-              <MiniStat label={tr("ticketsOpen")} value={supTot.open} color="#E6A700" />
-              <MiniStat label={tr("ticketsClosed")} value={supTot.closed} color="#18A957" />
+              <MiniStat label={tr("ticketsOpen")} value={supTot.open} color="var(--amber)" />
+              <MiniStat label={tr("ticketsClosed")} value={supTot.closed} color="var(--green)" />
             </div>
 
             {supRanked.length === 0 ? (
@@ -339,7 +339,7 @@ export default function ReportsView({
                   {supRanked.map((s, i) => (
                     <Lead key={s.name} rank={i + 1} name={s.name}
                       sub={`${s.activations || 0} ${tr("activationsDone")} · ${s.closed} ${tr("ticketsClosed")} · ${s.open} ${tr("ticketsOpen")}`}
-                      value={String(supScore(s))} valueColor="#18A957" />
+                      value={String(supScore(s))} valueColor="var(--green)" />
                   ))}
                 </div>
               </>
@@ -402,7 +402,7 @@ export default function ReportsView({
       {tab === "affiliate" && (
         <div className="fade-in">
           <div style={{ marginBottom: 14 }}>
-            <SecHead icon="link" tint="#7B61FF" title={tr("affiliateReportTitle")} />
+            <SecHead icon="link" tint="var(--purple)" title={tr("affiliateReportTitle")} />
           </div>
           <AffiliateGlobal affiliates={affiliates} diplomas={diplomaOpts} batches={batchOpts} canFinance={canFinance} usdRate={usdRate} payouts={affPayouts} />
         </div>

@@ -14,12 +14,12 @@ type Enr = { id: string; diploma: string; batch: string; diplomaId: string; batc
 type Addon = { id: string; type: string; name: string; amount: number; free: boolean; note: string; paid: boolean; shot_url?: string };
 
 const SV_TYPES = [
-  { key: "diploma", labelKey: "svTypeDiploma", color: "#F08A24", icon: "📜" },
-  { key: "accred", labelKey: "svTypeAccred", color: "#7B61FF", icon: "✅" },
-  { key: "project", labelKey: "svTypeProject", color: "#0FA3A3", icon: "📋" },
-  { key: "library", labelKey: "svTypeLibrary", color: "#E6A700", icon: "📚" },
+  { key: "diploma", labelKey: "svTypeDiploma", color: "var(--brand)", icon: "📜" },
+  { key: "accred", labelKey: "svTypeAccred", color: "var(--purple)", icon: "✅" },
+  { key: "project", labelKey: "svTypeProject", color: "var(--teal)", icon: "📋" },
+  { key: "library", labelKey: "svTypeLibrary", color: "var(--amber)", icon: "📚" },
 ];
-const stMeta = (k: string) => SV_TYPES.find((t) => t.key === k) || { key: k, labelKey: "serviceWord", color: "#2F6BFF", icon: "🔧" };
+const stMeta = (k: string) => SV_TYPES.find((t) => t.key === k) || { key: k, labelKey: "serviceWord", color: "var(--blue)", icon: "🔧" };
 
 export default function ServicesPanel({
   customerId, meId, enrolls, dipOpts, batchOpts, addons, accreditations, projects, libraries, canFinance, serviceTypes = [], serviceItemsByType = {}, myTeam = "", stage = "",

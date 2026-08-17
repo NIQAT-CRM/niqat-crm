@@ -46,7 +46,7 @@ const CardView = memo(function CardView({
     const m = c.meta || {};
     const onHoldNow = c.status === "onhold";
     return (
-      <div className="onb-card" style={{ background: "var(--surface)", borderTop: "3px solid #2F6BFF" }}>
+      <div className="onb-card" style={{ background: "var(--surface)", borderTop: "3px solid var(--blue)" }}>
         <div className="oh">
           <span className="av" style={{ background: avColor(c.custId), width: 40, height: 40 }}>{initials(c.name)}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -54,7 +54,7 @@ const CardView = memo(function CardView({
             <div style={{ fontSize: 11.5, color: "var(--muted)", fontFamily: "var(--fe)", direction: "ltr" }}>{c.phone || "—"}</div>
             {c.email && <div style={{ fontSize: 11, color: "var(--muted)", direction: "ltr", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>✉️ {c.email}</div>}
           </div>
-          <span className="chip" style={{ background: "rgba(47,107,255,.12)", color: "#2F6BFF" }}>{tr("batchTransferChip")}</span>
+          <span className="chip" style={{ background: "rgba(47,107,255,.12)", color: "var(--blue)" }}>{tr("batchTransferChip")}</span>
         </div>
         <div className="ob">
           <div className="onb-scroll">
@@ -62,7 +62,7 @@ const CardView = memo(function CardView({
             {m.diploma ? m.diploma + " — " : ""}
             <span dir="ltr" style={{ color: "var(--muted)" }}>{m.from_label || "?"}</span>
             {" → "}
-            <span dir="ltr" style={{ color: "#2F6BFF" }}>{m.to_label || "?"}</span>
+            <span dir="ltr" style={{ color: "var(--blue)" }}>{m.to_label || "?"}</span>
           </div>
           {c.note && <div className="onb-note" style={{ marginBottom: 12 }}>📝 {c.note}</div>}
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 12 }}>{tr("batchTransferHint")}</div>
@@ -103,7 +103,7 @@ const CardView = memo(function CardView({
   const onHoldNow = c.status === "onhold";
   const hrs = ageHours(c.createdAt);
   const stale = !onHoldNow && !allDone && hrs > 48;
-  const accent = onHoldNow ? "#E6A700" : allDone ? "#18A957" : "";
+  const accent = onHoldNow ? "var(--amber)" : allDone ? "var(--green)" : "";
 
   return (
     <div className="onb-card" style={{ background: "var(--surface)", opacity: onHoldNow ? 0.9 : 1, borderTop: accent ? `3px solid ${accent}` : undefined }}>
@@ -126,7 +126,7 @@ const CardView = memo(function CardView({
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 11.5, color: "var(--muted)", marginBottom: 10 }}>
           {c.assignee && <span>👤 {tr("activationOwner")}: <b style={{ color: "var(--ink)" }}>{c.assignee}</b></span>}
           {c.createdAt && <span className="num" dir="ltr">🗓 {String(c.createdAt).slice(0, 10)}</span>}
-          {stale && <span className="chip" style={{ background: "rgba(224,72,59,.12)", color: "#E0483B" }}>{tr("overdueWord")}</span>}
+          {stale && <span className="chip" style={{ background: "rgba(224,72,59,.12)", color: "var(--red)" }}>{tr("overdueWord")}</span>}
         </div>
 
         {(c.diplomas.length > 0 || c.batches.length > 0) && (
@@ -137,7 +137,7 @@ const CardView = memo(function CardView({
         )}
 
         {onHoldNow && (
-          <div className="onb-note" style={{ marginBottom: 12, background: "rgba(230,167,0,.1)", borderColor: "#E6A700" }}>
+          <div className="onb-note" style={{ marginBottom: 12, background: "rgba(230,167,0,.1)", borderColor: "var(--amber)" }}>
             ⏸ {tr("onHoldLabel")}{c.onholdReason ? ": " + c.onholdReason : ""}
           </div>
         )}
@@ -166,7 +166,7 @@ const CardView = memo(function CardView({
           <div className="onb-hold-row">
             <input className="inp" autoFocus placeholder={tr("onHoldReasonPh")} value={holdReason}
               onChange={(e) => setHoldReason(e.target.value)} style={{ flex: 1, height: 36, minWidth: 120 }} />
-            <button className="btn sm" onClick={() => onHold(c.handoffId)} style={{ background: "#E6A700" }}>{tr("save")}</button>
+            <button className="btn sm" onClick={() => onHold(c.handoffId)} style={{ background: "var(--amber)" }}>{tr("save")}</button>
             <button className="btn ghost sm" onClick={onCancelHold}>{tr("cancel")}</button>
           </div>
         ) : confirming ? (

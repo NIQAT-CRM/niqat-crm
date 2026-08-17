@@ -91,7 +91,7 @@ export default function SetPasswordCard({ mode }: { mode: Mode }) {
 
         {done ? (
           <div style={{ textAlign: "center", padding: "10px 0" }}>
-            <div style={{ width: 54, height: 54, borderRadius: "50%", background: "rgba(24,169,87,.14)", color: "#18A957", display: "grid", placeItems: "center", margin: "8px auto 14px" }}>
+            <div style={{ width: 54, height: 54, borderRadius: "50%", background: "rgba(24,169,87,.14)", color: "var(--green)", display: "grid", placeItems: "center", margin: "8px auto 14px" }}>
               <svg viewBox="0 0 24 24" width={28} height={28} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
             </div>
             <h2>{T.okTitle}</h2><p className="sub">{T.okSub}</p>
