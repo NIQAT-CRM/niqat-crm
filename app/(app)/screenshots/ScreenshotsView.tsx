@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState, useEffect, useCallback } from "react";
+import MonthlySales from "../MonthlySales";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/lib/confirm";
@@ -51,6 +52,22 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
   }, [rows]);
 
   const years = useMemo(() => Array.from(tree.keys()).sort().reverse(), [tree]);
+  // التجميع الشهري من نفس صفوف الصفحة (= مجموع الإجماليات اليومية بالظبط)
+  const monthlyRows = useMemo(() => {
+    const out: { ym: string; egp: number; usd: number; cnt: number }[] = [];
+    for (const Y of tree.values()) {
+      for (const [ym, days] of Y) {
+        let egp = 0, usd = 0, cnt = 0;
+        for (const rs of days.values()) for (const r of rs) {
+          cnt++;
+          if (r.hasAmount && r.amount != null) { if (r.currency === "USD") usd += r.amount; else egp += r.amount; }
+        }
+        out.push({ ym, egp, usd, cnt });
+      }
+    }
+    out.sort((a, b) => b.ym.localeCompare(a.ym));
+    return out;
+  }, [tree]);
   const allDaysDesc = useMemo(() => {
     const days: string[] = [];
     for (const Y of tree.values()) for (const M of Y.values()) for (const d of M.keys()) days.push(d);
@@ -186,6 +203,11 @@ export default function ScreenshotsView({ rows, canCreate = false, canDelete = f
 
   return (
     <div style={wrap}>
+      {(canEdit || canCreate) && (
+        <div style={{ marginBottom: 18 }}>
+          <MonthlySales rows={monthlyRows} collapsible />
+        </div>
+      )}
       {/* ===== شريط التحكّم: 3 قوائم ===== */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 18 }}>
         <div style={selBox}>
