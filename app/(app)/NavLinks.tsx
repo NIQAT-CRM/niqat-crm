@@ -18,6 +18,7 @@ type Perms = {
   canCustomers?: boolean;
   canTasks?: boolean;
   canBatches?: boolean;
+  canViewPrices?: boolean;
   canRefunds?: boolean;
   canArchive?: boolean;
   canEducation?: boolean;
@@ -64,7 +65,6 @@ export default function NavLinks(p: Perms) {
   if (A || p.canCustomers !== false) main.push({ href: "/customers", key: "users", tk: "customers" });
   if (A || p.canPipeline) main.push({ href: "/pipeline", key: "pipe", tk: "pipeline" });
   if (A || p.canTasks !== false) main.push({ href: "/my-tasks", key: "task", tk: "myTasks", badge: p.dueCount });
-  if (A || p.canBatches !== false) main.push({ href: "/batches", key: "batch", tk: "batches" });
 
   // الرؤى بقت جزء من صفحة التقارير (نفس صلاحية can_view_reports) — مبقاش بند مستقل
   const teams: Item[] = [];
@@ -138,6 +138,20 @@ export default function NavLinks(p: Perms) {
     <nav className="nav">
       <div className="sect">{t("MAIN")}</div>
       {main.map(Btn)}
+      {(A || p.canBatches !== false || p.canViewPrices) && (
+        <>
+          <Link href="/batches" onClick={closeSb} className={path.startsWith("/batches") || path.startsWith("/services-prices") ? "on" : ""}>
+            <span dangerouslySetInnerHTML={{ __html: I["batch"] }} />
+            <span>{t("batches")}</span>
+          </Link>
+          {(path.startsWith("/batches") || path.startsWith("/services-prices")) && (
+            <div className="sub">
+              {(A || p.canBatches !== false) && <Link href="/batches" onClick={closeSb} className={path === "/batches" ? "on" : ""}><span>{t("batches")}</span></Link>}
+              {(A || p.canViewPrices) && <Link href="/services-prices" onClick={closeSb} className={path.startsWith("/services-prices") ? "on" : ""}><span>{t("servicesPrices")}</span></Link>}
+            </div>
+          )}
+        </>
+      )}
       {(A || p.canUniversities) && (
         <>
           <Link href="/universities" onClick={closeSb} className={path.startsWith("/universities") ? "on" : ""}>
