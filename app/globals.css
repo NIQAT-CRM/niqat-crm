@@ -382,7 +382,14 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
   .app.rail .sb:not(:hover) .who{justify-content:center;padding:0}
   /* نقطة صغيرة على الأيقونة النشطة وقت الانكماش */
   .app.rail .sb:not(:hover) .nav a.on::after{content:"";position:absolute;bottom:5px;width:5px;height:5px;border-radius:50%;background:var(--brand)}
+  .app.rail .sb:not(:hover) .nav .sub{display:none}
 }
+/* شريط تمرير القائمة الجانبية — متوافق مع الثيم */
+.sb .nav{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+.sb .nav::-webkit-scrollbar{width:6px}
+.sb .nav::-webkit-scrollbar-track{background:transparent}
+.sb .nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:3px}
+.sb .nav::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.28)}
 
 /* ===== Global search dropdown ===== */
 .search-dd{position:absolute;top:48px;inset-inline-start:0;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.18);overflow:hidden;z-index:50;max-height:60vh;overflow-y:auto}

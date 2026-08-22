@@ -71,7 +71,7 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
   }
 
   return (
-    <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+    <div style={{ maxWidth: "100%", margin: "0 auto" }}>
       <style>{spCss}</style>
       <div className="sp-note"><b>{t("spNoteB")}</b> {t("spNote")}</div>
       <div className="sp-crumb">{t("batches")} › <b>{t("servicesPrices")}</b></div>
@@ -317,9 +317,9 @@ const spCss = `
 .sp-search{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 14px;height:44px;box-shadow:var(--sh);margin-bottom:18px}
 .sp-search input{flex:1;border:none;background:none;font-family:inherit;font-size:14px;outline:none;color:var(--text)}
 .sp-search svg{width:17px;height:17px;color:var(--muted)}
-.sp-grp{display:flex;align-items:center;gap:10px;margin:24px 0 12px}
-.sp-tick{width:4px;height:16px;background:var(--brand);border-radius:3px}
-.sp-grp h2{font-size:15px;font-weight:800;color:var(--ink)}
+.sp-grp{display:flex;align-items:center;gap:11px;margin:26px 0 14px;background:linear-gradient(90deg,var(--brand-soft),transparent);border-inline-start:4px solid var(--brand);border-radius:10px;padding:11px 15px}
+.sp-tick{display:none}
+.sp-grp h2{font-size:16.5px;font-weight:800;color:var(--brand-d);letter-spacing:.01em}
 .sp-cnt{font-size:11.5px;font-weight:700;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:2px 10px;font-family:var(--fd)}
 .sp-gtools{margin-inline-start:auto;display:flex;gap:6px}
 .sp-gtools button{border:none;background:none;color:var(--muted);cursor:pointer;width:28px;height:28px;border-radius:7px;display:grid;place-items:center}
@@ -361,8 +361,8 @@ const spCss = `
 .sp-selbar>span:first-child{font-weight:800;color:var(--brand-d);font-size:13px}
 .sp-selhint{font-size:11.5px;color:var(--brand-d);opacity:.85}
 .sp-bulkbanner{background:var(--blue-soft);color:var(--blue);border-radius:9px;padding:8px 12px;font-size:11.5px;font-weight:700;margin-bottom:11px}
-.sp-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start;margin-bottom:12px}
-@media(max-width:640px){.sp-cards{grid-template-columns:1fr}}
+.sp-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px;align-items:start;margin-bottom:14px}
+@media(max-width:560px){.sp-cards{grid-template-columns:1fr}}
 .sp-ov{position:fixed;inset:0;background:rgba(21,34,59,.45);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
 .sp-modal{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.28);width:100%;max-width:420px;padding:20px}
 .sp-modal h3{font-size:16px;font-weight:800;color:var(--ink);margin-bottom:6px}
