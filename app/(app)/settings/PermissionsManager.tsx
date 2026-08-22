@@ -30,6 +30,7 @@ const PERMS: [string, string][] = [
   ["can_view_batches", "رؤية الباتشات"],
   ["can_view_refunds", "رؤية المستردات"],
   ["can_view_archive", "رؤية الأرشيف"],
+  ["can_view_prices", "رؤية الخدمات والأسعار"],
 ];
 
 export default function PermissionsManager({ profiles }: { profiles: Profile[] }) {

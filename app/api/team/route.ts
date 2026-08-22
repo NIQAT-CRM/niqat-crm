@@ -97,7 +97,7 @@ export async function POST(req: Request) {
   const update: Record<string, any> = { full_name: fullName, team };
   for (const k of PERM_KEYS) update[k] = !!perms[k];
   // صلاحيات الرؤية: تتكتب بس لو الفرونت بعتها (عشان الأدوار العادية تفضل default true)
-  const VIEW_KEYS = ["can_view_dashboard","can_view_customers","can_view_tasks","can_view_batches","can_view_refunds","can_view_archive","can_view_pipeline","can_view_support","can_view_activations","can_view_universities","can_view_receipts","can_view_education","can_view_feedback"];
+  const VIEW_KEYS = ["can_view_dashboard","can_view_customers","can_view_tasks","can_view_batches","can_view_refunds","can_view_archive","can_view_pipeline","can_view_support","can_view_activations","can_view_universities","can_view_receipts","can_view_education","can_view_feedback","can_view_prices"];
   for (const k of VIEW_KEYS) if (k in perms) update[k] = !!perms[k];
   // الذكاء الاصطناعي
   update.can_use_ai = !!body.can_use_ai;

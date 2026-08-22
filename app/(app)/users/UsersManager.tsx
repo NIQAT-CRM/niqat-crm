@@ -37,6 +37,7 @@ const PERMS: [string, string][] = [
   ["can_view_batches", "permViewBatches"],
   ["can_view_refunds", "permViewRefunds"],
   ["can_view_archive", "permViewArchive"],
+  ["can_view_prices", "permViewPrices"],
 ];
 const PRESET: Record<string, string[]> = {
   sales: ["can_edit_customers", "can_message", "can_view_reports"],
@@ -172,7 +173,7 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
     if (!f.email.trim()) return toast(tr("enterEmail"));
     setAdding(true);
     // للمحاسب: نكتب صلاحيات الرؤية صراحةً حسب التوجل (مش نسيبها default true) عشان مايشوفش غير المسموح
-    const VIEW_COLS = ["can_view_dashboard","can_view_customers","can_view_tasks","can_view_batches","can_view_refunds","can_view_archive","can_view_pipeline","can_view_support","can_view_activations","can_view_universities","can_view_reports","can_view_education","can_view_feedback","can_view_receipts"];
+    const VIEW_COLS = ["can_view_dashboard","can_view_customers","can_view_tasks","can_view_batches","can_view_refunds","can_view_archive","can_view_pipeline","can_view_support","can_view_activations","can_view_universities","can_view_reports","can_view_education","can_view_feedback","can_view_receipts","can_view_prices"];
     const permsToSend: Record<string, boolean> = { ...perms };
     if (f.team === "accountant") { for (const c of VIEW_COLS) permsToSend[c] = !!perms[c]; }
     try {
