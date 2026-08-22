@@ -21,6 +21,9 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
   const [q, setQ] = useState("");
   const [editSvc, setEditSvc] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const toggleSel = (id: string) => setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const clearSel = () => setSelected(new Set());
   // نافذة النظام (بدل prompt/confirm بتوع المتصفح)
   const [modal, setModal] = useState<null | { title: string; input?: boolean; value?: string; ph?: string; warn?: string; okLabel?: string; danger?: boolean; run: (v: string) => Promise<void> }>(null);
   const [mval, setMval] = useState("");
@@ -83,6 +86,13 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
           {isAdmin && <span className="sp-adminpill">{t("adminWord")}</span>}
         </div>
       </div>
+      {isAdmin && selected.size > 0 && (
+        <div className="sp-selbar">
+          <span>✓ {t("selectedCount").replace("{n}", String(selected.size))}</span>
+          <span className="sp-selhint">{t("bulkEditHint")}</span>
+          <button onClick={clearSel} className="sp-btn ghost" style={{ height: 32, marginInlineStart: "auto" }}>{t("clearSelection")}</button>
+        </div>
+      )}
       <div className="sp-search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("searchServicePh")} />
@@ -112,7 +122,8 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
               return (
                 <div key={s.id} className="sp-card" style={editSvc === s.id ? { gridColumn: "1 / -1" } : undefined}>
                   <div className="sp-chead">
-                    <div>
+                    {isAdmin && <input type="checkbox" className="sp-chk" checked={selected.has(s.id)} onChange={() => toggleSel(s.id)} title={t("selectService")} />}
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="sp-nm">{s.name}</div>
                       {s.description && <div className="sp-desc">{s.description}</div>}
                       <div className="sp-meta">
@@ -166,7 +177,7 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
                     </table>
                   )}
 
-                  {isAdmin && editSvc === s.id && <ServiceEditor s={s} onClose={() => setEditSvc(null)} onDelete={() => delService(s)} />}
+                  {isAdmin && editSvc === s.id && <ServiceEditor s={s} selectedIds={Array.from(selected)} onClose={() => setEditSvc(null)} onDelete={() => delService(s)} onBulkDone={clearSel} />}
                 </div>
               );
             })}
@@ -211,10 +222,11 @@ function Pill({ v, suffix }: { v: string | null; suffix?: string }) {
 }
 
 // ===== محرّر الخدمة (أدمن) — حساب حي =====
-function ServiceEditor({ s, onClose, onDelete }: { s: Service; onClose: () => void; onDelete: () => void }) {
+function ServiceEditor({ s, selectedIds = [], onClose, onDelete, onBulkDone }: { s: Service; selectedIds?: string[]; onClose: () => void; onDelete: () => void; onBulkDone?: () => void }) {
   const t = useT();
   const router = useRouter();
   const supabase = createClient();
+  const bulkOthers = selectedIds.filter((id) => id !== s.id);
   const [f, setF] = useState({
     name: s.name || "", code: s.code || "", description: s.description || "", schedule: s.schedule || "", batch_code: s.batch_code || "",
     old: (s.tiers || []).includes("old"), recent: (s.tiers || []).includes("recent"), intl: (s.tiers || []).includes("intl"),
@@ -231,18 +243,27 @@ function ServiceEditor({ s, onClose, onDelete }: { s: Service; onClose: () => vo
     const tiers: string[] = [];
     if (f.single) tiers.push("single");
     else { if (f.old) tiers.push("old"); if (f.recent) tiers.push("recent"); if (f.intl) tiers.push("intl"); }
-    await supabase.from("services").update({
-      name: f.name.trim(), code: f.code.trim() || null, description: f.description.trim() || null,
-      schedule: f.schedule.trim() || null, batch_code: f.batch_code.trim() || null,
+    // حقول الأسعار (تتطبّق على المحدّدين كمان)
+    const priceFields = {
       tiers, base_old: num(f.base_old), base_recent: num(f.base_recent), base_intl: num(f.base_intl), base_single: num(f.base_single),
       normal_pct: num(f.normal_pct), affiliate_pct: num(f.affiliate_pct),
+    };
+    // الخدمة الحالية: كل الحقول (بما فيها الاسم/الكود)
+    await supabase.from("services").update({
+      name: f.name.trim(), code: f.code.trim() || null, description: f.description.trim() || null,
+      schedule: f.schedule.trim() || null, batch_code: f.batch_code.trim() || null, ...priceFields,
     }).eq("id", s.id);
+    // المحدّدين الآخرين: الأسعار/النسب/الشرائح فقط (مش الاسم/الكود)
+    if (bulkOthers.length) { await supabase.from("services").update(priceFields).in("id", bulkOthers); onBulkDone?.(); }
     setSaving(false); onClose(); router.refresh();
   }
 
   return (
     <div className="sp-editbox">
       <div className="sp-eb-lab">✏️ {t("editServiceHint")}</div>
+      {bulkOthers.length > 0 && (
+        <div className="sp-bulkbanner">⚡ {t("bulkApplyNote").replace("{n}", String(bulkOthers.length))}</div>
+      )}
       <div className="sp-eb-grid">
         <Fld label={t("serviceNameLabel")}><input className="sp-inp" style={{ fontFamily: "var(--fa)" }} value={f.name} onChange={(e) => set("name", e.target.value)} /></Fld>
         <Fld label={t("codeLabel")}><input className="sp-inp" value={f.code} onChange={(e) => set("code", e.target.value)} /></Fld>
@@ -304,7 +325,7 @@ const spCss = `
 .sp-gtools button{border:none;background:none;color:var(--muted);cursor:pointer;width:28px;height:28px;border-radius:7px;display:grid;place-items:center}
 .sp-gtools button:hover{background:var(--surface);color:var(--brand)}
 .sp-gtools svg{width:14px;height:14px}
-.sp-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r,16px);box-shadow:var(--sh);padding:16px 18px;margin-bottom:12px}
+.sp-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r,16px);box-shadow:var(--sh);padding:16px 18px;margin-bottom:0;min-width:0;overflow:hidden}
 .sp-chead{display:flex;align-items:flex-start;gap:12px}
 .sp-nm{font-weight:800;color:var(--ink);font-size:14.5px}
 .sp-desc{font-size:12px;color:var(--muted);margin-top:3px}
@@ -316,7 +337,10 @@ const spCss = `
 .sp-edit{margin-inline-start:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:6px 11px;cursor:pointer;height:32px}
 .sp-edit svg{width:13px;height:13px}
 .sp-edit:hover{border-color:var(--brand);color:var(--brand)}
-.sp-ptbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:13px}
+.sp-ptbl{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12.5px;margin-top:13px}
+.sp-ptbl th:first-child,.sp-ptbl td:first-child{width:40%}
+.sp-ptbl th:not(:first-child),.sp-ptbl td:not(:first-child){width:20%}
+.sp-ptbl .tier{white-space:normal;line-height:1.35}
 .sp-ptbl th{text-align:start;font-weight:700;color:var(--muted);font-size:10.5px;padding:8px 6px;border-bottom:1px solid var(--line)}
 .sp-ptbl th.c,.sp-ptbl td.c{text-align:center}
 .sp-ptbl td{padding:9px 6px;border-bottom:1px solid var(--line)}
@@ -332,6 +356,11 @@ const spCss = `
 .sp-pill{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:6px 12px;font-weight:700;color:var(--ink)}
 .sp-pill.n{font-family:var(--fd)}
 .sp-lbl{color:var(--muted);font-size:11.5px}
+.sp-chk{width:18px;height:18px;accent-color:var(--brand);cursor:pointer;flex-shrink:0;margin-top:2px}
+.sp-selbar{display:flex;align-items:center;gap:12px;background:var(--brand-soft);border:1px solid var(--brand);border-radius:12px;padding:10px 14px;margin-bottom:14px;flex-wrap:wrap}
+.sp-selbar>span:first-child{font-weight:800;color:var(--brand-d);font-size:13px}
+.sp-selhint{font-size:11.5px;color:var(--brand-d);opacity:.85}
+.sp-bulkbanner{background:var(--blue-soft);color:var(--blue);border-radius:9px;padding:8px 12px;font-size:11.5px;font-weight:700;margin-bottom:11px}
 .sp-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start;margin-bottom:12px}
 @media(max-width:640px){.sp-cards{grid-template-columns:1fr}}
 .sp-ov{position:fixed;inset:0;background:rgba(21,34,59,.45);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
