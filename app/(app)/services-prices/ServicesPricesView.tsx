@@ -24,6 +24,11 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const toggleSel = (id: string) => setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const clearSel = () => setSelected(new Set());
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggleCollapse = (id: string) => setCollapsed((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const [filter, setFilter] = useState<"all" | "priced" | "empty">("all");
+  const [compact, setCompact] = useState(false);
+  const isPriced = (s: Service) => [s.base_old, s.base_recent, s.base_intl, s.base_single].some((v) => v != null && Number(v) > 0);
   // نافذة النظام (بدل prompt/confirm بتوع المتصفح)
   const [modal, setModal] = useState<null | { title: string; input?: boolean; value?: string; ph?: string; warn?: string; okLabel?: string; danger?: boolean; run: (v: string) => Promise<void> }>(null);
   const [mval, setMval] = useState("");
@@ -44,13 +49,17 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
   const baseOf = (s: Service, k: string) => k === "old" ? s.base_old : k === "recent" ? s.base_recent : s.base_intl;
 
   const ql = q.trim().toLowerCase();
-  const matches = (s: Service) => !ql || (s.name || "").toLowerCase().includes(ql) || (s.code || "").toLowerCase().includes(ql);
+  const matches = (s: Service) => {
+    if (filter === "priced" && !isPriced(s)) return false;
+    if (filter === "empty" && isPriced(s)) return false;
+    return !ql || (s.name || "").toLowerCase().includes(ql) || (s.code || "").toLowerCase().includes(ql);
+  };
 
   const byGroup = useMemo(() => {
     const m = new Map<string, Service[]>();
     for (const s of services) { if (!matches(s)) continue; const a = m.get(s.group_id) || []; a.push(s); m.set(s.group_id, a); }
     return m;
-  }, [services, ql]);
+  }, [services, ql, filter]);
 
   // ===== إجراءات الأدمن (نافذة النظام) =====
   function addGroup() {
@@ -68,6 +77,16 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
   }
   function delService(s: Service) {
     openModal({ title: t("deleteWord"), warn: t("serviceDeleteConfirm"), okLabel: t("deleteWord"), danger: true, run: async () => { await supabase.from("services").delete().eq("id", s.id); setEditSvc(null); } });
+  }
+  async function dupService(s: Service) {
+    setBusy(true);
+    const { id, created_at, updated_at, ...rest } = s as any;
+    await supabase.from("services").insert({ ...rest, name: (s.name || "") + " " + t("copySuffix"), code: s.code ? s.code + "-COPY" : null, sort: (byGroup.get(s.group_id) || []).length });
+    setBusy(false); router.refresh();
+  }
+  function selectGroup(gid: string) {
+    const ids = (byGroup.get(gid) || []).map((s) => s.id);
+    setSelected((p) => { const n = new Set(p); const allSel = ids.every((i) => n.has(i)); ids.forEach((i) => allSel ? n.delete(i) : n.add(i)); return n; });
   }
 
   return (
@@ -97,25 +116,45 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("searchServicePh")} />
       </div>
+      <div className="sp-toolbar">
+        <div className="sp-segs">
+          <button className={filter === "all" ? "on" : ""} onClick={() => setFilter("all")}>{t("filterAll")}</button>
+          <button className={filter === "priced" ? "on" : ""} onClick={() => setFilter("priced")}>{t("filterPriced")}</button>
+          <button className={filter === "empty" ? "on" : ""} onClick={() => setFilter("empty")}>{t("filterEmpty")}</button>
+        </div>
+        <button className={"sp-compact" + (compact ? " on" : "")} onClick={() => setCompact((v) => !v)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M3 6h18M3 12h18M3 18h18" /></svg>{t("compactView")}
+        </button>
+      </div>
 
       {groups.map((g) => {
         const list = byGroup.get(g.id) || [];
         if (ql && list.length === 0) return null;
+        const pricedN = list.filter(isPriced).length;
+        const emptyN = list.length - pricedN;
+        const isCol = collapsed.has(g.id);
+        const groupIds = list.map((s) => s.id);
+        const allSel = groupIds.length > 0 && groupIds.every((i) => selected.has(i));
         return (
           <div key={g.id}>
             <div className="sp-grp">
-              <span className="sp-tick" />
+              <button className="sp-coltoggle" onClick={() => toggleCollapse(g.id)} title={isCol ? t("expand") : t("collapse")}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} style={{ transform: isCol ? "rotate(-90deg)" : "none", transition: "transform .15s" }}><path d="M6 9l6 6 6-6" /></svg>
+              </button>
               <h2>{g.name}</h2>
               <span className="sp-cnt">{list.length}</span>
+              {emptyN > 0 && <span className="sp-cnt empty" title={t("filterEmpty")}>{emptyN} {t("emptyWord")}</span>}
               {isAdmin && (
                 <div className="sp-gtools">
+                  {list.length > 0 && <button title={t("selectGroup")} onClick={() => selectGroup(g.id)} className={allSel ? "act" : ""}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg></button>}
                   <button title={t("editGroup")} onClick={() => renameGroup(g)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg></button>
                   <button title={t("deleteGroup")} onClick={() => delGroup(g)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg></button>
                 </div>
               )}
             </div>
 
-            <div className="sp-cards">
+            {!isCol && (<>
+            <div className={"sp-cards" + (compact ? " compact" : "")}>
             {list.map((s) => {
               const isSingle = (s.tiers || []).includes("single") || (!s.tiers?.some((x) => TIER_KEYS.includes(x as any)));
               const activeTiers = (s.tiers || []).filter((x) => TIER_KEYS.includes(x as any));
@@ -124,7 +163,7 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
                   <div className="sp-chead">
                     {isAdmin && <input type="checkbox" className="sp-chk" checked={selected.has(s.id)} onChange={() => toggleSel(s.id)} title={t("selectService")} />}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="sp-nm">{s.name}</div>
+                      <div className="sp-nm">{s.name}{!isPriced(s) && <span className="sp-emptybadge">{t("notPricedYet")}</span>}</div>
                       {s.description && <div className="sp-desc">{s.description}</div>}
                       <div className="sp-meta">
                         {s.code && <span className="sp-mchip code">{s.code}</span>}
@@ -137,9 +176,14 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
                       </div>
                     </div>
                     {isAdmin && (
-                      <button className="sp-edit" onClick={() => setEditSvc(editSvc === s.id ? null : s.id)}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>{t("edit")}
-                      </button>
+                      <div className="sp-cardtools">
+                        <button className="sp-edit" onClick={() => setEditSvc(editSvc === s.id ? null : s.id)}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>{t("edit")}
+                        </button>
+                        <button className="sp-iconbtn" title={t("duplicateService")} onClick={() => dupService(s)} disabled={busy}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -164,7 +208,7 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
                         const b = baseOf(s, k); const dollar = k === "intl";
                         const nb = fmt(b, dollar), nn = fmt(disc(b, s.normal_pct), dollar), na = fmt(disc(b, s.affiliate_pct), dollar);
                         return (
-                          <div className="sp-prow" key={k}>
+                          <div className={"sp-prow" + (k === "intl" ? " intl" : "")} key={k}>
                             <span className="tier">{tierLabel(k)}</span>
                             <span className={"c base n" + (nb ? "" : " empty")}>{nb ?? "—"}</span>
                             <span className={"c norm n" + (nn ? "" : " empty")}>{nn ?? "—"}</span>
@@ -187,6 +231,7 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
                 {t("addServiceIn").replace("{g}", g.name)}
               </button>
             )}
+            </>)}
           </div>
         );
       })}
@@ -312,7 +357,7 @@ const spCss = `
 .sp-addgroup{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:var(--surface);background:var(--ink);border:none;border-radius:10px;padding:9px 14px;cursor:pointer}
 .sp-addgroup svg{width:14px;height:14px}
 .sp-adminpill{font-size:11px;font-weight:800;color:var(--blue);background:var(--blue-soft);border-radius:7px;padding:5px 10px}
-.sp-search{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 14px;height:44px;box-shadow:var(--sh);margin-bottom:18px}
+.sp-search{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 14px;height:44px;box-shadow:var(--sh);margin-bottom:12px}
 .sp-search input{flex:1;border:none;background:none;font-family:inherit;font-size:14px;outline:none;color:var(--text)}
 .sp-search svg{width:17px;height:17px;color:var(--muted)}
 .sp-grp{display:flex;align-items:center;gap:11px;margin:26px 0 14px;background:linear-gradient(90deg,var(--brand-soft),transparent);border-inline-start:4px solid var(--brand);border-radius:10px;padding:11px 15px}
@@ -348,6 +393,37 @@ const spCss = `
 .sp-prow .n{font-family:var(--fd)}
 .sp-prow .empty{color:var(--muted);opacity:.6}
 .sp-disc{font-size:9px;color:var(--muted);display:block;font-weight:600;font-style:normal}
+/* شريط الفلتر والعرض المضغوط */
+.sp-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.sp-segs{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px;box-shadow:var(--sh)}
+.sp-segs button{border:none;background:none;font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);padding:6px 14px;border-radius:8px;cursor:pointer}
+.sp-segs button.on{background:var(--ink);color:var(--surface)}
+.sp-compact{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:7px 13px;font-family:inherit;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer}
+.sp-compact svg{width:14px;height:14px}
+.sp-compact.on{border-color:var(--brand);color:var(--brand-d);background:var(--brand-soft)}
+/* طي الجروب */
+.sp-coltoggle{border:none;background:none;color:var(--brand-d);cursor:pointer;width:26px;height:26px;display:grid;place-items:center;border-radius:7px}
+.sp-coltoggle svg{width:16px;height:16px}
+.sp-tick{display:none}
+.sp-cnt.empty{background:var(--amber-soft,#FBF1DC);color:var(--amber);border-color:transparent;font-family:var(--fa)}
+.sp-gtools button.act{color:var(--green);background:var(--green-soft)}
+/* شارة الخدمة الفاضية */
+.sp-emptybadge{display:inline-block;margin-inline-start:8px;font-size:9.5px;font-weight:800;color:var(--amber);background:var(--amber-soft,#FBF1DC);border-radius:20px;padding:2px 8px;vertical-align:middle}
+/* أدوات الكارت (تعديل + نسخ) */
+.sp-cardtools{display:flex;gap:6px;align-items:flex-start;flex-shrink:0}
+.sp-iconbtn{border:1px solid var(--line);background:var(--bg);border-radius:9px;width:32px;height:32px;display:grid;place-items:center;color:var(--muted);cursor:pointer}
+.sp-iconbtn svg{width:14px;height:14px}
+.sp-iconbtn:hover{border-color:var(--brand);color:var(--brand)}
+/* تمييز صف خارج مصر + تدرّج الأرقام */
+.sp-prow.intl{background:var(--blue-soft);border-radius:8px;margin:2px -6px;padding-inline:10px}
+.sp-prow .base{font-size:14px}
+.sp-prow.sp-phead .base,.sp-prow.sp-phead .norm,.sp-prow.sp-phead .aff{font-size:10.5px}
+.sp-prow .norm,.sp-prow .aff{font-size:12px}
+/* العرض المضغوط */
+.sp-cards.compact .sp-ptbl,.sp-cards.compact .sp-single{margin-top:9px}
+.sp-cards.compact .sp-card{padding:11px 13px}
+.sp-cards.compact .sp-prow{padding:5px 4px}
+.sp-cards.compact .sp-desc,.sp-cards.compact .sp-phead{display:none}
 .sp-single{margin-top:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px}
 .sp-pill{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:6px 12px;font-weight:700;color:var(--ink)}
 .sp-pill.n{font-family:var(--fd)}
