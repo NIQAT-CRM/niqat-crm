@@ -153,28 +153,26 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
                       <Pill v={fmt(disc(s.base_single, s.affiliate_pct))} suffix={t("egpShort")} />
                     </div>
                   ) : (
-                    <table className="sp-ptbl">
-                      <thead><tr>
-                        <th>{t("tierWord")}</th>
-                        <th className="c">{t("baseWord")}</th>
-                        <th className="c">{t("normalWord")} <span className="sp-disc">-{s.normal_pct ?? 0}%</span></th>
-                        <th className="c">{t("affiliateWord")} <span className="sp-disc">-{s.affiliate_pct ?? 0}%</span></th>
-                      </tr></thead>
-                      <tbody>
-                        {activeTiers.map((k) => {
-                          const b = baseOf(s, k); const dollar = k === "intl";
-                          const nb = fmt(b, dollar), nn = fmt(disc(b, s.normal_pct), dollar), na = fmt(disc(b, s.affiliate_pct), dollar);
-                          return (
-                            <tr key={k}>
-                              <td className="tier">{tierLabel(k)}</td>
-                              <td className={"c base n" + (nb ? "" : " empty")}>{nb ?? "—"}</td>
-                              <td className={"c norm n" + (nn ? "" : " empty")}>{nn ?? "—"}</td>
-                              <td className={"c aff n" + (na ? "" : " empty")}>{na ?? "—"}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    <div className="sp-ptbl">
+                      <div className="sp-prow sp-phead">
+                        <span>{t("tierWord")}</span>
+                        <span className="c">{t("baseWord")}</span>
+                        <span className="c">{t("normalWord")}<i className="sp-disc">-{s.normal_pct ?? 0}%</i></span>
+                        <span className="c">{t("affiliateWord")}<i className="sp-disc">-{s.affiliate_pct ?? 0}%</i></span>
+                      </div>
+                      {activeTiers.map((k) => {
+                        const b = baseOf(s, k); const dollar = k === "intl";
+                        const nb = fmt(b, dollar), nn = fmt(disc(b, s.normal_pct), dollar), na = fmt(disc(b, s.affiliate_pct), dollar);
+                        return (
+                          <div className="sp-prow" key={k}>
+                            <span className="tier">{tierLabel(k)}</span>
+                            <span className={"c base n" + (nb ? "" : " empty")}>{nb ?? "—"}</span>
+                            <span className={"c norm n" + (nn ? "" : " empty")}>{nn ?? "—"}</span>
+                            <span className={"c aff n" + (na ? "" : " empty")}>{na ?? "—"}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
 
                   {isAdmin && editSvc === s.id && <ServiceEditor s={s} selectedIds={Array.from(selected)} onClose={() => setEditSvc(null)} onDelete={() => delService(s)} onBulkDone={clearSel} />}
@@ -337,33 +335,31 @@ const spCss = `
 .sp-edit{margin-inline-start:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:6px 11px;cursor:pointer;height:32px}
 .sp-edit svg{width:13px;height:13px}
 .sp-edit:hover{border-color:var(--brand);color:var(--brand)}
-.sp-ptbl{width:100%;max-width:100%;table-layout:fixed;border-collapse:collapse;font-size:12.5px;margin-top:13px}
-.sp-ptbl th:first-child,.sp-ptbl td:first-child{width:37%}
-.sp-ptbl th:not(:first-child),.sp-ptbl td:not(:first-child){width:21%}
-.sp-ptbl th,.sp-ptbl td{overflow:hidden;text-overflow:ellipsis}
-.sp-ptbl .tier{white-space:normal;line-height:1.35}
-.sp-ptbl th{text-align:start;font-weight:700;color:var(--muted);font-size:10.5px;padding:8px 6px;border-bottom:1px solid var(--line)}
-.sp-ptbl th.c,.sp-ptbl td.c{text-align:center}
-.sp-ptbl td{padding:9px 6px;border-bottom:1px solid var(--line)}
-.sp-ptbl tr:last-child td{border:none}
-.sp-ptbl .tier{font-weight:700;color:var(--ink);font-size:12px}
-.sp-ptbl .base{font-weight:700;color:var(--ink)}
-.sp-ptbl .norm{color:var(--green);font-weight:600}
-.sp-ptbl .aff{color:var(--blue);font-weight:600}
-.sp-ptbl .n{font-family:var(--fd)}
-.sp-disc{font-size:9.5px;color:var(--muted);display:block;font-weight:600}
-.sp-ptbl .empty,.sp-pill.empty{color:var(--muted);opacity:.6}
+.sp-ptbl{margin-top:13px;font-size:12.5px}
+.sp-prow{display:grid;grid-template-columns:1.7fr 1fr 1fr 1fr;gap:6px;align-items:center;padding:9px 4px;border-bottom:1px solid var(--line);min-width:0}
+.sp-prow:last-child{border-bottom:none}
+.sp-phead span{font-size:10.5px;font-weight:700;color:var(--muted)}
+.sp-prow .c{text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-prow>span:first-child{text-align:start}
+.sp-prow .tier{font-weight:700;color:var(--ink);font-size:12px;line-height:1.3}
+.sp-prow .base{font-weight:700;color:var(--ink)}
+.sp-prow .norm{color:var(--green);font-weight:600}
+.sp-prow .aff{color:var(--blue);font-weight:600}
+.sp-prow .n{font-family:var(--fd)}
+.sp-prow .empty{color:var(--muted);opacity:.6}
+.sp-disc{font-size:9px;color:var(--muted);display:block;font-weight:600;font-style:normal}
 .sp-single{margin-top:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px}
 .sp-pill{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:6px 12px;font-weight:700;color:var(--ink)}
 .sp-pill.n{font-family:var(--fd)}
+.sp-pill.empty{color:var(--muted);opacity:.6}
 .sp-lbl{color:var(--muted);font-size:11.5px}
 .sp-chk{width:18px;height:18px;accent-color:var(--brand);cursor:pointer;flex-shrink:0;margin-top:2px}
 .sp-selbar{display:flex;align-items:center;gap:12px;background:var(--brand-soft);border:1px solid var(--brand);border-radius:12px;padding:10px 14px;margin-bottom:14px;flex-wrap:wrap}
 .sp-selbar>span:first-child{font-weight:800;color:var(--brand-d);font-size:13px}
 .sp-selhint{font-size:11.5px;color:var(--brand-d);opacity:.85}
 .sp-bulkbanner{background:var(--blue-soft);color:var(--blue);border-radius:9px;padding:8px 12px;font-size:11.5px;font-weight:700;margin-bottom:11px}
-.sp-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(460px,1fr));gap:14px;align-items:start;margin-bottom:14px}
-@media(max-width:520px){.sp-cards{grid-template-columns:1fr}}
+.sp-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start;margin-bottom:14px}
+@media(max-width:720px){.sp-cards{grid-template-columns:1fr}}
 .sp-ov{position:fixed;inset:0;background:rgba(21,34,59,.45);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
 .sp-modal{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.28);width:100%;max-width:420px;padding:20px}
 .sp-modal h3{font-size:16px;font-weight:800;color:var(--ink);margin-bottom:6px}
