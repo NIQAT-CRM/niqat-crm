@@ -159,7 +159,7 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
               const isSingle = (s.tiers || []).includes("single") || (!s.tiers?.some((x) => TIER_KEYS.includes(x as any)));
               const activeTiers = (s.tiers || []).filter((x) => TIER_KEYS.includes(x as any));
               return (
-                <div key={s.id} className="sp-card" style={editSvc === s.id ? { gridColumn: "1 / -1" } : undefined}>
+                <div key={s.id} className="sp-card">
                   <div className="sp-chead">
                     {isAdmin && <input type="checkbox" className="sp-chk" checked={selected.has(s.id)} onChange={() => toggleSel(s.id)} title={t("selectService")} />}
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -218,8 +218,6 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
                       })}
                     </div>
                   )}
-
-                  {isAdmin && editSvc === s.id && <ServiceEditor s={s} selectedIds={Array.from(selected)} onClose={() => setEditSvc(null)} onDelete={() => delService(s)} onBulkDone={clearSel} />}
                 </div>
               );
             })}
@@ -236,6 +234,22 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
         );
       })}
       <div className="sp-footnote">{t("spFootnote")}</div>
+
+      {isAdmin && editSvc && (() => {
+        const svc = services.find((x) => x.id === editSvc);
+        if (!svc) return null;
+        return (
+          <div className="sp-ov" onClick={() => setEditSvc(null)}>
+            <div className="sp-modal sp-editmodal" onClick={(e) => e.stopPropagation()}>
+              <div className="sp-modal-head">
+                <h3>{svc.name}</h3>
+                <button className="sp-x" onClick={() => setEditSvc(null)}>✕</button>
+              </div>
+              <ServiceEditor s={svc} selectedIds={Array.from(selected)} onClose={() => setEditSvc(null)} onDelete={() => delService(svc)} onBulkDone={clearSel} />
+            </div>
+          </div>
+        );
+      })()}
 
       {modal && (
         <div className="sp-ov" onClick={() => !busy && setModal(null)}>
@@ -368,7 +382,7 @@ const spCss = `
 .sp-gtools button{border:none;background:none;color:var(--muted);cursor:pointer;width:28px;height:28px;border-radius:7px;display:grid;place-items:center}
 .sp-gtools button:hover{background:var(--surface);color:var(--brand)}
 .sp-gtools svg{width:14px;height:14px}
-.sp-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r,16px);box-shadow:var(--sh);padding:16px 18px;margin-bottom:0;min-width:0}
+.sp-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r,16px);box-shadow:var(--sh);padding:14px 16px;margin-bottom:0;min-width:0}
 .sp-chead{display:flex;align-items:flex-start;gap:12px}
 .sp-nm{font-weight:800;color:var(--ink);font-size:14.5px}
 .sp-desc{font-size:12px;color:var(--muted);margin-top:3px}
@@ -380,8 +394,8 @@ const spCss = `
 .sp-edit{margin-inline-start:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:6px 11px;cursor:pointer;height:32px}
 .sp-edit svg{width:13px;height:13px}
 .sp-edit:hover{border-color:var(--brand);color:var(--brand)}
-.sp-ptbl{margin-top:13px;font-size:12.5px}
-.sp-prow{display:grid;grid-template-columns:1.7fr 1fr 1fr 1fr;gap:6px;align-items:center;padding:9px 4px;border-bottom:1px solid var(--line);min-width:0}
+.sp-ptbl{margin-top:11px;font-size:12.5px}
+.sp-prow{display:grid;grid-template-columns:1.7fr 1fr 1fr 1fr;gap:6px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--line);min-width:0}
 .sp-prow:last-child{border-bottom:none}
 .sp-phead span{font-size:10.5px;font-weight:700;color:var(--muted)}
 .sp-prow .c{text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -415,7 +429,15 @@ const spCss = `
 .sp-iconbtn svg{width:14px;height:14px}
 .sp-iconbtn:hover{border-color:var(--brand);color:var(--brand)}
 /* تمييز صف خارج مصر + تدرّج الأرقام */
-.sp-prow.intl{background:var(--blue-soft);border-radius:8px;margin:2px -6px;padding-inline:10px}
+.sp-prow.intl{background:var(--blue-soft);border-radius:8px;margin:1px -6px;padding-inline:10px}
+/* نافذة تعديل الخدمة */
+.sp-editmodal{max-width:560px;max-height:88vh;overflow-y:auto;padding:0}
+.sp-modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:2;border-radius:16px 16px 0 0}
+.sp-modal-head h3{font-size:16px;font-weight:800;color:var(--ink);margin:0}
+.sp-x{border:none;background:var(--bg);width:30px;height:30px;border-radius:8px;cursor:pointer;color:var(--muted);font-size:14px}
+.sp-x:hover{background:var(--red);color:#fff}
+.sp-editmodal .sp-editbox{margin-top:0;border-top:none;padding:18px 20px}
+.sp-editmodal .sp-btnrow{position:sticky;bottom:0;background:var(--surface);padding-top:12px;margin-top:6px;border-top:1px solid var(--line)}
 .sp-prow .base{font-size:14px}
 .sp-prow.sp-phead .base,.sp-prow.sp-phead .norm,.sp-prow.sp-phead .aff{font-size:10.5px}
 .sp-prow .norm,.sp-prow .aff{font-size:12px}
