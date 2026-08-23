@@ -187,14 +187,17 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
                     )}
                   </div>
 
-                  {isSingle ? (
+                  {!isPriced(s) ? (
+                    <div className="sp-emptystate">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16h.01" /></svg>
+                      <span>{t("noPricesYet")}</span>
+                      {isAdmin && <button onClick={() => setEditSvc(s.id)}>{t("addPrices")}</button>}
+                    </div>
+                  ) : isSingle ? (
                     <div className="sp-single">
-                      <span className="sp-lbl">{t("singlePrice")}:</span>
-                      <Pill v={fmt(s.base_single)} suffix={t("egpShort")} />
-                      <span className="sp-lbl">{t("normalWord")}:</span>
-                      <Pill v={fmt(disc(s.base_single, s.normal_pct))} suffix={t("egpShort")} />
-                      <span className="sp-lbl">{t("affiliateWord")}:</span>
-                      <Pill v={fmt(disc(s.base_single, s.affiliate_pct))} suffix={t("egpShort")} />
+                      <div className="sp-srow"><span className="sp-slbl">{t("singlePrice")}</span><b className="n">{fmt(s.base_single) ?? "—"} {t("egpShort")}</b></div>
+                      <div className="sp-srow"><span className="sp-slbl">{t("normalWord")} <i>-{s.normal_pct ?? 0}%</i></span><b className="n norm">{fmt(disc(s.base_single, s.normal_pct)) ?? "—"}</b></div>
+                      <div className="sp-srow"><span className="sp-slbl">{t("affiliateWord")} <i>-{s.affiliate_pct ?? 0}%</i></span><b className="n aff">{fmt(disc(s.base_single, s.affiliate_pct)) ?? "—"}</b></div>
                     </div>
                   ) : (
                     <div className="sp-ptbl">
@@ -209,7 +212,7 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
                         const nb = fmt(b, dollar), nn = fmt(disc(b, s.normal_pct), dollar), na = fmt(disc(b, s.affiliate_pct), dollar);
                         return (
                           <div className={"sp-prow" + (k === "intl" ? " intl" : "")} key={k}>
-                            <span className="tier">{tierLabel(k)}</span>
+                            <span className="tier">{k === "intl" ? "🌍" : "🇪🇬"} {tierLabel(k)}</span>
                             <span className={"c base n" + (nb ? "" : " empty")}>{nb ?? "—"}</span>
                             <span className={"c norm n" + (nn ? "" : " empty")}>{nn ?? "—"}</span>
                             <span className={"c aff n" + (na ? "" : " empty")}>{na ?? "—"}</span>
@@ -394,20 +397,34 @@ const spCss = `
 .sp-edit{margin-inline-start:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:6px 11px;cursor:pointer;height:32px}
 .sp-edit svg{width:13px;height:13px}
 .sp-edit:hover{border-color:var(--brand);color:var(--brand)}
-.sp-ptbl{margin-top:10px;font-size:12px;display:block}
-.sp-prow{display:grid;grid-template-columns:1.7fr 1fr 1fr 1fr;gap:6px;align-items:center;min-height:32px;padding:3px 0;border-bottom:1px solid var(--line);min-width:0}
+.sp-ptbl{margin-top:11px;font-size:12px;display:flex;flex-direction:column}
+.sp-prow{display:grid;grid-template-columns:1.8fr 1fr 1fr 1fr;gap:6px;align-items:center;height:33px;flex:0 0 auto;border-bottom:1px solid var(--line);min-width:0}
 .sp-prow:last-child{border-bottom:none}
-.sp-phead{min-height:22px;padding:2px 0}
-.sp-phead span{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.sp-phead{height:26px;border-bottom:1.5px solid var(--line)}
+.sp-phead span{font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .sp-prow .c{text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sp-prow>span:first-child{text-align:start}
-.sp-prow .tier{font-weight:700;color:var(--ink);font-size:11.5px;line-height:1.2}
+.sp-prow .tier{font-weight:700;color:var(--ink);font-size:11.5px}
 .sp-prow .base{font-weight:800;color:var(--ink);font-size:13px}
-.sp-prow .norm{color:var(--green);font-weight:600;font-size:11.5px}
-.sp-prow .aff{color:var(--blue);font-weight:600;font-size:11.5px}
+.sp-prow .norm{color:var(--green);font-weight:700;font-size:11.5px}
+.sp-prow .aff{color:var(--blue);font-weight:700;font-size:11.5px}
 .sp-prow .n{font-family:var(--fd)}
-.sp-prow .empty{color:var(--muted);opacity:.45;font-weight:500}
+.sp-prow .empty{color:var(--muted);opacity:.4;font-weight:500}
 .sp-disc{font-size:8.5px;color:var(--muted);display:block;font-weight:600;font-style:normal}
+.sp-prow.intl{background:var(--blue-soft);border-radius:7px;height:35px;padding-inline:9px;margin-inline:-6px}
+/* حالة الخدمة الفاضية — مصغّرة */
+.sp-emptystate{display:flex;align-items:center;gap:9px;margin-top:11px;padding:11px 13px;background:var(--bg);border:1px dashed var(--line);border-radius:10px;font-size:12px;color:var(--muted);font-weight:600}
+.sp-emptystate svg{width:16px;height:16px;flex-shrink:0;color:var(--amber)}
+.sp-emptystate button{margin-inline-start:auto;border:none;background:var(--brand);color:#fff;font-family:inherit;font-weight:700;font-size:11.5px;padding:5px 12px;border-radius:8px;cursor:pointer;flex-shrink:0}
+/* السعر الواحد — صفوف مدمجة */
+.sp-single{margin-top:11px;display:flex;flex-direction:column}
+.sp-srow{display:flex;align-items:center;justify-content:space-between;height:33px;border-bottom:1px solid var(--line)}
+.sp-srow:last-child{border-bottom:none}
+.sp-slbl{font-size:11.5px;color:var(--muted);font-weight:600}
+.sp-slbl i{font-style:normal;font-size:9px;opacity:.8}
+.sp-srow b{font-family:var(--fd);font-weight:800;color:var(--ink);font-size:13px}
+.sp-srow b.norm{color:var(--green);font-size:12px}
+.sp-srow b.aff{color:var(--blue);font-size:12px}
 /* شريط الفلتر والعرض المضغوط */
 .sp-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;flex-wrap:wrap}
 .sp-segs{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px;box-shadow:var(--sh)}
@@ -430,7 +447,6 @@ const spCss = `
 .sp-iconbtn svg{width:14px;height:14px}
 .sp-iconbtn:hover{border-color:var(--brand);color:var(--brand)}
 /* تمييز صف خارج مصر + تدرّج الأرقام */
-.sp-prow.intl{background:var(--blue-soft);border-radius:6px;min-height:34px;padding-inline:9px;margin-inline:-6px}
 /* نافذة تعديل الخدمة */
 .sp-editmodal{max-width:560px;max-height:88vh;overflow-y:auto;padding:0}
 .sp-modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:2;border-radius:16px 16px 0 0}
@@ -447,11 +463,6 @@ const spCss = `
 .sp-cards.compact .sp-card{padding:11px 13px}
 .sp-cards.compact .sp-prow{padding:5px 4px}
 .sp-cards.compact .sp-desc,.sp-cards.compact .sp-phead{display:none}
-.sp-single{margin-top:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px}
-.sp-pill{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:6px 12px;font-weight:700;color:var(--ink)}
-.sp-pill.n{font-family:var(--fd)}
-.sp-pill.empty{color:var(--muted);opacity:.6}
-.sp-lbl{color:var(--muted);font-size:11.5px}
 .sp-chk{width:18px;height:18px;accent-color:var(--brand);cursor:pointer;flex-shrink:0;margin-top:2px}
 .sp-selbar{display:flex;align-items:center;gap:12px;background:var(--brand-soft);border:1px solid var(--brand);border-radius:12px;padding:10px 14px;margin-bottom:14px;flex-wrap:wrap}
 .sp-selbar>span:first-child{font-weight:800;color:var(--brand-d);font-size:13px}
