@@ -24,7 +24,7 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const toggleSel = (id: string) => setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const clearSel = () => setSelected(new Set());
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(groups.map((g) => g.id)));
   const toggleCollapse = (id: string) => setCollapsed((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const [filter, setFilter] = useState<"all" | "priced" | "empty">("all");
   const [compact, setCompact] = useState(false);
@@ -132,7 +132,7 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
         if (ql && list.length === 0) return null;
         const pricedN = list.filter(isPriced).length;
         const emptyN = list.length - pricedN;
-        const isCol = collapsed.has(g.id);
+        const isCol = collapsed.has(g.id) && !ql;
         const groupIds = list.map((s) => s.id);
         const allSel = groupIds.length > 0 && groupIds.every((i) => selected.has(i));
         return (
@@ -177,7 +177,7 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
                     </div>
                     {isAdmin && (
                       <div className="sp-cardtools">
-                        <button className="sp-edit" onClick={() => setEditSvc(editSvc === s.id ? null : s.id)}>
+                        <button className="sp-edit" onClick={() => setEditSvc(s.id)}>
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>{t("edit")}
                         </button>
                         <button className="sp-iconbtn" title={t("duplicateService")} onClick={() => dupService(s)} disabled={busy}>
@@ -382,7 +382,7 @@ const spCss = `
 .sp-gtools button{border:none;background:none;color:var(--muted);cursor:pointer;width:28px;height:28px;border-radius:7px;display:grid;place-items:center}
 .sp-gtools button:hover{background:var(--surface);color:var(--brand)}
 .sp-gtools svg{width:14px;height:14px}
-.sp-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r,16px);box-shadow:var(--sh);padding:14px 16px;margin-bottom:0;min-width:0}
+.sp-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r,16px);box-shadow:var(--sh);padding:14px 16px;margin-bottom:0;min-width:0;align-self:start}
 .sp-chead{display:flex;align-items:flex-start;gap:12px}
 .sp-nm{font-weight:800;color:var(--ink);font-size:14.5px}
 .sp-desc{font-size:12px;color:var(--muted);margin-top:3px}
@@ -395,9 +395,9 @@ const spCss = `
 .sp-edit svg{width:13px;height:13px}
 .sp-edit:hover{border-color:var(--brand);color:var(--brand)}
 .sp-ptbl{margin-top:10px;font-size:12px;display:block}
-.sp-prow{display:grid;grid-template-columns:1.7fr 1fr 1fr 1fr;gap:6px;align-items:center;height:34px;border-bottom:1px solid var(--line);min-width:0}
+.sp-prow{display:grid;grid-template-columns:1.7fr 1fr 1fr 1fr;gap:6px;align-items:center;min-height:32px;padding:3px 0;border-bottom:1px solid var(--line);min-width:0}
 .sp-prow:last-child{border-bottom:none}
-.sp-phead{height:24px}
+.sp-phead{min-height:22px;padding:2px 0}
 .sp-phead span{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
 .sp-prow .c{text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sp-prow>span:first-child{text-align:start}
@@ -430,7 +430,7 @@ const spCss = `
 .sp-iconbtn svg{width:14px;height:14px}
 .sp-iconbtn:hover{border-color:var(--brand);color:var(--brand)}
 /* تمييز صف خارج مصر + تدرّج الأرقام */
-.sp-prow.intl{background:var(--blue-soft);border-radius:6px;height:36px;padding-inline:9px;margin-inline:-6px}
+.sp-prow.intl{background:var(--blue-soft);border-radius:6px;min-height:34px;padding-inline:9px;margin-inline:-6px}
 /* نافذة تعديل الخدمة */
 .sp-editmodal{max-width:560px;max-height:88vh;overflow-y:auto;padding:0}
 .sp-modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:2;border-radius:16px 16px 0 0}
