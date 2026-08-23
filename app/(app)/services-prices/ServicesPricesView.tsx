@@ -394,19 +394,20 @@ const spCss = `
 .sp-edit{margin-inline-start:auto;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:6px 11px;cursor:pointer;height:32px}
 .sp-edit svg{width:13px;height:13px}
 .sp-edit:hover{border-color:var(--brand);color:var(--brand)}
-.sp-ptbl{margin-top:11px;font-size:12.5px}
-.sp-prow{display:grid;grid-template-columns:1.7fr 1fr 1fr 1fr;gap:6px;align-items:center;padding:6px 4px;border-bottom:1px solid var(--line);min-width:0;min-height:0;line-height:1.25}
+.sp-ptbl{margin-top:10px;font-size:12px;display:block}
+.sp-prow{display:grid;grid-template-columns:1.7fr 1fr 1fr 1fr;gap:6px;align-items:center;height:34px;border-bottom:1px solid var(--line);min-width:0}
 .sp-prow:last-child{border-bottom:none}
-.sp-phead span{font-size:10.5px;font-weight:700;color:var(--muted)}
+.sp-phead{height:24px}
+.sp-phead span{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
 .sp-prow .c{text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sp-prow>span:first-child{text-align:start}
-.sp-prow .tier{font-weight:700;color:var(--ink);font-size:12px;line-height:1.3}
-.sp-prow .base{font-weight:700;color:var(--ink)}
-.sp-prow .norm{color:var(--green);font-weight:600}
-.sp-prow .aff{color:var(--blue);font-weight:600}
+.sp-prow .tier{font-weight:700;color:var(--ink);font-size:11.5px;line-height:1.2}
+.sp-prow .base{font-weight:800;color:var(--ink);font-size:13px}
+.sp-prow .norm{color:var(--green);font-weight:600;font-size:11.5px}
+.sp-prow .aff{color:var(--blue);font-weight:600;font-size:11.5px}
 .sp-prow .n{font-family:var(--fd)}
-.sp-prow .empty{color:var(--muted);opacity:.6}
-.sp-disc{font-size:9px;color:var(--muted);display:block;font-weight:600;font-style:normal}
+.sp-prow .empty{color:var(--muted);opacity:.45;font-weight:500}
+.sp-disc{font-size:8.5px;color:var(--muted);display:block;font-weight:600;font-style:normal}
 /* شريط الفلتر والعرض المضغوط */
 .sp-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;flex-wrap:wrap}
 .sp-segs{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px;box-shadow:var(--sh)}
@@ -429,7 +430,7 @@ const spCss = `
 .sp-iconbtn svg{width:14px;height:14px}
 .sp-iconbtn:hover{border-color:var(--brand);color:var(--brand)}
 /* تمييز صف خارج مصر + تدرّج الأرقام */
-.sp-prow.intl{background:var(--blue-soft);border-radius:8px;margin:1px -6px;padding-inline:10px}
+.sp-prow.intl{background:var(--blue-soft);border-radius:6px;height:36px;padding-inline:9px;margin-inline:-6px}
 /* نافذة تعديل الخدمة */
 .sp-editmodal{max-width:560px;max-height:88vh;overflow-y:auto;padding:0}
 .sp-modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:2;border-radius:16px 16px 0 0}
