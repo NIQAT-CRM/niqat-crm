@@ -342,7 +342,6 @@ function ServiceEditor({ s, selectedIds = [], onClose, onDelete, onBulkDone }: {
         <Fld label={t("serviceNameLabel")}><input className="sp-inp" style={{ fontFamily: "var(--fa)" }} value={f.name} onChange={(e) => set("name", e.target.value)} /></Fld>
         <Fld label={t("codeLabel")}><input className="sp-inp" value={f.code} onChange={(e) => set("code", e.target.value)} /></Fld>
         <Fld label={t("scheduleLabel")}><input className="sp-inp" style={{ fontFamily: "var(--fa)" }} value={f.schedule} onChange={(e) => set("schedule", e.target.value)} /></Fld>
-        <Fld label={t("batchCodeLabel")}><input className="sp-inp" value={f.batch_code} onChange={(e) => set("batch_code", e.target.value)} /></Fld>
       </div>
       <div style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700, marginBottom: 7 }}>{t("activeTiers")}:</div>
       <div className="sp-tiersel">

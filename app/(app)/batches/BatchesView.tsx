@@ -126,27 +126,53 @@ export default function BatchesView({ batches, canManage, diplomaOpts, diplomas 
                     <div className="brow"><span>{tr("subscribers")}</span><b className="num">{b.enrolled}</b></div>
                   ) : (
                     <>
-                      <div className="brow"><span>{tr("startDate")}</span><b className="num">{b.start_date ? String(b.start_date).slice(0, 10) : "—"}</b></div>
-                      <div className="brow"><span>{tr("endDate")}</span><b className="num">{b.end_date ? String(b.end_date).slice(0, 10) : "—"}</b></div>
+                      <div className="brow"><span>{tr("bookingStart")}</span><b className="num">{b.start_date ? String(b.start_date).slice(0, 10) : "—"}</b></div>
+                      <div className="brow"><span>{tr("bookingEnd")}</span><b className="num">{b.end_date ? String(b.end_date).slice(0, 10) : "—"}</b></div>
                     </>
                   )}
-                  {(Number(b.price_egp) > 0 || Number(b.price_usd) > 0) && (
+                  {!b.service_id && (Number(b.price_egp) > 0 || Number(b.price_usd) > 0) && (
                     <div className="brow"><span>{tr("batchPrice")}</span><b className="num" dir="ltr">{new Intl.NumberFormat("en").format(Number(b.price_egp) || 0)} {tr("egpShort")} · {new Intl.NumberFormat("en").format(Number(b.price_usd) || 0)} $</b></div>
                   )}
                   {b.service_id ? (
                     b.eprice ? (
-                      <div style={{ marginTop: 8, padding: "9px 11px", background: "var(--bg)", borderRadius: 10, border: "1px solid var(--line)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                      <div style={{ marginTop: 8, padding: "10px 11px", background: "var(--bg)", borderRadius: 10, border: "1px solid var(--line)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
                           <span style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 700 }}>{tr("servicePrice")}</span>
                           <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, background: b.eprice.source === "frozen" ? "var(--blue-soft)" : "var(--green-soft)", color: b.eprice.source === "frozen" ? "var(--blue)" : "var(--green)" }}>
                             {b.eprice.source === "frozen" ? "🔒 " + tr("frozenPrice") : "● " + tr("livePrice")}
                           </span>
                         </div>
-                        <b className="num" dir="ltr" style={{ fontSize: 13.5 }}>
-                          {efmt(b.eprice.base_recent ?? b.eprice.base_single)} {tr("egpShort")}{b.eprice.base_intl != null ? ` · ${efmt(b.eprice.base_intl)} $` : ""}
-                        </b>
+                        {(() => {
+                          const ep = b.eprice; const np = Number(ep.normal_pct) || 0; const ap = Number(ep.affiliate_pct) || 0;
+                          const rows: { lbl: string; base: any; dollar?: boolean }[] = [];
+                          if (ep.base_single != null) rows.push({ lbl: tr("singlePrice"), base: ep.base_single });
+                          else {
+                            if (ep.base_old != null) rows.push({ lbl: "🇪🇬 " + tr("tierOldShort"), base: ep.base_old });
+                            if (ep.base_recent != null) rows.push({ lbl: "🇪🇬 " + tr("tierRecentShort"), base: ep.base_recent });
+                            if (ep.base_intl != null) rows.push({ lbl: "🌍 " + tr("tierIntl"), base: ep.base_intl, dollar: true });
+                          }
+                          if (!rows.length) return <b className="num">—</b>;
+                          return (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                              <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 5, fontSize: 9, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase" }}>
+                                <span>{tr("tierWord")}</span><span style={{ textAlign: "center" }}>{tr("baseWord")}</span><span style={{ textAlign: "center", color: "var(--green)" }}>{tr("normalWord")}</span><span style={{ textAlign: "center", color: "var(--blue)" }}>{tr("affiliateWord")}</span>
+                              </div>
+                              {rows.map((r, i) => {
+                                const s = r.dollar ? "$" : "", suf = r.dollar ? "" : " " + tr("egpShort");
+                                return (
+                                  <div key={i} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 5, fontSize: 11, alignItems: "center", fontFamily: "var(--fa)" }}>
+                                    <span style={{ fontWeight: 700, color: "var(--ink)", fontSize: 10.5 }}>{r.lbl}</span>
+                                    <b className="num" dir="ltr" style={{ textAlign: "center", color: "var(--ink)" }}>{s}{efmt(r.base)}</b>
+                                    <b className="num" dir="ltr" style={{ textAlign: "center", color: "var(--green)", fontWeight: 700 }}>{s}{efmt(Number(r.base) * (1 - np / 100))}</b>
+                                    <b className="num" dir="ltr" style={{ textAlign: "center", color: "var(--blue)", fontWeight: 700 }}>{s}{efmt(Number(r.base) * (1 - ap / 100))}</b>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                         {b.eprice.source === "frozen" && (
-                          <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 4 }}>{tr("frozenNote")}{b.price_frozen_at ? " · " + String(b.price_frozen_at).slice(0, 10) : ""}</div>
+                          <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 6, paddingTop: 6, borderTop: "1px dashed var(--line)" }}>🔒 {tr("frozenNote")}{b.price_frozen_at ? " · " + String(b.price_frozen_at).slice(0, 10) : ""}</div>
                         )}
                       </div>
                     ) : (
