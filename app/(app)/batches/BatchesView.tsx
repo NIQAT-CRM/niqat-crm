@@ -155,7 +155,7 @@ export default function BatchesView({ batches, canManage, diplomaOpts, diplomas 
                           return (
                             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                               <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 5, fontSize: 9, fontWeight: 800, color: "var(--muted)", textTransform: "uppercase" }}>
-                                <span>{tr("tierWord")}</span><span style={{ textAlign: "center" }}>{tr("baseWord")}</span><span style={{ textAlign: "center", color: "var(--green)" }}>{tr("normalWord")}</span><span style={{ textAlign: "center", color: "var(--blue)" }}>{tr("affiliateWord")}</span>
+                                <span>{tr("tierWord")}</span><span style={{ textAlign: "center" }}>{tr("baseWord")}</span><span style={{ textAlign: "center", color: "var(--green)" }}>{tr("normalWord")} -{Number(ep.normal_pct) || 0}%</span><span style={{ textAlign: "center", color: "var(--blue)" }}>{tr("affiliateWord")} -{Number(ep.affiliate_pct) || 0}%</span>
                               </div>
                               {rows.map((r, i) => {
                                 const s = r.dollar ? "$" : "", suf = r.dollar ? "" : " " + tr("egpShort");
@@ -187,7 +187,7 @@ export default function BatchesView({ batches, canManage, diplomaOpts, diplomas 
                 </div>
                 {canManage && (
                   <BatchActions
-                    batch={{ id: b.id, code: b.code, status: b.status || "open", start_date: b.start_date, end_date: b.end_date, capacity: b.capacity, notes: b.notes, price: b.price, currency: b.currency || "EGP", price_egp: b.price_egp, price_usd: b.price_usd }}
+                    batch={{ id: b.id, code: b.code, status: b.status || "open", start_date: b.start_date, end_date: b.end_date, capacity: b.capacity, notes: b.notes, price: b.price, currency: b.currency || "EGP", price_egp: b.price_egp, price_usd: b.price_usd, service_id: b.service_id } as any}
                     enrolledCount={b.enrolled}
                   />
                 )}

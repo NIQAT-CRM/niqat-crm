@@ -32,7 +32,7 @@ export default function BatchActions({ batch, enrolledCount, diplomas = [] }: {
   async function saveEdit() {
     if (!f.code.trim()) { toast(tr("enterBatchNo")); return; }
     const pe = Number(f.price_egp), pu = Number(f.price_usd);
-    if (!(pe > 0) || !(pu > 0)) { toast("من فضلك أدخل السعر بالجنيه والدولار (الاتنين إجباري)"); return; }
+    // السعر اختياري — بياخد من الخدمة المربوطة
     setBusy(true);
     const { error } = await supabase.from("batches").update({
       code: f.code.trim(),
@@ -40,9 +40,9 @@ export default function BatchActions({ batch, enrolledCount, diplomas = [] }: {
       end_date: f.end_date || null,
       capacity: f.capacity ? Number(f.capacity) : null,
       notes: f.notes.trim(),
-      price_egp: pe,
-      price_usd: pu,
-      price: pe,
+      price_egp: pe || null,
+      price_usd: pu || null,
+      price: pe || null,
       currency: "EGP",
       status: f.status,
     }).eq("id", batch.id);
@@ -87,12 +87,18 @@ export default function BatchActions({ batch, enrolledCount, diplomas = [] }: {
               <div className="fld"><label>{tr("startDate")}</label><input className="inp num" type="date" dir="ltr" value={f.start_date ? String(f.start_date).slice(0, 10) : ""} onChange={(e) => set("start_date", e.target.value)} /></div>
               <div className="fld"><label>{tr("endDate")}</label><input className="inp num" type="date" dir="ltr" value={f.end_date ? String(f.end_date).slice(0, 10) : ""} onChange={(e) => set("end_date", e.target.value)} /></div>
             </div>
-            <div className="frow">
-              <div className="fld"><label>{tr("batchPrice")} — {tr("egpShort")}</label>
-                <input className="inp num" dir="ltr" inputMode="numeric" value={f.price_egp} onChange={(e) => set("price_egp", e.target.value)} /></div>
-              <div className="fld"><label>{tr("batchPrice")} — $</label>
-                <input className="inp num" dir="ltr" inputMode="numeric" value={f.price_usd} onChange={(e) => set("price_usd", e.target.value)} /></div>
-            </div>
+            {(batch as any).service_id ? (
+              <div className="fld"><label>{tr("batchPrice")}</label>
+                <div style={{ fontSize: 12, color: "var(--muted)", background: "var(--bg)", border: "1px dashed var(--line)", borderRadius: 10, padding: "10px 12px", fontWeight: 600 }}>💡 {tr("priceFromServiceHint")}</div>
+              </div>
+            ) : (
+              <div className="frow">
+                <div className="fld"><label>{tr("batchPrice")} — {tr("egpShort")}</label>
+                  <input className="inp num" dir="ltr" inputMode="numeric" value={f.price_egp} onChange={(e) => set("price_egp", e.target.value)} /></div>
+                <div className="fld"><label>{tr("batchPrice")} — $</label>
+                  <input className="inp num" dir="ltr" inputMode="numeric" value={f.price_usd} onChange={(e) => set("price_usd", e.target.value)} /></div>
+              </div>
+            )}
             <div className="fld"><label>{tr("status")}</label>
               <select className="inp" value={f.status} onChange={(e) => set("status", e.target.value)}>
                 <option value="open">{tr("batchOpen")}</option>
