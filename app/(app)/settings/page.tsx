@@ -5,6 +5,7 @@ import WatiCard from "./WatiCard";
 import OptionsList from "./OptionsList";
 import SettingsTabs, { type SettingsTab } from "./SettingsTabs";
 import DefaultsCard from "./DefaultsCard";
+import RecentYearsCard from "./RecentYearsCard";
 import CompanyCard from "./CompanyCard";
 import ShortcutsManager from "./ShortcutsManager";
 import ServiceTypesManager from "./ServiceTypesManager";
@@ -147,7 +148,7 @@ export default async function Settings() {
 
   // ===== تبويبات الإعدادات (تكاملات/كتالوج/أفيلييت) — تظهر لمن عنده can_manage_settings =====
   if (canSettings) {
-    const [watiRow, defRow, coRow, stRow, affRow, access, spec, dip, uni, src, cty, scRows] = await Promise.all([
+    const [watiRow, defRow, coRow, stRow, affRow, access, spec, dip, uni, src, cty, scRows, ryRow] = await Promise.all([
       supabase.from("app_settings").select("value").eq("key", "wati").maybeSingle(),
       supabase.from("app_settings").select("value").eq("key", "defaults").maybeSingle(),
       supabase.from("app_settings").select("value").eq("key", "company").maybeSingle(),
@@ -160,6 +161,7 @@ export default async function Settings() {
       safeList(supabase, "sources", "name"),
       safeList(supabase, "countries", "name"),
       supabase.from("keyboard_shortcuts").select("id,code,combo,category,action_type,target,label_ar,label_en,perm,context,enabled,sort").order("sort"),
+      supabase.from("app_settings").select("value").eq("key", "recent_grad_years").maybeSingle(),
     ]);
 
     const wRaw = (watiRow.data?.value as any) || {};
@@ -179,6 +181,7 @@ export default async function Settings() {
         <div className="intgrid">
           <WatiCard initial={wati} />
           <DefaultsCard initial={(defRow.data?.value as any) || {}} />
+          <RecentYearsCard initial={(ryRow.data?.value as any) || {}} />
           <CompanyCard initial={(coRow.data?.value as any) || {}} />
           {isAdmin && <ShortcutsManager initial={(scRows.data as any[]) || []} />}
         </div>
