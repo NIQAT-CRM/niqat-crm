@@ -295,6 +295,7 @@ function ServiceEditor({ s, selectedIds = [], onClose, onDelete, onBulkDone }: {
     normal_pct: s.normal_pct ?? 10, affiliate_pct: s.affiliate_pct ?? 25,
   });
   const [saving, setSaving] = useState(false);
+  const [applyFinished, setApplyFinished] = useState(false);
   const set = (k: string, v: any) => setF((p) => ({ ...p, [k]: v }));
   const num = (v: any) => v === "" || v == null ? null : Number(v);
 
@@ -315,6 +316,11 @@ function ServiceEditor({ s, selectedIds = [], onClose, onDelete, onBulkDone }: {
     }).eq("id", s.id);
     // المحدّدين الآخرين: الأسعار/النسب/الشرائح فقط (مش الاسم/الكود)
     if (bulkOthers.length) { await supabase.from("services").update(priceFields).in("id", bulkOthers); onBulkDone?.(); }
+    // طبّق على الباتشات المنتهية كمان (اختياري) — يعيد تجميد سعرها بالجديد
+    if (applyFinished) {
+      const targets = [s.id, ...bulkOthers];
+      for (const sid of targets) { try { await supabase.rpc("refreeze_finished_batches", { p_service_id: sid }); } catch {} }
+    }
     setSaving(false); onClose(); router.refresh();
   }
 
@@ -350,6 +356,10 @@ function ServiceEditor({ s, selectedIds = [], onClose, onDelete, onBulkDone }: {
         <Fld label={t("normalDiscPct")}><input className="sp-inp" value={f.normal_pct as any} onChange={(e) => set("normal_pct", e.target.value)} /></Fld>
         <Fld label={t("affiliateDiscPct")}><input className="sp-inp" value={f.affiliate_pct as any} onChange={(e) => set("affiliate_pct", e.target.value)} /></Fld>
       </div>
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text)", fontWeight: 600, marginBottom: 10, cursor: "pointer", background: "var(--blue-soft)", padding: "9px 12px", borderRadius: 9 }}>
+        <input type="checkbox" checked={applyFinished} onChange={(e) => setApplyFinished(e.target.checked)} style={{ width: 15, height: 15, accentColor: "var(--brand)" }} />
+        <span>{t("applyToFinished")} <span style={{ color: "var(--muted)", fontWeight: 500 }}>· {t("applyToFinishedHint")}</span></span>
+      </label>
       <div className="sp-btnrow">
         <button className="sp-btn save" onClick={save} disabled={saving}>{saving ? "..." : t("save")}</button>
         <button className="sp-btn ghost" onClick={onClose}>{t("cancel")}</button>

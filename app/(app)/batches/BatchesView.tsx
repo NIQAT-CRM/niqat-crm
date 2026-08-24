@@ -1,5 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/lib/i18n/client";
 import BatchActions from "./BatchActions";
 import AddBatch from "./AddBatch";
@@ -11,6 +13,7 @@ export type B = {
   capacity: number | null; enrolled: number; price: number | null;
   currency: string; notes: string | null;
   price_egp: number | null; price_usd: number | null; kind: string;
+  service_id?: string | null; price_frozen_at?: string | null; done?: boolean; eprice?: any;
 };
 
 function statusMeta(tr: (k: string) => string, status: string) {
@@ -18,16 +21,29 @@ function statusMeta(tr: (k: string) => string, status: string) {
   return { l: tr("batchEnded"), c: "#94A2BB" };
 }
 
-export default function BatchesView({ batches, canManage, diplomaOpts, diplomas = [], serviceTypes = [] }: {
+export default function BatchesView({ batches, canManage, diplomaOpts, diplomas = [], serviceTypes = [], services = [] }: {
   batches: B[]; canManage: boolean; diplomaOpts: Opt[]; diplomas?: { id: string; name: string; prefix?: string }[];
   serviceTypes?: { slug: string; name: string }[];
+  services?: { id: string; name: string; code: string | null }[];
 }) {
   const tr = useT();
+  const router = useRouter();
+  const supabase = createClient();
   const [tab, setTab] = useState<string>("diploma");
   const [dip, setDip] = useState("");
   const [status, setStatus] = useState("");
   const [q, setQ] = useState("");
+  const [linkFor, setLinkFor] = useState<string | null>(null);
+  const [linkSvc, setLinkSvc] = useState("");
+  const [linkBusy, setLinkBusy] = useState(false);
   const isService = tab !== "diploma";
+  const efmt = (n: any) => n == null || isNaN(Number(n)) ? "—" : new Intl.NumberFormat("en").format(Math.round(Number(n)));
+  async function doLink() {
+    if (!linkFor || !linkSvc) return;
+    setLinkBusy(true);
+    await supabase.from("batches").update({ service_id: linkSvc }).eq("id", linkFor);
+    setLinkBusy(false); setLinkFor(null); setLinkSvc(""); router.refresh();
+  }
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
@@ -72,7 +88,7 @@ export default function BatchesView({ batches, canManage, diplomaOpts, diplomas 
           <option value="open">{tr("batchOpen")}</option>
           <option value="closed">{tr("batchEnded")}</option>
         </select>
-        {canManage && <AddBatch kind={tab} diplomas={diplomas} />}
+        {canManage && <AddBatch kind={tab} diplomas={diplomas} services={services} />}
       </div>
 
       {filtered.length === 0 && (
@@ -117,6 +133,31 @@ export default function BatchesView({ batches, canManage, diplomaOpts, diplomas 
                   {(Number(b.price_egp) > 0 || Number(b.price_usd) > 0) && (
                     <div className="brow"><span>{tr("batchPrice")}</span><b className="num" dir="ltr">{new Intl.NumberFormat("en").format(Number(b.price_egp) || 0)} {tr("egpShort")} · {new Intl.NumberFormat("en").format(Number(b.price_usd) || 0)} $</b></div>
                   )}
+                  {b.service_id ? (
+                    b.eprice ? (
+                      <div style={{ marginTop: 8, padding: "9px 11px", background: "var(--bg)", borderRadius: 10, border: "1px solid var(--line)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                          <span style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 700 }}>{tr("servicePrice")}</span>
+                          <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, background: b.eprice.source === "frozen" ? "var(--blue-soft)" : "var(--green-soft)", color: b.eprice.source === "frozen" ? "var(--blue)" : "var(--green)" }}>
+                            {b.eprice.source === "frozen" ? "🔒 " + tr("frozenPrice") : "● " + tr("livePrice")}
+                          </span>
+                        </div>
+                        <b className="num" dir="ltr" style={{ fontSize: 13.5 }}>
+                          {efmt(b.eprice.base_recent ?? b.eprice.base_single)} {tr("egpShort")}{b.eprice.base_intl != null ? ` · ${efmt(b.eprice.base_intl)} $` : ""}
+                        </b>
+                        {b.eprice.source === "frozen" && (
+                          <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 4 }}>{tr("frozenNote")}{b.price_frozen_at ? " · " + String(b.price_frozen_at).slice(0, 10) : ""}</div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="brow"><span>{tr("servicePrice")}</span><b className="num">—</b></div>
+                    )
+                  ) : (
+                    <div style={{ marginTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 11px", background: "var(--amber-soft,#FBF1DC)", borderRadius: 10 }}>
+                      <span style={{ fontSize: 11.5, color: "var(--amber)", fontWeight: 700 }}>⚠ {tr("notLinkedToService")}</span>
+                      {canManage && <button onClick={() => setLinkFor(b.id)} style={{ border: "none", background: "var(--brand)", color: "#fff", fontFamily: "inherit", fontWeight: 700, fontSize: 11, padding: "5px 11px", borderRadius: 8, cursor: "pointer" }}>{tr("linkToService")}</button>}
+                    </div>
+                  )}
                 </div>
                 {canManage && (
                   <BatchActions
@@ -127,6 +168,22 @@ export default function BatchesView({ batches, canManage, diplomaOpts, diplomas 
               </div>
             );
           })}
+        </div>
+      )}
+
+      {linkFor && (
+        <div onClick={() => !linkBusy && setLinkFor(null)} style={{ position: "fixed", inset: 0, background: "rgba(21,34,59,.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, padding: 20, width: "100%", maxWidth: 400, boxShadow: "0 20px 60px rgba(0,0,0,.28)" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--ink)", marginBottom: 12 }}>{tr("linkToService")}</h3>
+            <select className="inp" value={linkSvc} onChange={(e) => setLinkSvc(e.target.value)} style={{ width: "100%", marginBottom: 14 }}>
+              <option value="">{tr("chooseService")}</option>
+              {services.map((sv) => <option key={sv.id} value={sv.id}>{sv.name}{sv.code ? ` — ${sv.code}` : ""}</option>)}
+            </select>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => setLinkFor(null)} className="btn ghost" disabled={linkBusy}>{tr("cancel")}</button>
+              <button onClick={doLink} className="btn" disabled={linkBusy || !linkSvc}>{linkBusy ? "..." : tr("linkBtn")}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

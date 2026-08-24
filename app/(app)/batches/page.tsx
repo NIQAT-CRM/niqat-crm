@@ -19,7 +19,7 @@ export default async function Batches() {
     { data: svcTypes },
   ] = await Promise.all([
     supabase.from("profiles").select("can_manage_batches").eq("id", user?.id || "").maybeSingle(),
-    supabase.from("batches").select("id,code,status,start_date,end_date,capacity,notes,price,currency,price_egp,price_usd,kind").order("created_at", { ascending: false }),
+    supabase.from("batches").select("id,code,status,start_date,end_date,capacity,notes,price,currency,price_egp,price_usd,kind,service_id,price_frozen_at,done").order("created_at", { ascending: false }),
     supabase.from("batches").select("id,diploma_id"),
     supabase.from("diplomas").select("id,name_ar,batch_code_prefix").order("name_ar"),
     supabase.from("service_types").select("slug,name,sort").eq("active", true).order("sort"),
@@ -48,6 +48,20 @@ export default async function Batches() {
   );
   const cnt = new Map<string, number>(cntPairs);
 
+  // الخدمات (للربط) + السعر الفعّال لكل باتش مربوط (حيّ/متجمّد) — إضافة، مايكسرش حاجة
+  let servicesList: any[] = [];
+  const epriceMap = new Map<string, any>();
+  try {
+    const { data: svcs } = await supabase.from("services").select("id,name,code").order("name");
+    servicesList = svcs || [];
+    const linked = (batches || []).filter((b: any) => b.service_id);
+    const pricePairs = await Promise.all(linked.map(async (b: any) => {
+      try { const r: any = await supabase.rpc("batch_effective_price", { p_batch_id: b.id }); return [b.id as string, (r.data && r.data[0]) || null] as const; }
+      catch { return [b.id as string, null] as const; }
+    }));
+    for (const [id, p] of pricePairs) if (p) epriceMap.set(id, p);
+  } catch { /* الباك-إند لسه؟ نتجاهل بأمان */ }
+
   const viewData = (batches || []).map((b) => ({
     id: b.id as string,
     code: (b.code as string) || "",
@@ -64,6 +78,10 @@ export default async function Batches() {
     price_usd: ((b as any).price_usd as number) ?? null,
     kind: ((b as any).kind as string) || "diploma",
     notes: (b.notes as string) || null,
+    service_id: ((b as any).service_id as string) || null,
+    price_frozen_at: ((b as any).price_frozen_at as string) || null,
+    done: !!(b as any).done,
+    eprice: epriceMap.get(b.id as string) || null,
   }));
   // ربط diploma_id لكل باتش (للفلترة)
   if (!bd.error) for (const r of (bd.data as any[]) || []) {
@@ -83,7 +101,8 @@ export default async function Batches() {
       </div>
       <BatchesView batches={viewData} canManage={canManage} diplomaOpts={diplomaOpts}
         diplomas={(allDips || []).map((d: any) => ({ id: d.id, name: d.name_ar, prefix: d.batch_code_prefix || "" }))}
-        serviceTypes={((svcTypes as any[]) || []).map((t) => ({ slug: t.slug, name: t.name }))} />
+        serviceTypes={((svcTypes as any[]) || []).map((t) => ({ slug: t.slug, name: t.name }))}
+        services={(servicesList as any[]).map((sv) => ({ id: sv.id, name: sv.name, code: sv.code }))} />
     </div>
   );
 }

@@ -7,12 +7,12 @@ import { toast } from "@/lib/toast";
 
 function isServiceKind(k: string) { return k !== "diploma"; }
 
-export default function AddBatch({ diplomas = [], kind = "diploma" }: { diplomas?: { id: string; name: string; prefix?: string }[]; kind?: string }) {
+export default function AddBatch({ diplomas = [], kind = "diploma", services = [] }: { diplomas?: { id: string; name: string; prefix?: string }[]; kind?: string; services?: { id: string; name: string; code: string | null }[] }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ code: "", diploma_id: "", start_date: "", end_date: "", capacity: "", notes: "", price_egp: "", price_usd: "" });
+  const [f, setF] = useState({ code: "", diploma_id: "", start_date: "", end_date: "", capacity: "", notes: "", price_egp: "", price_usd: "", service_id: "" });
   const [suffix, setSuffix] = useState("");
   const [busy, setBusy] = useState(false);
   const selPrefix = (diplomas.find((d) => d.id === f.diploma_id)?.prefix || "").trim();
@@ -37,14 +37,14 @@ export default function AddBatch({ diplomas = [], kind = "diploma" }: { diplomas
       capacity: !isService && f.capacity ? Number(f.capacity) : null, notes: f.notes.trim(), status: "open", kind,
     };
     const priceFields = { price_egp: pe, price_usd: pu, price: pe, currency: "EGP" };
-    const full = { ...base, ...priceFields, end_date: isService ? null : (f.end_date || null), diploma_id: isService ? null : (f.diploma_id || null) };
+    const full = { ...base, ...priceFields, end_date: isService ? null : (f.end_date || null), diploma_id: isService ? null : (f.diploma_id || null), service_id: f.service_id || null };
     let error = (await supabase.from("batches").insert(full)).error;
-    if (error && /end_date|diploma_id|price|currency|kind/.test((error as any).message || "")) {
+    if (error && /end_date|diploma_id|price|currency|kind|service_id/.test((error as any).message || "")) {
       error = (await supabase.from("batches").insert(base)).error;
     }
     setBusy(false);
     if (error) { toast((error as any).code === "23505" ? tr("codeExists") : tr("saveFailed")); return; }
-    setF({ code: "", diploma_id: "", start_date: "", end_date: "", capacity: "", notes: "", price_egp: "", price_usd: "" }); setSuffix(""); setOpen(false);
+    setF({ code: "", diploma_id: "", start_date: "", end_date: "", capacity: "", notes: "", price_egp: "", price_usd: "", service_id: "" }); setSuffix(""); setOpen(false);
     toast(tr("batchAdded")); router.refresh();
   }
 
@@ -79,6 +79,14 @@ export default function AddBatch({ diplomas = [], kind = "diploma" }: { diplomas
             </div>
           ) : (
             <div className="fld"><label>{isService ? tr("serviceName") : tr("batchNo")}</label><input className="inp" dir={isService ? "rtl" : "ltr"} placeholder={isService ? tr("serviceNamePh") : "B22"} value={f.code} onChange={(e) => set("code", e.target.value)} /></div>
+          )}
+          {services.length > 0 && (
+            <div className="fld"><label>{tr("linkedService")}</label>
+              <select className="inp" value={f.service_id} onChange={(e) => set("service_id", e.target.value)}>
+                <option value="">{tr("noServiceLink")}</option>
+                {services.map((sv) => <option key={sv.id} value={sv.id}>{sv.name}{sv.code ? ` — ${sv.code}` : ""}</option>)}
+              </select>
+            </div>
           )}
           {!isService && <div className="fld"><label>{tr("capacity")}</label><input className="inp num" dir="ltr" value={f.capacity} onChange={(e) => set("capacity", e.target.value)} /></div>}
         </div>
