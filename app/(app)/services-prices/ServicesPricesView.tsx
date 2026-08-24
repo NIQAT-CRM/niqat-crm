@@ -32,10 +32,12 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
   // نافذة النظام (بدل prompt/confirm بتوع المتصفح)
   const [modal, setModal] = useState<null | { title: string; input?: boolean; value?: string; ph?: string; warn?: string; okLabel?: string; danger?: boolean; run: (v: string) => Promise<void> }>(null);
   const [mval, setMval] = useState("");
-  function openModal(m: NonNullable<typeof modal>) { setMval(m.value || ""); setModal(m); }
+  const [mconfirm, setMconfirm] = useState(false);
+  function openModal(m: NonNullable<typeof modal>) { setMval(m.value || ""); setMconfirm(false); setModal(m); }
   async function runModal() {
     if (!modal) return;
     if (modal.input && !mval.trim()) return;
+    if (modal.danger && !mconfirm) return;
     setBusy(true); await modal.run(mval.trim()); setBusy(false); setModal(null); router.refresh();
   }
 
@@ -263,10 +265,16 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
               <input autoFocus value={mval} placeholder={modal.ph} onChange={(e) => setMval(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") runModal(); if (e.key === "Escape") setModal(null); }} />
             )}
+            {modal.danger && (
+              <label style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", background: "var(--red-soft,#FCEBEA)", borderRadius: 10, marginBottom: 14, cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "var(--red)" }}>
+                <input type="checkbox" checked={mconfirm} onChange={(e) => setMconfirm(e.target.checked)} style={{ width: 17, height: 17, accentColor: "var(--red)", flexShrink: 0 }} />
+                {t("confirmDeleteCheck")}
+              </label>
+            )}
             <div className="row">
               <button className="sp-btn ghost" onClick={() => setModal(null)} disabled={busy}>{t("cancel")}</button>
-              <button className="sp-btn save" onClick={runModal} disabled={busy || (modal.input && !mval.trim())}
-                style={modal.danger ? { background: "var(--red)" } : undefined}>
+              <button className="sp-btn save" onClick={runModal} disabled={busy || (modal.input && !mval.trim()) || (modal.danger && !mconfirm)}
+                style={modal.danger ? { background: mconfirm ? "var(--red)" : "var(--muted)", opacity: mconfirm ? 1 : .6 } : undefined}>
                 {busy ? "..." : (modal.okLabel || t("save"))}
               </button>
             </div>
