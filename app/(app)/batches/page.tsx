@@ -41,10 +41,14 @@ export default async function Batches() {
 
   // عدد المشتركين الفعلي لكل باتش (count مستقل يتجاوز حد الـ1000 صف)
   const cntPairs = await Promise.all(
-    (batches || []).map((b: any) =>
-      supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("batch_id", b.id)
-        .then((r) => [b.id as string, r.count || 0] as const)
-    )
+    (batches || []).map(async (b: any) => {
+      try {
+        const r: any = await supabase.rpc("batch_subscriber_count", { p_batch_id: b.id });
+        if (r && !r.error && r.data != null) return [b.id as string, Number(r.data) || 0] as const;
+      } catch { /* نرجع للعدّ القديم */ }
+      const r2 = await supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("batch_id", b.id);
+      return [b.id as string, r2.count || 0] as const;
+    })
   );
   const cnt = new Map<string, number>(cntPairs);
 

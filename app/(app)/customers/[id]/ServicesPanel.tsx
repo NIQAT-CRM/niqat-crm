@@ -147,9 +147,16 @@ export default function ServicesPanel({
       }
       await logAudit("enrollment_add", `${tr("auditEnrollmentAdd")}: ${label}${svBatch ? " — " + batchLabel(svBatch) : ""}`);
     } else {
-      const { data, error } = await supabase.from("customer_addons").insert({
+      const addonRow: any = {
         customer_id: customerId, type: svType, name: label, amount: amt, free: svFree, note: svNote.trim(), paid: isPaid, shot_url: shot_url || null, currency: svCurrency, needs_activation: svNeedsAct,
-      }).select("id").single();
+        ...(svBatch ? { batch_id: svBatch } : {}),
+      };
+      let { data, error } = await supabase.from("customer_addons").insert(addonRow).select("id").single();
+      if (error && /batch_id/.test((error as any).message || "")) {
+        // العمود لسه مش متعمل — نعيد بدونه
+        delete addonRow.batch_id;
+        ({ data, error } = await supabase.from("customer_addons").insert(addonRow).select("id").single());
+      }
       if (error) { setBusy(false); toast(tr("addFailed") + error.message); return; }
       await logAudit("addon_add", `${tr("auditAddonAdd")} ${tr(stMeta(svType).labelKey)}: ${label}`);
     }

@@ -114,6 +114,13 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
       for (const r of rows) if (r.customer_id) set.add(r.customer_id);
       if (rows.length < P) break;
     }
+    // للباتشات المخصّصة: المشتركين مربوطين في customer_addons.batch_id — نضمّهم كمان
+    if (col === "batch_id") {
+      try {
+        const { data: adRows } = await supabase.from("customer_addons").select("customer_id").in("batch_id", vals);
+        for (const r of ((adRows as any[]) || [])) if (r.customer_id) set.add(r.customer_id);
+      } catch { /* العمود لسه مش متعمل؟ نتجاهل */ }
+    }
     return set;
   }
 
