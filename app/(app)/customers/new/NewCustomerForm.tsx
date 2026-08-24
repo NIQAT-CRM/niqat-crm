@@ -12,7 +12,7 @@ import { useLogUsage } from "../../AiFlags";
 import { receiptFileName, receiptDisplayName } from "@/lib/supabase/receipts";
 
 type Opt = { id: string; name: string };
-type BatchOpt = { id: string; name: string; price?: number; currency?: string; price_egp?: number; price_usd?: number; diploma_id?: string; status?: string };
+type BatchOpt = { id: string; name: string; price?: number; currency?: string; price_egp?: number; price_usd?: number; diploma_id?: string; status?: string; service_id?: string | null; svc?: { base_old: number | null; base_recent: number | null; base_intl: number | null; base_single: number | null; normal_pct: number | null; affiliate_pct: number | null } | null };
 const STAGES = [
   ["contacted", "dashStageContacted"], ["interested", "dashStageInterested"],
   ["enrolled", "dashStageEnrolled"], ["onhold", "dashStageOnhold"],
@@ -55,8 +55,8 @@ function Head({ icon, tint, title }: { icon: string; tint: string; title: string
 }
 
 export default function NewCustomerForm({
-  specialties, diplomas, batches, services = [], meId, affiliates = [], serviceTypes = [], sources = [], defaultInst = { count: 3, gap: 1 }, frequentDiplomas = [], countries = [],
-}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[]; serviceTypes?: { slug: string; name: string; activation_label: string }[]; sources?: string[]; defaultInst?: { count: number; gap: number }; frequentDiplomas?: string[]; countries?: string[] }) {
+  specialties, diplomas, batches, services = [], meId, affiliates = [], serviceTypes = [], sources = [], defaultInst = { count: 3, gap: 1 }, frequentDiplomas = [], countries = [], recentYears = [],
+}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[]; serviceTypes?: { slug: string; name: string; activation_label: string }[]; sources?: string[]; defaultInst?: { count: number; gap: number }; frequentDiplomas?: string[]; countries?: string[]; recentYears?: number[] }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
@@ -132,14 +132,34 @@ export default function NewCustomerForm({
     return () => clearTimeout(t);
   }, [f.phone1, f.phone2, f.email, dial1, dial2]);
 
-  // بند 5: ملء المبلغ تلقائياً من سعر الباتش بالعملة المختارة (قابل للتعديل يدوي)
+  const [priceTier, setPriceTier] = useState<string>("");
+  // بند 5: ملء المبلغ تلقائياً — من الخدمة المربوطة (شريحة حسب سنة التخرج/العملة + الخصم العادي)، أو السعر اليدوي القديم
   useEffect(() => {
-    if (!f.batch_id) return;
+    if (!f.batch_id) { setPriceTier(""); return; }
     const b = batches.find((x) => x.id === f.batch_id);
     if (!b) return;
-    const p = f.currency === "USD" ? Number(b.price_usd) : Number(b.price_egp);
-    if (p > 0) setF((s) => ({ ...s, amount: String(p) }));
-  }, [f.batch_id, f.currency]);
+    if (b.svc) {
+      const svc = b.svc;
+      const np = Number(svc.normal_pct) || 0;
+      const disc = (base: number | null) => base == null ? null : Math.round(Number(base) * (1 - np / 100));
+      let base: number | null = null, t = "";
+      if (svc.base_single != null) { t = "single"; base = svc.base_single; }
+      else if (f.currency === "USD") { t = "intl"; base = svc.base_intl; }
+      else {
+        const gy = Number(f.grad_year);
+        const isRecent = !!gy && recentYears.includes(gy);
+        t = isRecent ? "recent" : "old";
+        base = isRecent ? svc.base_recent : svc.base_old;
+      }
+      const amt = disc(base);
+      setPriceTier(t);
+      if (amt != null) setF((s) => ({ ...s, amount: String(amt) }));
+    } else {
+      setPriceTier("");
+      const p = f.currency === "USD" ? Number(b.price_usd) : Number(b.price_egp);
+      if (p > 0) setF((s) => ({ ...s, amount: String(p) }));
+    }
+  }, [f.batch_id, f.currency, f.grad_year, recentYears]);
   // ملء المبلغ تلقائياً من سعر الخدمة المختارة
   useEffect(() => {
     if (subMode !== "service" || !serviceId) return;
@@ -607,6 +627,11 @@ export default function NewCustomerForm({
                     <option value="EGP">{tr("egpShort")}</option><option value="USD">$</option>
                   </select>
                 </div>
+                {priceTier && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--green)", marginTop: 6, fontWeight: 700 }}>
+                    💡 {tr("autoPriceFrom")} <b>{tr(priceTier === "single" ? "tierSingle" : priceTier === "intl" ? "tierIntl" : priceTier === "recent" ? "tierRecentShort" : "tierOldShort")}</b> · {tr("editableManually")}
+                  </div>
+                )}
                 {amountNoDiploma && (
                   <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--amber)", marginTop: 6 }}>
                     <Ic name="alert" size={14} /> {tr("amountNeedsDiploma")}
