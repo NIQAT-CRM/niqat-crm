@@ -182,7 +182,6 @@ export default async function Settings() {
         <div className="intgrid">
           <WatiCard initial={wati} />
           <DefaultsCard initial={(defRow.data?.value as any) || {}} />
-          <RecentYearsCard initial={(ryRow.data?.value as any) || {}} />
           <CompanyCard initial={(coRow.data?.value as any) || {}} />
           {isAdmin && <ShortcutsManager initial={(scRows.data as any[]) || []} />}
         </div>
@@ -198,6 +197,7 @@ export default async function Settings() {
           <div className="setgrid">
             <OptionsList title={tr("manageDiplomas")} hint={tr("manageDiplomasHint")} table="diplomas" labelCol="name_ar" initial={dip.items} extraCol="batch_code_prefix" extraPlaceholder={tr("batchCodePrefixPh")} />
             <ServiceTypesManager initial={(stRow.data as any[]) || []} diplomaLabel={((dtlRow.data?.value as any)?.label) || ""} />
+            <RecentYearsCard initial={(ryRow.data?.value as any) || {}} />
             <OptionsList title={tr("manageSpecialties")} hint={tr("manageSpecialtiesHint")} table="specialties" labelCol="name_ar" initial={spec.items} />
             <OptionsList title={tr("manageAccessOptions")} hint={tr("manageAccessOptionsHint")} table="access_options" labelCol="label" initial={access.items} />
             <OptionsList title={tr("manageSources")} hint={tr("manageSourcesHint")} table="sources" labelCol="name" initial={src.items} />
