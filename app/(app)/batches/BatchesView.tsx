@@ -39,9 +39,9 @@ export default function BatchesView({ batches, canManage, diplomaOpts, diplomas 
   const isService = tab !== "diploma";
   const efmt = (n: any) => n == null || isNaN(Number(n)) ? "—" : new Intl.NumberFormat("en").format(Math.round(Number(n)));
   async function doLink() {
-    if (!linkFor || !linkSvc) return;
+    if (!linkFor) return;
     setLinkBusy(true);
-    await supabase.from("batches").update({ service_id: linkSvc }).eq("id", linkFor);
+    await supabase.from("batches").update({ service_id: linkSvc || null }).eq("id", linkFor);
     setLinkBusy(false); setLinkFor(null); setLinkSvc(""); router.refresh();
   }
 
@@ -137,7 +137,13 @@ export default function BatchesView({ batches, canManage, diplomaOpts, diplomas 
                     b.eprice ? (
                       <div style={{ marginTop: 8, padding: "10px 11px", background: "var(--bg)", borderRadius: 10, border: "1px solid var(--line)" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
-                          <span style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 700 }}>{tr("servicePrice")}</span>
+                          <span style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 700, marginInlineEnd: "auto" }}>{tr("servicePrice")}</span>
+                          {canManage && (
+                            <button onClick={() => { setLinkSvc(b.service_id || ""); setLinkFor(b.id); }} title={tr("changeService")}
+                              style={{ border: "1px solid var(--line)", background: "var(--surface)", color: "var(--muted)", borderRadius: 7, width: 26, height: 26, display: "grid", placeItems: "center", cursor: "pointer", marginInlineEnd: 6 }}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} style={{ width: 13, height: 13 }}><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                            </button>
+                          )}
                           <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, background: b.eprice.source === "frozen" ? "var(--blue-soft)" : "var(--green-soft)", color: b.eprice.source === "frozen" ? "var(--blue)" : "var(--green)" }}>
                             {b.eprice.source === "frozen" ? "🔒 " + tr("frozenPrice") : "● " + tr("livePrice")}
                           </span>
@@ -204,12 +210,15 @@ export default function BatchesView({ batches, canManage, diplomaOpts, diplomas 
       {linkFor && (
         <div onClick={() => !linkBusy && setLinkFor(null)} style={{ position: "fixed", inset: 0, background: "rgba(21,34,59,.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, padding: 20, width: "100%", maxWidth: 400, boxShadow: "0 20px 60px rgba(0,0,0,.28)" }}>
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--ink)", marginBottom: 12 }}>{tr("linkToService")}</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--ink)", marginBottom: 12 }}>{batches.find((x) => x.id === linkFor)?.service_id ? tr("changeService") : tr("linkToService")}</h3>
             <select className="inp" value={linkSvc} onChange={(e) => setLinkSvc(e.target.value)} style={{ width: "100%", marginBottom: 14 }}>
               <option value="">{tr("chooseService")}</option>
               {services.map((sv) => <option key={sv.id} value={sv.id}>{sv.name}{sv.code ? ` — ${sv.code}` : ""}</option>)}
             </select>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+              {batches.find((x) => x.id === linkFor)?.service_id && (
+                <button onClick={() => { setLinkSvc(""); doLink(); }} className="btn ghost" disabled={linkBusy} style={{ marginInlineEnd: "auto", color: "var(--red)", borderColor: "rgba(219,91,78,.35)" }}>{tr("unlinkService")}</button>
+              )}
               <button onClick={() => setLinkFor(null)} className="btn ghost" disabled={linkBusy}>{tr("cancel")}</button>
               <button onClick={doLink} className="btn" disabled={linkBusy || !linkSvc}>{linkBusy ? "..." : tr("linkBtn")}</button>
             </div>
