@@ -17,12 +17,14 @@ export default async function Batches() {
     bd,
     { data: allDips },
     { data: svcTypes },
+    { data: dtlRow },
   ] = await Promise.all([
     supabase.from("profiles").select("can_manage_batches").eq("id", user?.id || "").maybeSingle(),
     supabase.from("batches").select("id,code,status,start_date,end_date,capacity,notes,price,currency,price_egp,price_usd,kind,service_id,price_frozen_at,done").order("created_at", { ascending: false }),
     supabase.from("batches").select("id,diploma_id"),
     supabase.from("diplomas").select("id,name_ar,batch_code_prefix").order("name_ar"),
     supabase.from("service_types").select("slug,name,sort").eq("active", true).order("sort"),
+    supabase.from("app_settings").select("value").eq("key", "diploma_tab_label").maybeSingle(),
   ]);
   const canManage = !!meB?.can_manage_batches;
 
@@ -106,6 +108,7 @@ export default async function Batches() {
       <BatchesView batches={viewData} canManage={canManage} diplomaOpts={diplomaOpts}
         diplomas={(allDips || []).map((d: any) => ({ id: d.id, name: d.name_ar, prefix: d.batch_code_prefix || "" }))}
         serviceTypes={((svcTypes as any[]) || []).map((t) => ({ slug: t.slug, name: t.name }))}
+        diplomaTabLabel={((dtlRow?.value as any)?.label) || ""}
         services={(servicesList as any[]).map((sv) => ({ id: sv.id, name: sv.name, code: sv.code }))} />
     </div>
   );

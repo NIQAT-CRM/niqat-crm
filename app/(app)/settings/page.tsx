@@ -148,7 +148,7 @@ export default async function Settings() {
 
   // ===== تبويبات الإعدادات (تكاملات/كتالوج/أفيلييت) — تظهر لمن عنده can_manage_settings =====
   if (canSettings) {
-    const [watiRow, defRow, coRow, stRow, affRow, access, spec, dip, uni, src, cty, scRows, ryRow] = await Promise.all([
+    const [watiRow, defRow, coRow, stRow, affRow, access, spec, dip, uni, src, cty, scRows, ryRow, dtlRow] = await Promise.all([
       supabase.from("app_settings").select("value").eq("key", "wati").maybeSingle(),
       supabase.from("app_settings").select("value").eq("key", "defaults").maybeSingle(),
       supabase.from("app_settings").select("value").eq("key", "company").maybeSingle(),
@@ -162,6 +162,7 @@ export default async function Settings() {
       safeList(supabase, "countries", "name"),
       supabase.from("keyboard_shortcuts").select("id,code,combo,category,action_type,target,label_ar,label_en,perm,context,enabled,sort").order("sort"),
       supabase.from("app_settings").select("value").eq("key", "recent_grad_years").maybeSingle(),
+      supabase.from("app_settings").select("value").eq("key", "diploma_tab_label").maybeSingle(),
     ]);
 
     const wRaw = (watiRow.data?.value as any) || {};
@@ -196,7 +197,7 @@ export default async function Settings() {
           <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>{tr("manageListsHint")} {tr("servicesInBatchesHint")}</p>
           <div className="setgrid">
             <OptionsList title={tr("manageDiplomas")} hint={tr("manageDiplomasHint")} table="diplomas" labelCol="name_ar" initial={dip.items} extraCol="batch_code_prefix" extraPlaceholder={tr("batchCodePrefixPh")} />
-            <ServiceTypesManager initial={(stRow.data as any[]) || []} />
+            <ServiceTypesManager initial={(stRow.data as any[]) || []} diplomaLabel={((dtlRow.data?.value as any)?.label) || ""} />
             <OptionsList title={tr("manageSpecialties")} hint={tr("manageSpecialtiesHint")} table="specialties" labelCol="name_ar" initial={spec.items} />
             <OptionsList title={tr("manageAccessOptions")} hint={tr("manageAccessOptionsHint")} table="access_options" labelCol="label" initial={access.items} />
             <OptionsList title={tr("manageSources")} hint={tr("manageSourcesHint")} table="sources" labelCol="name" initial={src.items} />

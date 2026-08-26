@@ -13,7 +13,7 @@ const IcDel = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 const IcOk = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6}><path d="M20 6L9 17l-5-5" /></svg>;
 const IcX = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M6 6l12 12M18 6L6 18" /></svg>;
 
-export default function ServiceTypesManager({ initial }: { initial: ST[] }) {
+export default function ServiceTypesManager({ initial, diplomaLabel = "" }: { initial: ST[]; diplomaLabel?: string }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
@@ -24,6 +24,17 @@ export default function ServiceTypesManager({ initial }: { initial: ST[] }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [eName, setEName] = useState("");
   const [eLabel, setELabel] = useState("");
+  // تاب الدبلومات (افتراضي) — اسمه مخزّن في app_settings
+  const [dipLbl, setDipLbl] = useState(diplomaLabel || "");
+  const [dipEdit, setDipEdit] = useState(false);
+  const [dipVal, setDipVal] = useState(diplomaLabel || "");
+  async function saveDip() {
+    setBusy(true);
+    const { error } = await supabase.from("app_settings").upsert({ key: "diploma_tab_label", value: { label: dipVal.trim() } }, { onConflict: "key" });
+    setBusy(false);
+    if (error) { toast(tr("saveFailed") + error.message); return; }
+    setDipLbl(dipVal.trim()); setDipEdit(false); toast(tr("saved2")); router.refresh();
+  }
 
   async function add() {
     const name = nName.trim();
@@ -73,6 +84,22 @@ export default function ServiceTypesManager({ initial }: { initial: ST[] }) {
           <table className="settbl">
             <thead><tr><th>{tr("name")}</th><th>{tr("activationLabel")}</th><th style={{ width: 84 }}></th></tr></thead>
             <tbody>
+              <tr>
+                {dipEdit ? (<>
+                  <td><input className="ei" value={dipVal} onChange={(e) => setDipVal(e.target.value)} placeholder={tr("tabDiplomaBatches")} /></td>
+                  <td><span className="sub" style={{ color: "var(--muted)", fontSize: 11 }}>🎓 {tr("defaultTabNote")}</span></td>
+                  <td className="act-c"><div className="rowacts">
+                    <button className="rowbtn ok" onClick={saveDip} title={tr("save")} disabled={busy}><IcOk /></button>
+                    <button className="rowbtn cancel" onClick={() => { setDipVal(dipLbl); setDipEdit(false); }} title={tr("cancel")}><IcX /></button>
+                  </div></td>
+                </>) : (<>
+                  <td className="nm-c"><span className="nm">🎓 {dipLbl || tr("tabDiplomaBatches")}</span></td>
+                  <td className="nm-c"><span className="sub" style={{ color: "var(--muted)", fontSize: 11 }}>{tr("defaultTabNote")}</span></td>
+                  <td className="act-c"><div className="rowacts">
+                    <button className="rowbtn edit" onClick={() => { setDipVal(dipLbl || ""); setDipEdit(true); }} title={tr("edit")}><IcEdit /></button>
+                  </div></td>
+                </>)}
+              </tr>
               {items.map((it) => (
                 <tr key={it.id}>
                   {editId === it.id ? (<>
