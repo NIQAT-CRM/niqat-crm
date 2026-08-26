@@ -12,7 +12,7 @@ import { useLogUsage } from "../../AiFlags";
 import { receiptFileName, receiptDisplayName } from "@/lib/supabase/receipts";
 
 type Opt = { id: string; name: string };
-type BatchOpt = { id: string; name: string; price?: number; currency?: string; price_egp?: number; price_usd?: number; diploma_id?: string; status?: string; service_id?: string | null; svc?: { base_old: number | null; base_recent: number | null; base_intl: number | null; base_single: number | null; normal_pct: number | null; affiliate_pct: number | null } | null };
+type BatchOpt = { id: string; name: string; price?: number; currency?: string; price_egp?: number; price_usd?: number; diploma_id?: string; status?: string; service_id?: string | null; svc?: { base_old: number | null; base_recent: number | null; base_intl: number | null; base_single: number | null; normal_pct: number | null; affiliate_pct: number | null; temp_pct?: number | null } | null };
 const STAGES = [
   ["contacted", "dashStageContacted"], ["interested", "dashStageInterested"],
   ["enrolled", "dashStageEnrolled"], ["onhold", "dashStageOnhold"],
@@ -141,7 +141,8 @@ export default function NewCustomerForm({
     if (b.svc) {
       const svc = b.svc;
       const np = Number(svc.normal_pct) || 0;
-      const disc = (base: number | null) => base == null ? null : Math.round(Number(base) * (1 - np / 100));
+      const tf = 1 - (Number(svc.temp_pct) || 0) / 100;
+      const disc = (base: number | null) => base == null ? null : Math.round(Number(base) * (1 - np / 100) * tf);
       let base: number | null = null, t = "";
       if (svc.base_single != null) { t = "single"; base = svc.base_single; }
       else if (f.currency === "USD") { t = "intl"; base = svc.base_intl; }
@@ -628,8 +629,10 @@ export default function NewCustomerForm({
                   </select>
                 </div>
                 {priceTier && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--green)", marginTop: 6, fontWeight: 700 }}>
-                    💡 {tr("autoPriceFrom")} <b>{tr(priceTier === "single" ? "tierSingle" : priceTier === "intl" ? "tierIntl" : priceTier === "recent" ? "tierRecentShort" : "tierOldShort")}</b> · {tr("editableManually")}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--green)", marginTop: 6, fontWeight: 700, flexWrap: "wrap" }}>
+                    💡 {tr("autoPriceFrom")} <b>{tr(priceTier === "single" ? "tierSingle" : priceTier === "intl" ? "tierIntl" : priceTier === "recent" ? "tierRecentShort" : "tierOldShort")}</b>
+                    {(() => { const b = batches.find((x) => x.id === f.batch_id); const tp = Number(b?.svc?.temp_pct) || 0; return tp > 0 ? <span style={{ color: "var(--brand-d)", background: "var(--brand-soft)", padding: "1px 7px", borderRadius: 12 }}>⏰ {tr("tempDiscountTitle")} -{tp}%</span> : null; })()}
+                    · {tr("editableManually")}
                   </div>
                 )}
                 {amountNoDiploma && (

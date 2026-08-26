@@ -25,7 +25,7 @@ export default async function NewCustomerPage() {
     supabase.from("app_settings").select("value").eq("key", "defaults").maybeSingle(),
     supabase.rpc("dash_enrollment_diploma"),
     supabase.from("countries").select("name").order("name"),   // جدول اختياري — بيرجع null لو لسه مش متعمل
-    supabase.from("services").select("id,base_old,base_recent,base_intl,base_single,normal_pct,affiliate_pct"),
+    supabase.from("services").select("id,base_old,base_recent,base_intl,base_single,normal_pct,affiliate_pct,temp_discount_pct,temp_discount_start,temp_discount_end"),
     supabase.from("app_settings").select("value").eq("key", "recent_grad_years").maybeSingle(),
   ]);
   const frequentDiplomas = ((edRows as any[]) || [])
@@ -36,10 +36,18 @@ export default async function NewCustomerPage() {
   const affiliates = Array.isArray(affRow?.value) ? (affRow!.value as any[]) : [];
   const openB = (bts || []).filter((b) => { const s = (b as any).status; return !s || s === "open"; });
   const svcMap = new Map<string, any>();
+  const todayCairo = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const activeTempPct = (sv: any) => {
+    const p = Number(sv.temp_discount_pct) || 0;
+    if (p <= 0) return 0;
+    if (sv.temp_discount_start && String(sv.temp_discount_start) > todayCairo) return 0;
+    if (sv.temp_discount_end && String(sv.temp_discount_end) < todayCairo) return 0;
+    return p;
+  };
   for (const sv of ((svcPrices as any[]) || [])) svcMap.set(sv.id, sv);
   const mapB = (b: any) => {
     const svc = b.service_id ? svcMap.get(b.service_id) : null;
-    return { id: b.id, name: b.code, price: Number(b.price) || 0, currency: b.currency || "EGP", price_egp: Number(b.price_egp) || 0, price_usd: Number(b.price_usd) || 0, diploma_id: b.diploma_id || "", kind: b.kind || "diploma", status: b.status || "", service_id: b.service_id || null, svc: svc ? { base_old: svc.base_old, base_recent: svc.base_recent, base_intl: svc.base_intl, base_single: svc.base_single, normal_pct: svc.normal_pct, affiliate_pct: svc.affiliate_pct } : null };
+    return { id: b.id, name: b.code, price: Number(b.price) || 0, currency: b.currency || "EGP", price_egp: Number(b.price_egp) || 0, price_usd: Number(b.price_usd) || 0, diploma_id: b.diploma_id || "", kind: b.kind || "diploma", status: b.status || "", service_id: b.service_id || null, svc: svc ? { base_old: svc.base_old, base_recent: svc.base_recent, base_intl: svc.base_intl, base_single: svc.base_single, normal_pct: svc.normal_pct, affiliate_pct: svc.affiliate_pct, temp_pct: activeTempPct(svc) } : null };
   };
   const recentYears: number[] = Array.isArray((ryRow as any)?.value?.years) ? (ryRow as any).value.years : [];
   return (

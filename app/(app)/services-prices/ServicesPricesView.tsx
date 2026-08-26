@@ -10,6 +10,7 @@ type Service = {
   schedule: string | null; batch_code: string | null;
   base_old: number | null; base_recent: number | null; base_intl: number | null; base_single: number | null;
   tiers: string[] | null; normal_pct: number | null; affiliate_pct: number | null; notes: string | null; sort: number | null;
+  temp_discount_pct?: number | null; temp_discount_start?: string | null; temp_discount_end?: string | null;
 };
 
 const TIER_KEYS = ["old", "recent", "intl"] as const;
@@ -301,6 +302,7 @@ function ServiceEditor({ s, selectedIds = [], onClose, onDelete, onBulkDone }: {
     single: (s.tiers || []).includes("single"),
     base_old: s.base_old ?? "", base_recent: s.base_recent ?? "", base_intl: s.base_intl ?? "", base_single: s.base_single ?? "",
     normal_pct: s.normal_pct ?? 10, affiliate_pct: s.affiliate_pct ?? 25,
+    temp_pct: s.temp_discount_pct ?? "", temp_start: s.temp_discount_start ?? "", temp_end: s.temp_discount_end ?? "",
   });
   const [saving, setSaving] = useState(false);
   const [applyFinished, setApplyFinished] = useState(false);
@@ -316,6 +318,7 @@ function ServiceEditor({ s, selectedIds = [], onClose, onDelete, onBulkDone }: {
     const priceFields = {
       tiers, base_old: num(f.base_old), base_recent: num(f.base_recent), base_intl: num(f.base_intl), base_single: num(f.base_single),
       normal_pct: num(f.normal_pct), affiliate_pct: num(f.affiliate_pct),
+      temp_discount_pct: num(f.temp_pct), temp_discount_start: f.temp_start || null, temp_discount_end: f.temp_end || null,
     };
     // الخدمة الحالية: كل الحقول (بما فيها الاسم/الكود)
     await supabase.from("services").update({
@@ -362,6 +365,21 @@ function ServiceEditor({ s, selectedIds = [], onClose, onDelete, onBulkDone }: {
         </>)}
         <Fld label={t("normalDiscPct")}><input className="sp-inp" value={f.normal_pct as any} onChange={(e) => set("normal_pct", e.target.value)} /></Fld>
         <Fld label={t("affiliateDiscPct")}><input className="sp-inp" value={f.affiliate_pct as any} onChange={(e) => set("affiliate_pct", e.target.value)} /></Fld>
+      </div>
+      <div style={{ background: "var(--amber-soft,#FBF1DC)", borderRadius: 10, padding: "11px 13px", marginBottom: 12 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 800, color: "var(--brand-d)", cursor: "pointer", marginBottom: f.temp_pct !== "" && Number(f.temp_pct) > 0 ? 10 : 0 }}>
+          <input type="checkbox" checked={f.temp_pct !== "" && Number(f.temp_pct) > 0} onChange={(e) => set("temp_pct", e.target.checked ? 10 : "")} style={{ width: 15, height: 15, accentColor: "var(--brand)" }} />
+          ⏰ {t("tempDiscountTitle")}
+        </label>
+        {f.temp_pct !== "" && Number(f.temp_pct) > 0 && (
+          <div className="sp-eb-grid" style={{ marginBottom: 0 }}>
+            <Fld label={t("tempDiscountPct")}><input className="sp-inp" value={f.temp_pct as any} onChange={(e) => set("temp_pct", e.target.value)} /></Fld>
+            <div />
+            <Fld label={t("tempDiscountStart")}><input className="sp-inp" type="date" dir="ltr" value={f.temp_start as any} onChange={(e) => set("temp_start", e.target.value)} /></Fld>
+            <Fld label={t("tempDiscountEnd")}><input className="sp-inp" type="date" dir="ltr" value={f.temp_end as any} onChange={(e) => set("temp_end", e.target.value)} /></Fld>
+          </div>
+        )}
+        <p style={{ fontSize: 10.5, color: "var(--brand-d)", margin: "8px 0 0", opacity: .85 }}>💡 {t("tempDiscountHint")}</p>
       </div>
       <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text)", fontWeight: 600, marginBottom: 10, cursor: "pointer", background: "var(--blue-soft)", padding: "9px 12px", borderRadius: 9 }}>
         <input type="checkbox" checked={applyFinished} onChange={(e) => setApplyFinished(e.target.checked)} style={{ width: 15, height: 15, accentColor: "var(--brand)" }} />
