@@ -264,7 +264,7 @@ export default function NewCustomerForm({
     log("action", "action:new_customer", "customers");
     // صورة تحويل الفلوس المتفق عليها → تخزين + تسجيل في المستندات
     // (نتخطّاها لو الإيصال هيتربط بالقسط الأول في وضع التقسيط)
-    const receiptGoesToInstallment = payMode === "installment" && payFirstNow;
+    const receiptGoesToInstallment = (payMode === "installment" && payFirstNow) || (payMode === "cash" && cashPaidNow);
     const transferAmt = Number(transferAmount) || net; // المبلغ الفعلي المحوّل (افتراضي = المتفق، قابل للتعديل)
     if (payFile && !receiptGoesToInstallment) {
       const recName = receiptDisplayName(f.name, phone1);
@@ -287,11 +287,22 @@ export default function NewCustomerForm({
         });
         // نظام الدفع: كاش = قسط واحد مدفوع بالكامل / تقسيط = أقساط بمواعيد محسوبة
         if (payMode === "cash") {
+          // كاش مدفوع + إيصال → نرفعه ونربطه بالقسط (زي التقسيط) عشان يبان 🧾 ويظهر في الإيصالات مرة واحدة
+          let cashShot: string | null = null;
+          if (cashPaidNow && payFile) {
+            const p = `installments/${cid}/${Date.now()}-${receiptFileName(f.name, phone1, payFile.name)}`;
+            const u = await supabase.storage.from("receipts").upload(p, payFile, { upsert: false });
+            if (!u.error) {
+              cashShot = p;
+              await supabase.from("customer_docs").insert({ customer_id: cid, url: cashShot, name: receiptDisplayName(f.name, phone1), amount: transferAmt, currency: transferCur });
+            }
+          }
           await supabase.from("installments").insert({
             enrollment_id: enr.id, amount: net, currency: f.currency,
             due_date: new Date().toISOString().slice(0, 10),
             status: cashPaidNow ? "paid" : "due",
             paid_at: cashPaidNow ? new Date().toISOString() : null,
+            screenshot_url: cashShot,
           });
         } else {
           const rows = buildSchedule(net, Number(instCount), Number(instGap));
@@ -317,6 +328,10 @@ export default function NewCustomerForm({
             );
           }
         }
+      }
+      // تحويل حالة العميل لـ«مسجّل» تلقائياً أول ما يتعمل اشتراك (مدفوع أو حتى مسجّل بدون دفع فوري)
+      if (enr && f.stage !== "enrolled") {
+        await supabase.from("customers").update({ stage: "enrolled" }).eq("id", cid);
       }
     }
 
