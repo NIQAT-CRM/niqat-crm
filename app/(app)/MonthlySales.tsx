@@ -92,14 +92,12 @@ export default function MonthlySales({ rows, collapsible = false }: { rows: Row[
                     <div className="ms-mname">{monthLabel(d.ym)}{d.ym === curYm && <span className="ms-curdot" />}</div>
                     <div className="ms-mcnt">{fmt(d.cnt)} {tr("receiptsWord")}</div>
                   </div>
-                  <table className="ms-mtbl">
-                    <thead><tr><th></th><th>{tr("egp")}</th><th>USD $</th></tr></thead>
-                    <tbody>
-                      <tr><td className="lbl">{tr("totalCollection")}</td><td className="n">{fmt(d.gross_egp)}</td><td className="n">{fmt(d.gross_usd)}</td></tr>
-                      <tr className="rf"><td className="lbl">{tr("monthRefunds")}</td><td className="n">{d.refunds_egp ? "−" : ""}{fmt(d.refunds_egp)}</td><td className="n">{d.refunds_usd ? "−" : ""}{fmt(d.refunds_usd)}</td></tr>
-                      <tr className="nt"><td className="lbl">{tr("netCollection")}</td><td className="n">{fmt(d.net_egp)}</td><td className="n">{fmt(d.net_usd)}</td></tr>
-                    </tbody>
-                  </table>
+                  <div className="ms-mg">
+                    <div className="ms-mg-h"><span /><span>{tr("egp")}</span><span>USD $</span></div>
+                    <div className="ms-mg-r"><span className="l">{tr("totalCollection")}</span><b className="n">{fmt(d.gross_egp)}</b><b className="n">{fmt(d.gross_usd)}</b></div>
+                    <div className="ms-mg-r rf"><span className="l">{tr("monthRefunds")}</span><b className="n">{d.refunds_egp ? "−" : ""}{fmt(d.refunds_egp)}</b><b className="n">{d.refunds_usd ? "−" : ""}{fmt(d.refunds_usd)}</b></div>
+                    <div className="ms-mg-r nt"><span className="l">{tr("netCollection")}</span><b className="n">{fmt(d.net_egp)}</b><b className="n">{fmt(d.net_usd)}</b></div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -149,15 +147,19 @@ const css = `
 .ms-mname{font-size:14px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:6px}
 .ms-curdot{width:6px;height:6px;border-radius:50%;background:var(--brand)}
 .ms-mcnt{font-size:11px;color:var(--muted);font-weight:600}
-.ms-mtbl{width:100%;border-collapse:collapse}
-.ms-mtbl th{font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;padding:4px 8px;text-align:center;border-bottom:1px solid var(--line)}
-.ms-mtbl th:first-child{text-align:start}
-.ms-mtbl td{padding:8px;text-align:center;font-family:var(--fd);font-weight:800;font-size:13.5px;color:var(--ink)}
-.ms-mtbl td.lbl{text-align:start;font-family:var(--fa);font-weight:700;font-size:12px;color:var(--text)}
-.ms-mtbl tr.rf td:not(.lbl){color:var(--red)}
-.ms-mtbl tr.rf td.lbl{color:var(--red)}
-.ms-mtbl tr.nt td:not(.lbl){color:var(--green)}
-.ms-mtbl tr.nt td.lbl{font-weight:800;color:var(--ink)}
+.ms-mg{display:flex;flex-direction:column}
+.ms-mg-h,.ms-mg-r{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:6px;align-items:center}
+.ms-mg-h{padding:5px 8px;border-bottom:1px solid var(--line)}
+.ms-mg-h span{font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;text-align:center}
+.ms-mg-h span:first-child{text-align:start}
+.ms-mg-r{padding:8px;border-radius:8px}
+.ms-mg-r .l{font-family:var(--fa);font-weight:700;font-size:12px;color:var(--text);text-align:start;min-width:0}
+.ms-mg-r b{font-family:var(--fd);font-weight:800;font-size:13.5px;color:var(--ink);text-align:center;direction:ltr}
+.ms-mg-r.rf{background:var(--red-soft,#FBECEA)}
+.ms-mg-r.rf .l,.ms-mg-r.rf b{color:var(--red)}
+.ms-mg-r.nt{background:var(--green-soft)}
+.ms-mg-r.nt .l{font-weight:800;color:var(--ink)}
+.ms-mg-r.nt b{color:var(--green)}
 .ms-empty{font-size:13px;color:var(--muted);padding:16px;text-align:center}
 .ms-mbody::-webkit-scrollbar{width:6px}
 .ms-mbody::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
