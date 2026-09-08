@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { useT, useLang } from "@/lib/i18n/client";
 
 type Row = { ym: string; egp: number; usd: number; cnt: number };
@@ -8,6 +9,16 @@ export default function MonthlySales({ rows, collapsible = false }: { rows: Row[
   const tr = useT();
   const lang = useLang();
   const [open, setOpen] = useState(!collapsible);
+  const [close, setClose] = useState<{ gross_egp: number; gross_usd: number; refunds_egp: number; refunds_usd: number; net_egp: number; net_usd: number } | null>(null);
+  useEffect(() => {
+    const now = new Date();
+    (async () => {
+      try {
+        const r: any = await createClient().rpc("monthly_close", { p_year: now.getFullYear(), p_month: now.getMonth() + 1 });
+        if (!r.error && r.data && r.data[0]) setClose(r.data[0]);
+      } catch { /* لا صلاحية مالية؟ نتجاهل */ }
+    })();
+  }, []);
   const nf = new Intl.NumberFormat(lang === "ar" ? "ar-EG" : "en-US");
   const monthLabel = (ym: string) => {
     const [y, m] = ym.split("-").map(Number);
@@ -27,6 +38,23 @@ export default function MonthlySales({ rows, collapsible = false }: { rows: Row[
             style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }}><path d="M6 9l6 6 6-6" /></svg>
         )}
       </div>
+
+      {open && close && (
+        <div style={{ borderBottom: "1px solid var(--line)", paddingBottom: 12, marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0" }}>
+            <span style={{ fontSize: 12.5, color: "var(--text)", fontWeight: 600 }}>{tr("totalCollection")}</span>
+            <span className="n" style={{ fontFamily: "var(--fd)", fontWeight: 700, fontSize: 14, color: "var(--ink)", direction: "ltr" }}>{nf.format(close.gross_egp)} {tr("egp")}{Number(close.gross_usd) > 0 ? ` · $${nf.format(close.gross_usd)}` : ""}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0" }}>
+            <span style={{ fontSize: 12.5, color: "var(--red)", fontWeight: 600 }}>{tr("monthRefunds")}</span>
+            <span className="n" style={{ fontFamily: "var(--fd)", fontWeight: 700, fontSize: 14, color: "var(--red)", direction: "ltr" }}>{(Number(close.refunds_egp) || Number(close.refunds_usd)) ? `−${nf.format(close.refunds_egp)} ${tr("egp")}${Number(close.refunds_usd) > 0 ? ` · −$${nf.format(close.refunds_usd)}` : ""}` : "0"}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0 2px", borderTop: "1px dashed var(--line)", marginTop: 4 }}>
+            <span style={{ fontSize: 13, color: "var(--ink)", fontWeight: 800 }}>{tr("netCollection")}</span>
+            <span className="n" style={{ fontFamily: "var(--fd)", fontWeight: 800, fontSize: 15.5, color: "var(--green)", direction: "ltr" }}>{nf.format(close.net_egp)} {tr("egp")}{Number(close.net_usd) > 0 ? ` · $${nf.format(close.net_usd)}` : ""}</span>
+          </div>
+        </div>
+      )}
 
       {open && (
         rows.length === 0

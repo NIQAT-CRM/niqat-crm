@@ -10,6 +10,7 @@ import PeriodFilter from "../PeriodFilter";
 import ExportButton from "../ExportButton";
 import AffiliateGlobal from "./AffiliateGlobal";
 import InsightsSection, { type InsightsData } from "./InsightsSection";
+import MonthlyClose from "./MonthlyClose";
 
 type StageRow = { key: string; label: string; color: string; n: number };
 type AffRow = { code: string; name: string; discount: number | null; customers: number; enrolled: number; interested: number; refunded: number };
@@ -141,6 +142,7 @@ export default function ReportsView({
     { k: "performance", label: tr("tabPerformance") },
     { k: "team", label: tr("tabTeam") },
     ...(canFinance ? [{ k: "refunds", label: tr("refundsReportTitle") }] : []),
+    ...(canFinance ? [{ k: "monthclose", label: tr("monthlyCloseTitle") }] : []),
     { k: "affiliate", label: tr("tabAffiliate") },
   ];
   const [tab, setTab] = useState("performance");
@@ -399,6 +401,10 @@ export default function ReportsView({
       )}
 
       {/* ===== الأفيلييت ===== */}
+      {tab === "monthclose" && canFinance && (
+        <div style={{ marginTop: 8 }}><MonthlyClose /></div>
+      )}
+
       {tab === "affiliate" && (
         <div className="fade-in">
           <div style={{ marginBottom: 14 }}>
