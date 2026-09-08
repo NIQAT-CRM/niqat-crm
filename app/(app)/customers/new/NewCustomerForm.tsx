@@ -329,8 +329,10 @@ export default function NewCustomerForm({
           }
         }
       }
-      // تحويل حالة العميل لـ«مسجّل» تلقائياً أول ما يتعمل اشتراك (مدفوع أو حتى مسجّل بدون دفع فوري)
-      if (enr && f.stage !== "enrolled") {
+      // تحويل الحالة لـ«مسجّل» تلقائياً — بس لو فيه دفع فعلي أو هدية/مجاني.
+      // العميل المهتم اللي اتعمله اشتراك بالتقسيط من غير دفع دلوقتي → يفضل بحالته (مايتحوّلش).
+      const didPay = f.free || (payMode === "cash" && cashPaidNow) || (payMode === "installment" && payFirstNow);
+      if (enr && didPay && f.stage !== "enrolled") {
         await supabase.from("customers").update({ stage: "enrolled" }).eq("id", cid);
       }
     }
