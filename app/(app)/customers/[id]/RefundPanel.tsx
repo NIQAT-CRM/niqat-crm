@@ -156,6 +156,7 @@ export default function RefundPanel({
   // إلغاء طلب الريفند نهائياً (قبل الإغلاق) — لو العميل رجع في كلامه.
   // بيشيل الريفند + بند "التحويل للدعم لقفل الأكسس" الخاص بيه لو موجود. الخدمة نفسها لسه مفتوحة (لسه ماتقفلتش).
   async function cancelRefund(r: Refund) {
+    if (r.status !== "requested") return;
     const ok = await confirmDialog({
       message: `${tr("cancelRefundConfirm")}\n\n• ${svcName(r)} — ${money(r.amount, r.currency)}`,
       confirmLabel: tr("cancelRefundYes"),
@@ -164,17 +165,10 @@ export default function RefundPanel({
     });
     if (!ok) return;
     setBusy("cancel:" + r.id);
-    // شيل بند التحويل للدعم لقفل الأكسس الخاص بالخدمة دي (لو اتعمل)
-    const closeItem = accessItems.find((i) => i.label === `${tr("refundCloseAccess")} — ${svcName(r)}`) || null;
-    if (closeItem) await supabase.from("handoff_items").delete().eq("id", closeItem.id);
-    const { error } = await supabase.from("refunds").delete().eq("id", r.id);
-    if (error) { setBusy(""); toast(tr("updateFailed") + error.message); return; }
-    await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "refund_cancel", detail: `${tr("refundCanceledAudit")} — ${svcName(r)} (${money(r.amount, r.currency)})` });
-    setBusy("");
-    await revalidateCustomers();
-    toast(tr("refundCanceled")); router.refresh();
+    const { error } = await supabase.rpc("cancel_refund", { p_refund_id: r.id });
+    if (error) { setBusy(""); toast(tr("cancelFailed") + error.message); return; }
+    setBusy(""); toast(tr("refundCancelled")); router.refresh();
   }
-
   async function archiveCustomer() {
     setBusy("archive");
     const { error } = await supabase.from("customers").update({ archived: true }).eq("id", customerId);
@@ -292,7 +286,7 @@ export default function RefundPanel({
                   {r.status === "closed" && (
                     <div style={{ fontSize: 12, color: "var(--muted)" }}>✓ {tr("serviceClosedDone")}</div>
                   )}
-                  {r.status !== "closed" && (
+                  {r.status === "requested" && (
                     <button onClick={() => cancelRefund(r)} disabled={busy === "cancel:" + r.id} className="btn ghost" style={{ fontSize: 12, marginTop: 8, color: "var(--red)", borderColor: "var(--red)" }}>
                       {busy === "cancel:" + r.id ? "..." : "✕ " + tr("cancelRequestBtn")}
                     </button>
