@@ -7,21 +7,24 @@ function cairoDay(iso: string): string {
 
 type Row = { amount: number; currency: string; day: string };
 
-// المصدر الموحّد للمبيعات: الإيصالات الفردية (منزوعة التكرار بالمسار زي صفحة الإيصالات) + الإيصالات المشتركة
-// يستبعد الاستيراد التاريخي تلقائياً (لأنه بلا صور/إيصالات)
+// أولوية المصدر (مطابقة لـ sales_month): installment > enrollment > addon > addon_fin > غيره
+const SRC_PRI: Record<string, number> = { installment: 1, enrollment: 2, addon: 3, addon_fin: 4 };
+
+// المصدر الموحّد للمبيعات — نفس منطق sales_month بالظبط:
+// الفردي (receipts_all) منزوع التكرار بالمسار بأولوية المصدر + المشترك (receipts). يستبعد الاستيراد التاريخي.
 async function collectReceiptRows(supabase: any): Promise<Row[]> {
   const out: Row[] = [];
-  // (1) الفردي — من receipts_all، نزع تكرار بالمسار، أول واحد فيه مبلغ يفوز (نفس منطق صفحة الإيصالات)
   const { data } = await supabase.rpc("receipts_all", { p_from: "2000-01-01", p_to: "2100-01-01" });
-  const byPath = new Map<string, Row>();
+  const byPath = new Map<string, Row & { pri: number }>();
   for (const r of ((data as any[]) || [])) {
     if (!r.receipt_url || r.amount == null || !r.uploaded_at) continue;
     const key = receiptPath(r.receipt_url) || r.receipt_url;
-    if (byPath.has(key)) continue; // أول واحد فيه مبلغ يفوز
-    byPath.set(key, { amount: Number(r.amount) || 0, currency: r.currency || "EGP", day: cairoDay(r.uploaded_at) });
+    const pri = SRC_PRI[r.source as string] ?? 5;
+    const ex = byPath.get(key);
+    if (!ex || pri < ex.pri) byPath.set(key, { amount: Number(r.amount) || 0, currency: r.currency || "EGP", day: cairoDay(r.uploaded_at), pri });
   }
-  out.push(...byPath.values());
-  // (2) المشترك — من جدول receipts (بتاريخ الإنشاء)
+  for (const v of byPath.values()) out.push({ amount: v.amount, currency: v.currency, day: v.day });
+  // المشترك — من جدول receipts (بتاريخ الإنشاء)
   const { data: shared } = await supabase.from("receipts").select("total_amount,currency,created_at");
   for (const r of ((shared as any[]) || [])) {
     if (r.total_amount == null || !r.created_at) continue;

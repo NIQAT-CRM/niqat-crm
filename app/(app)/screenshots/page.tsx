@@ -23,12 +23,13 @@ export default async function ScreenshotsPage() {
   // كل صور الدفع الفعلي من كل المصادر (أقساط + دفعة أولى + إضافات + تحويلات) — الريفند مستبعد داخل الدالة.
   const { data } = await supabase.rpc("receipts_all", { p_from: "2000-01-01", p_to: "2100-01-01" });
 
-  // إزالة تكرار نفس الصورة (لو اتخزنت في أكتر من مصدر) — الأولوية للي فيها مبلغ
-  const byPath = new Map<string, Receipt>();
+  // إزالة تكرار نفس الصورة — بأولوية المصدر (مطابق لـ sales_month): installment > enrollment > addon > addon_fin > غيره
+  const SRC_PRI: Record<string, number> = { installment: 1, enrollment: 2, addon: 3, addon_fin: 4 };
+  const byPath = new Map<string, Receipt & { _pri: number }>();
   ((data as any[]) || []).forEach((r) => {
     if (!r.receipt_url) return;
     const key = receiptPath(r.receipt_url) || r.receipt_url;
-    const rec: Receipt = {
+    const rec: Receipt & { _pri: number } = {
       receiptUrl: r.receipt_url || "",
       customerId: r.customer_id || "",
       customerName: r.customer_name || "—",
@@ -38,9 +39,14 @@ export default async function ScreenshotsPage() {
       currency: r.currency || "EGP",
       uploadedAt: r.uploaded_at || "",
       ownerName: r.owner_name || "",
+      _pri: SRC_PRI[r.source as string] ?? 5,
     };
     const existing = byPath.get(key);
-    if (!existing || (!existing.hasAmount && rec.hasAmount)) byPath.set(key, rec);
+    // نفضّل اللي فيه مبلغ، وبين اللي فيهم مبلغ نفضّل الأعلى أولوية مصدر (أقل رقم)
+    const replace = !existing
+      || (!existing.hasAmount && rec.hasAmount)
+      || (existing.hasAmount === rec.hasAmount && rec._pri < existing._pri);
+    if (replace) byPath.set(key, rec);
   });
 
   const oldRows: Receipt[] = Array.from(byPath.values());
