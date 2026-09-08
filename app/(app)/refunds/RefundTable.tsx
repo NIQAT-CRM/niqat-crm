@@ -21,8 +21,19 @@ function money(n: number, cur: string) {
 export default function RefundTable({ rows }: { rows: Row[] }) {
   const tr = useT();
   if (!rows.length) return <EmptyState text={tr("funNoRefunds")} />;
+  const req = rows.filter((r) => r.status === "requested");
+  const reqEgp = req.filter((r) => r.currency !== "USD").reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  const reqUsd = req.filter((r) => r.currency === "USD").reduce((s, r) => s + (Number(r.amount) || 0), 0);
   return (
     <div className="tbl-wrap">
+      {req.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "var(--amber-soft,#FBF1DC)", border: "1px solid rgba(224,163,46,.3)", borderRadius: 12, padding: "12px 16px", marginBottom: 14, flexWrap: "wrap" }}>
+          <span style={{ fontWeight: 800, color: "#9a6a12", fontSize: 13 }}>💰 {tr("totalRequestedRefunds")} · {req.length} {tr("requestWord")}</span>
+          <span className="num" dir="ltr" style={{ fontFamily: "var(--fd)", fontWeight: 800, fontSize: 16, color: "var(--red)" }}>
+            {new Intl.NumberFormat("en").format(Math.round(reqEgp))} EGP{reqUsd > 0 ? ` · ${new Intl.NumberFormat("en").format(Math.round(reqUsd))} $` : ""}
+          </span>
+        </div>
+      )}
       <table>
         <thead>
           <tr><th>{tr("customer")}</th><th>{tr("serviceReason")}</th><th>{tr("amount")}</th><th>{tr("status")}</th><th>{tr("actions")}</th></tr>
