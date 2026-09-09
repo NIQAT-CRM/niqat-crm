@@ -154,7 +154,7 @@ export default function BatchesView({ batches, canManage, diplomaOpts, diplomas 
                         </div>
                         {(() => {
                           const ep = b.eprice; const np = Number(ep.normal_pct) || 0; const ap = Number(ep.affiliate_pct) || 0;
-                          const tp = Number(ep.temp_pct) || 0; const tf = 1 - tp / 100;
+                          const tp = Number(ep.temp_pct) || 0; const effNp = tp > 0 ? tp : np;
                           const rows: { lbl: string; base: any; dollar?: boolean }[] = [];
                           if (ep.base_single != null) rows.push({ lbl: tr("singlePrice"), base: ep.base_single });
                           else {
@@ -174,8 +174,8 @@ export default function BatchesView({ batches, canManage, diplomaOpts, diplomas 
                                   <div key={i} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: 5, fontSize: 11, alignItems: "center", fontFamily: "var(--fa)" }}>
                                     <span style={{ fontWeight: 700, color: "var(--ink)", fontSize: 10.5 }}>{r.lbl}</span>
                                     <b className="num" dir="ltr" style={{ textAlign: "center", color: "var(--ink)" }}>{s}{efmt(r.base)}</b>
-                                    <b className="num" dir="ltr" style={{ textAlign: "center", color: "var(--green)", fontWeight: 700 }}>{s}{efmt(Number(r.base) * (1 - np / 100) * tf)}</b>
-                                    <b className="num" dir="ltr" style={{ textAlign: "center", color: "var(--blue)", fontWeight: 700 }}>{s}{efmt(Number(r.base) * (1 - ap / 100) * tf)}</b>
+                                    <b className="num" dir="ltr" style={{ textAlign: "center", color: "var(--green)", fontWeight: 700 }}>{s}{efmt(Number(r.base) * (1 - effNp / 100))}</b>
+                                    <b className="num" dir="ltr" style={{ textAlign: "center", color: "var(--blue)", fontWeight: 700 }}>{s}{efmt(Number(r.base) * (1 - ap / 100))}</b>
                                   </div>
                                 );
                               })}

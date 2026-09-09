@@ -141,8 +141,9 @@ export default function NewCustomerForm({
     if (b.svc) {
       const svc = b.svc;
       const np = Number(svc.normal_pct) || 0;
-      const tf = 1 - (Number(svc.temp_pct) || 0) / 100;
-      const disc = (base: number | null) => base == null ? null : Math.round(Number(base) * (1 - np / 100) * tf);
+      const tp = Number(svc.temp_pct) || 0;
+      const effPct = tp > 0 ? tp : np;   // المؤقت النشط يحلّ محل العادي على الأساسي
+      const disc = (base: number | null) => base == null ? null : Math.round(Number(base) * (1 - effPct / 100));
       let base: number | null = null, t = "";
       if (svc.base_single != null) { t = "single"; base = svc.base_single; }
       else if (f.currency === "USD") { t = "intl"; base = svc.base_intl; }
