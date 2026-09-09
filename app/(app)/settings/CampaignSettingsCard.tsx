@@ -74,7 +74,7 @@ export default function CampaignSettingsCard() {
   function cancel() { setVals({ ...orig }); setEditing(false); }
 
   return (
-    <div className="setcard settings-anim">
+    <div className="setcard settings-anim" style={{ height: "auto" }}>
       <div className="setcard-h" style={{ cursor: "pointer" }} onClick={() => setOpen((o) => !o)}>
         <div><h3>📣 {tr("campaignSettings")}</h3><p>{tr("campaignSettingsHint")}</p></div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }} onClick={(e) => e.stopPropagation()}>
