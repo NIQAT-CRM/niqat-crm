@@ -1,5 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/lib/toast";
 import { useT, useLang } from "@/lib/i18n/client";
 
 export type Reg = {
@@ -14,7 +17,7 @@ function cairoDay(iso: string) {
   catch { return String(iso).slice(0, 10); }
 }
 
-export default function CampaignView({ rows }: { rows: Reg[] }) {
+export default function CampaignView({ rows, canMessage = false, templates = [] }: { rows: Reg[]; canMessage?: boolean; templates?: string[] }) {
   const tr = useT();
   const lang = useLang();
   const [tab, setTab] = useState<"dash" | "list">("dash");
@@ -25,7 +28,7 @@ export default function CampaignView({ rows }: { rows: Reg[] }) {
         <button className={tab === "dash" ? "on" : ""} onClick={() => setTab("dash")}>📊 {tr("campDashboard")}</button>
         <button className={tab === "list" ? "on" : ""} onClick={() => setTab("list")}>📋 {tr("campRegistrations")} <span className="cmp-cnt">{rows.length}</span></button>
       </div>
-      {tab === "dash" ? <Dashboard rows={rows} tr={tr} lang={lang} /> : <RegList rows={rows} tr={tr} lang={lang} />}
+      {tab === "dash" ? <Dashboard rows={rows} tr={tr} lang={lang} /> : <RegList rows={rows} tr={tr} lang={lang} canMessage={canMessage} templates={templates} />}
       <style>{css}</style>
     </div>
   );
@@ -120,13 +123,20 @@ function Breakdown({ title, data, total, color }: { title: string; data: [string
 }
 
 /* ============ قائمة التسجيلات ============ */
-function RegList({ rows, tr, lang }: { rows: Reg[]; tr: any; lang: string }) {
+function RegList({ rows, tr, lang, canMessage = false, templates = [] }: { rows: Reg[]; tr: any; lang: string; canMessage?: boolean; templates?: string[] }) {
+  const router = useRouter();
+  const supabase = createClient();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [country, setCountry] = useState("");
   const [spec, setSpec] = useState("");
   const [source, setSource] = useState("");
   const [dir, setDir] = useState<"desc" | "asc">("desc");
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
+  const [tpl, setTpl] = useState("");
+  const toggleSel = (id: string) => setSel((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const uniq = (f: keyof Reg) => Array.from(new Set(rows.map((r) => (r[f] || "").toString().trim()).filter(Boolean))).sort();
   const statuses = useMemo(() => uniq("status"), [rows]);
@@ -158,12 +168,42 @@ function RegList({ rows, tr, lang }: { rows: Reg[]; tr: any; lang: string }) {
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `campaign-registrations-${cairoDay(new Date().toISOString())}.csv`; a.click();
   }
 
-  const cols = "150px 1.4fr 1.6fr 130px 1.2fr 100px 90px 1fr 110px";
+  const cols = "40px 150px 1.4fr 1.6fr 130px 1.2fr 100px 90px 1fr 110px";
   const H: React.CSSProperties = { fontSize: 11.5, fontWeight: 800, color: "var(--muted)", padding: "10px 12px", whiteSpace: "nowrap" };
   const C: React.CSSProperties = { fontSize: 12.5, color: "var(--text)", padding: "11px 12px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
+  async function doDelete() {
+    if (!sel.size) return;
+    if (!confirm(tr("campDeleteConfirm").replace("{n}", String(sel.size)))) return;
+    setBusy(true);
+    const { error } = await supabase.rpc("campaign_registrations_delete", { p_ids: Array.from(sel) });
+    setBusy(false);
+    if (error) { toast(tr("deleteFailed") + error.message); return; }
+    toast(tr("done2")); setSel(new Set()); router.refresh();
+  }
+  async function doSend() {
+    if (!sel.size || !tpl) return;
+    setBusy(true);
+    try {
+      const r = await fetch("/api/campaign/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ registration_ids: Array.from(sel), template_name: tpl }) });
+      const j = await r.json();
+      if (!r.ok) toast(j.error || tr("sendFailed"));
+      else { toast(`${tr("waSent")}: ${j.sent} · ${tr("waFailed")}: ${j.failed}`); setSendOpen(false); setSel(new Set()); }
+    } catch { toast(tr("sendFailed")); }
+    setBusy(false);
+  }
+  const allShownSel = shown.length > 0 && shown.every((r) => sel.has(r.id));
+
   return (
     <div>
+      {sel.size > 0 && (
+        <div className="cmp-selbar">
+          <span>✓ {sel.size} {tr("selectedWord")}</span>
+          {canMessage && <button className="btn" style={{ height: 34 }} onClick={() => setSendOpen(true)} disabled={busy}>📨 {tr("bulkWaSend")}</button>}
+          <button className="btn ghost" style={{ height: 34, color: "var(--red)", borderColor: "rgba(219,91,78,.35)" }} onClick={doDelete} disabled={busy}>🗑 {tr("deleteWord")}</button>
+          <button className="btn ghost" style={{ height: 34, marginInlineStart: "auto" }} onClick={() => setSel(new Set())}>{tr("clearSelection")}</button>
+        </div>
+      )}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14, alignItems: "center" }}>
         <input className="inp" placeholder={tr("searchColon")} value={q} onChange={(e) => setQ(e.target.value)} style={{ height: 38, minWidth: 200, flex: 1 }} />
         <select className="inp" value={status} onChange={(e) => setStatus(e.target.value)} style={{ height: 38, width: "auto", minWidth: 120 }}><option value="">{tr("colStatus")}: {tr("allWord")}</option>{statuses.map((s) => <option key={s} value={s}>{s}</option>)}</select>
@@ -179,10 +219,16 @@ function RegList({ rows, tr, lang }: { rows: Reg[]; tr: any; lang: string }) {
         <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, boxShadow: "var(--sh)", overflowX: "auto" }}>
           <div style={{ minWidth: 1050 }}>
             <div style={{ display: "grid", gridTemplateColumns: cols, borderBottom: "1px solid var(--line)", background: "var(--bg)" }}>
+              <div style={{ ...H, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <input type="checkbox" checked={allShownSel} onChange={() => setSel((p) => { const n = new Set(p); if (allShownSel) shown.forEach((r) => n.delete(r.id)); else shown.forEach((r) => n.add(r.id)); return n; })} style={{ width: 15, height: 15, accentColor: "var(--brand)" }} />
+              </div>
               {[tr("colCreatedAt"), tr("colFullName"), tr("colEmail"), tr("colWhatsapp"), tr("colSpecialization"), tr("colCountry"), tr("colExperience"), tr("colRole"), tr("colStatus")].map((h, i) => <div key={i} style={H}>{h}</div>)}
             </div>
             {shown.map((r, i) => (
-              <div key={r.id || i} style={{ display: "grid", gridTemplateColumns: cols, borderBottom: "1px solid var(--line)", alignItems: "center", background: i % 2 ? "transparent" : "var(--muted-soft)" }}>
+              <div key={r.id || i} style={{ display: "grid", gridTemplateColumns: cols, borderBottom: "1px solid var(--line)", alignItems: "center", background: sel.has(r.id) ? "var(--brand-soft)" : i % 2 ? "transparent" : "var(--muted-soft)" }}>
+                <div style={{ ...C, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} style={{ width: 15, height: 15, accentColor: "var(--brand)" }} />
+                </div>
                 <div className="n" style={{ ...C, direction: "ltr", textAlign: lang === "ar" ? "right" : "left" }}>{fmtDate(r.createdAt)}</div>
                 <div style={{ ...C, fontWeight: 700, color: "var(--ink)" }} title={r.fullName}>{r.fullName || "—"}</div>
                 <div style={{ ...C, direction: "ltr", textAlign: lang === "ar" ? "right" : "left" }} title={r.email}>{r.email || "—"}</div>
@@ -197,11 +243,32 @@ function RegList({ rows, tr, lang }: { rows: Reg[]; tr: any; lang: string }) {
           </div>
         </div>
       )}
+
+      {sendOpen && (
+        <div className="ms-ov" onClick={() => !busy && setSendOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(21,34,59,.5)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, padding: 20, width: "100%", maxWidth: 420, boxShadow: "0 20px 60px rgba(0,0,0,.28)" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--ink)", marginBottom: 6 }}>📨 {tr("bulkWaSend")}</h3>
+            <p style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 14 }}>{tr("bulkWaSendHint").replace("{n}", String(sel.size))}</p>
+            <label style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 6 }}>{tr("chooseTemplate")}</label>
+            <select className="inp" value={tpl} onChange={(e) => setTpl(e.target.value)} style={{ width: "100%", marginBottom: 8 }}>
+              <option value="">— {tr("chooseTemplate")} —</option>
+              {templates.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <p style={{ fontSize: 10.5, color: "var(--muted)", marginBottom: 16 }}>💡 {tr("bulkWaVarNote")}</p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn ghost" onClick={() => setSendOpen(false)} disabled={busy}>{tr("cancel")}</button>
+              <button className="btn" onClick={doSend} disabled={busy || !tpl}>{busy ? "..." : tr("send")}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 const css = `
+.cmp-selbar{display:flex;align-items:center;gap:10px;background:var(--brand-soft);border:1px solid var(--brand);border-radius:12px;padding:10px 14px;margin-bottom:14px;flex-wrap:wrap}
+.cmp-selbar>span:first-child{font-weight:800;color:var(--brand-d);font-size:13px}
 .cmp-tabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:16px;width:fit-content;box-shadow:var(--sh)}
 .cmp-tabs button{border:none;background:none;font-family:inherit;font-size:13px;font-weight:700;color:var(--muted);padding:8px 16px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:7px}
 .cmp-tabs button.on{background:var(--ink);color:var(--surface)}

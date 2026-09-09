@@ -14,6 +14,10 @@ export default async function CampaignPage() {
   const { data: prof } = await supabase.from("profiles")
     .select("can_view_campaign").eq("id", user?.id || "").maybeSingle();
   if (!prof?.can_view_campaign) redirect("/");
+  const { data: meMsg } = await supabase.from("profiles").select("can_message,team").eq("id", user?.id || "").maybeSingle();
+  const canMessage = ((meMsg?.team || "").toLowerCase() === "admin") || !!meMsg?.can_message;
+  const { data: tpls } = await supabase.from("wa_templates").select("name").order("created_at");
+  const templates = ((tpls as any[]) || []).map((t) => t.name).filter(Boolean);
 
   // المصدر الوحيد: RPC آمن (security definer + مربوط بالصلاحية على مستوى القاعدة)
   const { data } = await supabase.rpc("campaign_registrations");
@@ -37,7 +41,7 @@ export default async function CampaignPage() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div><h1>{tr("campaignTitle")}</h1><p>{tr("campaignDesc")}</p></div>
       </div>
-      <CampaignView rows={rows} />
+      <CampaignView rows={rows} canMessage={canMessage} templates={templates} />
     </div>
   );
 }
