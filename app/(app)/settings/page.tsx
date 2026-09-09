@@ -7,6 +7,7 @@ import SettingsTabs, { type SettingsTab } from "./SettingsTabs";
 import DefaultsCard from "./DefaultsCard";
 import RecentYearsCard from "./RecentYearsCard";
 import CompanyCard from "./CompanyCard";
+import CampaignSettingsCard from "./CampaignSettingsCard";
 import ShortcutsManager from "./ShortcutsManager";
 import ServiceTypesManager from "./ServiceTypesManager";
 import AffiliatesManager from "../affiliates/AffiliatesManager";
@@ -132,11 +133,12 @@ export default async function Settings() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: prof } = await supabase.from("profiles")
-    .select("can_manage_settings,can_manage_users,team").eq("id", user?.id || "").maybeSingle();
+    .select("can_manage_settings,can_manage_users,manage_campaign_settings,team").eq("id", user?.id || "").maybeSingle();
 
   const canSettings = !!prof?.can_manage_settings;
   const canUsers = !!prof?.can_manage_users;
   const isAdmin = (prof?.team || "").toLowerCase() === "admin";
+  const canCampaign = isAdmin || !!prof?.manage_campaign_settings;
 
   // مفيش أي صلاحية إعدادات؟ ممنوع
   if (!canSettings && !canUsers && !isAdmin) {
@@ -183,6 +185,7 @@ export default async function Settings() {
           <WatiCard initial={wati} />
           <DefaultsCard initial={(defRow.data?.value as any) || {}} />
           <CompanyCard initial={(coRow.data?.value as any) || {}} />
+          {canCampaign && <CampaignSettingsCard />}
           {isAdmin && <ShortcutsManager initial={(scRows.data as any[]) || []} />}
         </div>
       ),

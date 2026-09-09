@@ -31,6 +31,7 @@ const PERMS: [string, string][] = [
   ["can_view_refunds", "رؤية المستردات"],
   ["can_view_archive", "رؤية الأرشيف"],
   ["can_view_prices", "رؤية الخدمات والأسعار"],
+  ["manage_campaign_settings", "إدارة إعدادات الحملة"],
 ];
 
 export default function PermissionsManager({ profiles }: { profiles: Profile[] }) {
