@@ -40,7 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users, can_grant_access, can_use_ai, chat_sound, can_view_pipeline, can_view_support, can_view_activations, can_view_universities, can_view_receipts, can_view_education, can_view_feedback, can_view_dashboard, can_view_customers, can_view_tasks, can_view_batches, can_view_refunds, can_view_archive, can_view_prices")
+    .select("full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users, can_grant_access, can_use_ai, chat_sound, can_view_pipeline, can_view_support, can_view_activations, can_view_universities, can_view_receipts, can_view_education, can_view_feedback, can_view_dashboard, can_view_customers, can_view_tasks, can_view_batches, can_view_refunds, can_view_archive, can_view_prices, can_view_campaign")
     .eq("id", user.id).maybeSingle();
 
   // عضوية تيم التعليم (طبقة edu_members منفصلة) — لعزل القايمة الجانبية
@@ -154,6 +154,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           canActivations={!!profile?.can_view_activations}
           canUniversities={!!profile?.can_view_universities}
           canReceipts={!!profile?.can_view_receipts}
+          canCampaign={!!profile?.can_view_campaign}
           canDashboard={profile?.can_view_dashboard !== false}
           canCustomers={profile?.can_view_customers !== false}
           canTasks={profile?.can_view_tasks !== false}

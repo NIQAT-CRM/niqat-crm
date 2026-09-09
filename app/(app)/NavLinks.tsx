@@ -14,6 +14,7 @@ type Perms = {
   canActivations?: boolean;
   canUniversities?: boolean;
   canReceipts?: boolean;
+  canCampaign?: boolean;
   canDashboard?: boolean;
   canCustomers?: boolean;
   canTasks?: boolean;
@@ -44,6 +45,7 @@ const I: Record<string, string> = {
   archive: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M9 12h6"/></svg>',
   report: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 4-6"/></svg>',
   receipt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M9 8h6M9 12h6"/></svg>',
+  campaign: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11v2a1 1 0 0 0 1 1h3l4 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16 8a4 4 0 0 1 0 8"/></svg>',
   settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7 7 0 0 0 0-2l2-1.5-2-3.5-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.8 2.5a7 7 0 0 0-1.7 1l-2.4-1-2 3.5L4.6 11a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 1.7 1l.8 2.5h5l.8-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.5z"/></svg>',
   cog: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h13M3 12h18M3 18h9"/><circle cx="18" cy="6" r="2.2"/><circle cx="15" cy="18" r="2.2"/></svg>',
   chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-8.9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5.1a8.38 8.38 0 0 1-.9-3.9 8.5 8.5 0 0 1 8.4-8.9 8.5 8.5 0 0 1 8.6 8.4z"/></svg>',
@@ -74,6 +76,7 @@ export default function NavLinks(p: Perms) {
   if (A || p.canFeedback) teams.push({ href: "/feedback", key: "feedback", tk: "feedbackNav" });
   if (A || p.canRefunds !== false) teams.push({ href: "/refunds", key: "refund", tk: "refunds", badge: p.refundCount });
   if (p.canReceipts) teams.push({ href: "/screenshots", key: "receipt", tk: "screenshots" });
+  if (p.canCampaign) teams.push({ href: "/campaign", key: "campaign", tk: "campaignNav" });
   if (A || p.canArchive !== false) teams.push({ href: "/archive", key: "archive", tk: "archive" });
   if (p.canReports) teams.push({ href: "/reports", key: "report", tk: "reports" });
 
