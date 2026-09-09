@@ -37,6 +37,15 @@ export default function CampaignSettingsCard() {
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);     // مطوي افتراضياً
   const [editing, setEditing] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
+  const [logs, setLogs] = useState<any[] | null>(null);
+  const [logBusy, setLogBusy] = useState(false);
+  async function loadLogs() {
+    setLogBusy(true);
+    const { data, error } = await supabase.rpc("campaign_wa_log_read");
+    setLogs(error ? [] : ((data as any[]) || []));
+    setLogBusy(false);
+  }
 
   async function load() {
     const { data, error } = await supabase.rpc("campaign_settings_read");
@@ -113,6 +122,45 @@ export default function CampaignSettingsCard() {
               </div>
             ))}
             <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>🔒 {tr("campaignSettingsNote")}</p>
+
+            <div style={{ borderTop: "1px solid var(--line)", paddingTop: 12, marginTop: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <button onClick={() => { const n = !logOpen; setLogOpen(n); if (n && logs === null) loadLogs(); }}
+                  style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 12.5, color: "var(--ink)", display: "flex", alignItems: "center", gap: 7, padding: 0 }}>
+                  <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="var(--muted)" strokeWidth={2.4} style={{ transform: logOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }}><path d="M6 9l6 6 6-6" /></svg>
+                  📨 {tr("waSendLog")}
+                </button>
+                {logOpen && <button className="rowbtn" onClick={loadLogs} disabled={logBusy} style={{ background: "none", border: "1px solid var(--line)", borderRadius: 8, fontSize: 11, padding: "4px 10px", color: "var(--muted)" }}>{logBusy ? "..." : "↻ " + tr("refresh")}</button>}
+              </div>
+
+              {logOpen && (
+                <div style={{ marginTop: 10 }}>
+                  {logBusy && logs === null ? <div style={{ fontSize: 12, color: "var(--muted)", padding: 8 }}>…</div>
+                    : !logs || logs.length === 0 ? <div style={{ fontSize: 12, color: "var(--muted)", padding: "8px 2px" }}>{tr("waNoSends")}</div>
+                    : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 7, maxHeight: 260, overflowY: "auto" }}>
+                        {logs.map((r, i) => {
+                          const ok = r.http_code === 200 || r.http_code === 201 || r.http_code === 202;
+                          const pending = r.status === "queued" && r.http_code == null;
+                          const color = ok ? "var(--green)" : pending ? "var(--amber)" : "var(--red)";
+                          const bg = ok ? "var(--green-soft)" : pending ? "var(--amber-soft,#FBF1DC)" : "var(--red-soft,#FBECEA)";
+                          const label = ok ? tr("waSent") : pending ? tr("waPending") : tr("waFailed");
+                          return (
+                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 11px", background: "var(--bg)", border: "1px solid var(--line)", borderRadius: 9 }}>
+                              <span style={{ fontSize: 10, fontWeight: 800, color, background: bg, padding: "3px 9px", borderRadius: 20, whiteSpace: "nowrap", flexShrink: 0 }}>{label}{r.http_code ? ` · ${r.http_code}` : ""}</span>
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.full_name || "—"} · <span dir="ltr" style={{ fontFamily: "var(--fd)" }}>{r.whatsapp}</span></div>
+                                {(r.note || (!ok && r.wati_response)) && <div style={{ fontSize: 10.5, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.note || r.wati_response}</div>}
+                              </div>
+                              <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--fd)", flexShrink: 0 }} dir="ltr">{String(r.created_at).slice(0, 16).replace("T", " ")}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                </div>
+              )}
+            </div>
           </div>
         )
       )}
