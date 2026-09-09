@@ -181,13 +181,15 @@ export default async function Settings() {
       key: "integrations",
       label: "⚙️ " + tr("tabIntegrations"),
       content: (
-        <div className="intgrid">
-          <WatiCard initial={wati} />
-          <DefaultsCard initial={(defRow.data?.value as any) || {}} />
-          <CompanyCard initial={(coRow.data?.value as any) || {}} />
-          {canCampaign && <CampaignSettingsCard />}
-          {isAdmin && <ShortcutsManager initial={(scRows.data as any[]) || []} />}
-        </div>
+        <>
+          <div className="intgrid">
+            <WatiCard initial={wati} />
+            <DefaultsCard initial={(defRow.data?.value as any) || {}} />
+            <CompanyCard initial={(coRow.data?.value as any) || {}} />
+          </div>
+          {canCampaign && <div style={{ marginTop: 16 }}><CampaignSettingsCard /></div>}
+          {isAdmin && <div style={{ marginTop: 16 }}><ShortcutsManager initial={(scRows.data as any[]) || []} /></div>}
+        </>
       ),
     });
     tabs.push({
