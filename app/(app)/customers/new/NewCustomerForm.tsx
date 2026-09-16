@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
@@ -78,6 +78,19 @@ export default function NewCustomerForm({
   // بند 4: كود الدولة لكل رقم (افتراضي مصر)
   const [dial1, setDial1] = useState(DEFAULT_DIAL);
   const [dial2, setDial2] = useState(DEFAULT_DIAL);
+  // تحويل من تسجيل حملة: تعبئة تلقائية من الـURL + تحديث الحالة بعد الحفظ
+  const sp = useSearchParams();
+  const convertRegId = useRef<string | null>(null);
+  useEffect(() => {
+    const reg = sp.get("creg"); if (reg) convertRegId.current = reg;
+    const name = sp.get("cname"), phone = sp.get("cphone"), email = sp.get("cemail"), country = sp.get("ccountry");
+    if (name || phone || email || country) {
+      let p1 = (phone || "").replace(/[^0-9]/g, "");
+      if (p1.startsWith("20") && p1.length > 10) p1 = "0" + p1.slice(2);  // مصر → محلي
+      setF((s) => ({ ...s, name: name || s.name, email: email || s.email, phone1: p1 || s.phone1, residency: country || s.residency }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [saving, setSaving] = useState(false);
   const [payFile, setPayFile] = useState<File | null>(null);
   const [transferAmount, setTransferAmount] = useState<string>("");
@@ -262,6 +275,8 @@ export default function NewCustomerForm({
       return;
     }
     const cid = cust.id;
+    // لو التحويل جاي من تسجيل حملة → علّم التسجيل "converted"
+    if (convertRegId.current) { try { await supabase.rpc("campaign_mark_converted", { p_id: convertRegId.current }); } catch { } }
     log("action", "action:new_customer", "customers");
     // صورة تحويل الفلوس المتفق عليها → تخزين + تسجيل في المستندات
     // (نتخطّاها لو الإيصال هيتربط بالقسط الأول في وضع التقسيط)

@@ -168,7 +168,15 @@ function RegList({ rows, tr, lang, canMessage = false, templates = [] }: { rows:
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `campaign-registrations-${cairoDay(new Date().toISOString())}.csv`; a.click();
   }
 
-  const cols = "40px 150px 1.4fr 1.6fr 130px 1.2fr 100px 90px 1fr 110px";
+  async function convertToCustomer(r: Reg) {
+    setBusy(true);
+    const { data: existing } = await supabase.rpc("customer_find_by_contact", { p_phone: r.whatsapp, p_email: r.email });
+    setBusy(false);
+    if (existing) { toast(tr("customerAlreadyExists")); router.push(`/customers/${existing}`); return; }
+    const qs = new URLSearchParams({ creg: r.id, cname: r.fullName || "", cphone: r.whatsapp || "", cemail: r.email || "", ccountry: r.country || "" });
+    router.push(`/customers/new?${qs.toString()}`);
+  }
+  const cols = "40px 150px 1.4fr 1.5fr 130px 1.1fr 95px 1fr 100px 120px";
   const H: React.CSSProperties = { fontSize: 11.5, fontWeight: 800, color: "var(--muted)", padding: "10px 12px", whiteSpace: "nowrap" };
   const C: React.CSSProperties = { fontSize: 12.5, color: "var(--text)", padding: "11px 12px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
@@ -223,6 +231,7 @@ function RegList({ rows, tr, lang, canMessage = false, templates = [] }: { rows:
                 <input type="checkbox" checked={allShownSel} onChange={() => setSel((p) => { const n = new Set(p); if (allShownSel) shown.forEach((r) => n.delete(r.id)); else shown.forEach((r) => n.add(r.id)); return n; })} style={{ width: 15, height: 15, accentColor: "var(--brand)" }} />
               </div>
               {[tr("colCreatedAt"), tr("colFullName"), tr("colEmail"), tr("colWhatsapp"), tr("colSpecialization"), tr("colCountry"), tr("colExperience"), tr("colRole"), tr("colStatus")].map((h, i) => <div key={i} style={H}>{h}</div>)}
+              <div style={H}>{tr("actionWord")}</div>
             </div>
             {shown.map((r, i) => (
               <div key={r.id || i} style={{ display: "grid", gridTemplateColumns: cols, borderBottom: "1px solid var(--line)", alignItems: "center", background: sel.has(r.id) ? "var(--brand-soft)" : i % 2 ? "transparent" : "var(--muted-soft)" }}>
@@ -237,7 +246,12 @@ function RegList({ rows, tr, lang, canMessage = false, templates = [] }: { rows:
                 <div style={C}>{r.country || "—"}</div>
                 <div style={C}>{r.experience || "—"}</div>
                 <div style={C} title={r.role}>{r.role || "—"}</div>
-                <div style={C}><span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: "var(--brand-soft)", color: "var(--brand-d)" }}>{r.status || "—"}</span></div>
+                <div style={C}><span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: r.status === "converted" ? "var(--green-soft)" : "var(--brand-soft)", color: r.status === "converted" ? "var(--green)" : "var(--brand-d)" }}>{r.status === "converted" ? tr("statusConverted") : (r.status || "—")}</span></div>
+                <div style={{ ...C, overflow: "visible" }}>
+                  {r.status === "converted"
+                    ? <span style={{ fontSize: 11, color: "var(--green)", fontWeight: 700 }}>✓ {tr("converted")}</span>
+                    : <button className="btn" style={{ height: 30, padding: "0 11px", fontSize: 12 }} onClick={() => convertToCustomer(r)} disabled={busy}>➕ {tr("convertToCustomer")}</button>}
+                </div>
               </div>
             ))}
           </div>
