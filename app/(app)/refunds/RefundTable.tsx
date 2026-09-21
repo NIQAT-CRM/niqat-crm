@@ -74,16 +74,9 @@ export default function RefundTable({ rows, monthAgg }: { rows: Row[]; monthAgg?
             {open && (
               <div className="rf-mbody">
                 {ag && (fullEgp > 0 || fullUsd > 0) && (
-                  <div className="rf-reqbanner" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800 }}>
-                      <span>💰 {tr("totalMonthRefunds")}</span>
-                      <span className="n" dir="ltr">{nf(fullEgp)} EGP{fullUsd > 0 ? ` · ${nf(fullUsd)} $` : ""}</span>
-                    </div>
-                    <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 11.5, color: "var(--muted)", fontWeight: 700 }}>
-                      <span>💸 {tr("refundBannerTransfer")}: <span className="n">{nf(ag.reqEgp)}</span>{ag.reqUsd > 0 ? ` · $${nf(ag.reqUsd)}` : ""}</span>
-                      <span>🔒 {tr("refundBannerClose")}: <span className="n">{nf(ag.refEgp)}</span>{ag.refUsd > 0 ? ` · $${nf(ag.refUsd)}` : ""}</span>
-                      <span>✅ {tr("refundClosedWord")}: <span className="n">{nf(ag.closedEgp)}</span>{ag.closedUsd > 0 ? ` · $${nf(ag.closedUsd)}` : ""}</span>
-                    </div>
+                  <div className="rf-reqbanner">
+                    <span>💰 {tr("totalMonthRefunds")}</span>
+                    <span className="n" dir="ltr">−{nf(fullEgp)} EGP{fullUsd > 0 ? ` · −${nf(fullUsd)} $` : ""}</span>
                   </div>
                 )}
                 <div className="tbl-wrap">
