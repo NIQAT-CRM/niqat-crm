@@ -12,7 +12,7 @@ type Row = {
 const STATUS: Record<string, { labelKey: string; color: string }> = {
   requested: { labelKey: "refundRequested2", color: "var(--amber)" },
   refunded: { labelKey: "refundDone2", color: "var(--blue)" },
-  closed: { labelKey: "archived", color: "#94A2BB" },
+  closed: { labelKey: "refundClosedWord", color: "#94A2BB" },
 };
 
 function money(n: number, cur: string) {

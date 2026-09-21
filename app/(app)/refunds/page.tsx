@@ -30,7 +30,7 @@ export default async function Refunds() {
   }
 
   const { data: rf, error } = await supabase
-    .from("refunds").select("id,customer_id,amount,currency,reason,status,created_at").neq("status", "closed").order("created_at", { ascending: false });
+    .from("refunds").select("id,customer_id,amount,currency,reason,status,created_at").order("created_at", { ascending: false });
 
   if (error) {
     const missingTable = (error as any)?.code === "42P01" || /does not exist|relation .* does not/i.test((error as any)?.message || "");
@@ -53,8 +53,8 @@ export default async function Refunds() {
     : { data: [] as any[] };
 
   const cName = new Map((custs || []).map((c) => [c.id, c.name]));
-  const archivedSet = new Set((custs || []).filter((c) => (c as any).archived).map((c) => c.id));
-  const rows = (rf || []).filter((r) => !archivedSet.has(r.customer_id));
+  // نعرض كل الريفندات بأي حالة (شامل المقفول) وكل العملاء — عشان المجموع يطابق الداشبورد بالظبط
+  const rows = (rf || []);
   const needTransfer = rows.filter((r) => r.status === "requested").length;
   const needClose = rows.filter((r) => r.status === "refunded").length;
 
