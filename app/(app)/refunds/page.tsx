@@ -58,6 +58,21 @@ export default async function Refunds() {
   const needTransfer = rows.filter((r) => r.status === "requested").length;
   const needClose = rows.filter((r) => r.status === "refunded").length;
 
+  // تجميعة شهرية بكل الحالات (شاملة المقفول) — عشان كارت الشهر يوري الإجمالي الكامل المطابق للداشبورد
+  const { data: allRf } = await supabase.from("refunds").select("amount,currency,status,created_at");
+  const cairoYm = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit" }).format(new Date(iso)).slice(0, 7);
+  const monthAgg: Record<string, { reqEgp: number; reqUsd: number; refEgp: number; refUsd: number; closedEgp: number; closedUsd: number }> = {};
+  for (const r of ((allRf as any[]) || [])) {
+    if (!r.created_at) continue;
+    const ym = cairoYm(String(r.created_at));
+    const a = monthAgg[ym] || (monthAgg[ym] = { reqEgp: 0, reqUsd: 0, refEgp: 0, refUsd: 0, closedEgp: 0, closedUsd: 0 });
+    const amt = Number(r.amount) || 0;
+    const usd = r.currency === "USD";
+    if (r.status === "requested") usd ? (a.reqUsd += amt) : (a.reqEgp += amt);
+    else if (r.status === "refunded") usd ? (a.refUsd += amt) : (a.refEgp += amt);
+    else if (r.status === "closed") usd ? (a.closedUsd += amt) : (a.closedEgp += amt);
+  }
+
   return (
     <div>
       <div className="page-h"><div><h1>{tr("refunds")}</h1><p>{rows.length} {tr("requestWord")}</p></div></div>
@@ -88,7 +103,7 @@ export default async function Refunds() {
           amount: Number(r.amount), currency: r.currency as string,
           reason: (r.reason as string) || "", status: r.status as string,
           created_at: String(r.created_at || ""),
-        }))} />
+        }))} monthAgg={monthAgg} />
       )}
     </div>
   );

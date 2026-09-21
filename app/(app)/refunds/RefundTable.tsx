@@ -25,7 +25,8 @@ function cairoYm(iso: string): string {
   } catch { return String(iso).slice(0, 7); }
 }
 
-export default function RefundTable({ rows }: { rows: Row[] }) {
+type MonthAgg = { reqEgp: number; reqUsd: number; refEgp: number; refUsd: number; closedEgp: number; closedUsd: number };
+export default function RefundTable({ rows, monthAgg }: { rows: Row[]; monthAgg?: Record<string, MonthAgg> }) {
   const tr = useT();
   const lang = useLang();
   const curYm = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; })();
@@ -47,6 +48,10 @@ export default function RefundTable({ rows }: { rows: Row[] }) {
         const req = list.filter((r) => r.status === "requested");
         const reqEgp = req.filter((r) => r.currency !== "USD").reduce((s, r) => s + (Number(r.amount) || 0), 0);
         const reqUsd = req.filter((r) => r.currency === "USD").reduce((s, r) => s + (Number(r.amount) || 0), 0);
+        const ag = monthAgg?.[ym];
+        const fullEgp = ag ? ag.reqEgp + ag.refEgp + ag.closedEgp : reqEgp;
+        const fullUsd = ag ? ag.reqUsd + ag.refUsd + ag.closedUsd : reqUsd;
+        const nf = (v: number) => new Intl.NumberFormat("en").format(Math.round(v));
         const isCur = ym === curYm;
         const open = isCur ? !collapsed.has(ym) : collapsed.has("open:" + ym);
         return (
@@ -61,17 +66,24 @@ export default function RefundTable({ rows }: { rows: Row[] }) {
                 style={{ transform: open ? "none" : "rotate(-90deg)", transition: "transform .15s", flexShrink: 0 }}><path d="M6 9l6 6 6-6" /></svg>
               <span className="rf-mname">{monthLabel(ym)}{isCur && <span className="rf-curbadge">{tr("thisMonth")}</span>}</span>
               <span className="rf-mcount">{list.length}</span>
-              {(reqEgp > 0 || reqUsd > 0) && (
-                <span className="rf-mtotal n" dir="ltr">−{new Intl.NumberFormat("en").format(Math.round(reqEgp))}{reqUsd > 0 ? ` · −$${new Intl.NumberFormat("en").format(Math.round(reqUsd))}` : ""} <i>{tr("egp")}</i></span>
+              {(fullEgp > 0 || fullUsd > 0) && (
+                <span className="rf-mtotal n" dir="ltr">−{nf(fullEgp)}{fullUsd > 0 ? ` · −$${nf(fullUsd)}` : ""} <i>{tr("egp")}</i></span>
               )}
             </button>
 
             {open && (
               <div className="rf-mbody">
-                {(reqEgp > 0 || reqUsd > 0) && (
-                  <div className="rf-reqbanner">
-                    <span>💰 {tr("totalRequestedRefunds")} · {req.length} {tr("requestWord")}</span>
-                    <span className="n" dir="ltr">{new Intl.NumberFormat("en").format(Math.round(reqEgp))} EGP{reqUsd > 0 ? ` · ${new Intl.NumberFormat("en").format(Math.round(reqUsd))} $` : ""}</span>
+                {ag && (fullEgp > 0 || fullUsd > 0) && (
+                  <div className="rf-reqbanner" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800 }}>
+                      <span>💰 {tr("totalMonthRefunds")}</span>
+                      <span className="n" dir="ltr">{nf(fullEgp)} EGP{fullUsd > 0 ? ` · ${nf(fullUsd)} $` : ""}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 11.5, color: "var(--muted)", fontWeight: 700 }}>
+                      <span>💸 {tr("refundBannerTransfer")}: <span className="n">{nf(ag.reqEgp)}</span>{ag.reqUsd > 0 ? ` · $${nf(ag.reqUsd)}` : ""}</span>
+                      <span>🔒 {tr("refundBannerClose")}: <span className="n">{nf(ag.refEgp)}</span>{ag.refUsd > 0 ? ` · $${nf(ag.refUsd)}` : ""}</span>
+                      <span>✅ {tr("refundClosedWord")}: <span className="n">{nf(ag.closedEgp)}</span>{ag.closedUsd > 0 ? ` · $${nf(ag.closedUsd)}` : ""}</span>
+                    </div>
                   </div>
                 )}
                 <div className="tbl-wrap">
