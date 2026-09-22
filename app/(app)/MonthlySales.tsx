@@ -11,15 +11,29 @@ export default function MonthlySales({ rows, collapsible = false }: { rows: Row[
   const lang = useLang();
   const [all, setAll] = useState<CloseAll[] | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [rate, setRate] = useState<number>(44);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [editRate, setEditRate] = useState(false);
+  const [rateInput, setRateInput] = useState("44");
+  const [rateBusy, setRateBusy] = useState(false);
 
   useEffect(() => {
     (async () => {
-      try {
-        const r: any = await createClient().rpc("monthly_close_all");
-        if (!r.error && Array.isArray(r.data)) setAll(r.data);
-      } catch { /* لا صلاحية مالية؟ */ }
+      const sb = createClient();
+      try { const r: any = await sb.rpc("monthly_close_all"); if (!r.error && Array.isArray(r.data)) setAll(r.data); } catch { }
+      try { const r: any = await sb.rpc("usd_rate_get"); if (!r.error && r.data != null) { setRate(Number(r.data)); setRateInput(String(Number(r.data))); } } catch { }
+      try { const { data: { user } } = await sb.auth.getUser(); if (user) { const { data: p } = await sb.from("profiles").select("team").eq("id", user.id).maybeSingle(); setIsAdmin((p?.team || "").toLowerCase() === "admin"); } } catch { }
     })();
   }, []);
+
+  async function saveRate() {
+    const v = Number(rateInput);
+    if (!v || v <= 0) return;
+    setRateBusy(true);
+    const { error } = await createClient().rpc("usd_rate_set", { p_rate: v });
+    setRateBusy(false);
+    if (!error) { setRate(v); setEditRate(false); }
+  }
 
   const nf = new Intl.NumberFormat("en-US");
   const fmt = (n: number) => nf.format(Math.round(Number(n) || 0));
@@ -71,6 +85,25 @@ export default function MonthlySales({ rows, collapsible = false }: { rows: Row[
         <StatRow label={tr("monthRefunds")} egp={rEgp} usd={rUsd} kind="refund" />
         <StatRow label={tr("netCollection")} egp={nEgp} usd={nUsd} kind="net" />
         <div className="ms-bar"><i style={{ width: netPct + "%" }} /></div>
+        <div className="ms-unified">
+          <div className="ms-urow">
+            <span className="ms-ulbl">💱 {tr("unifiedTotal")}
+              {!editRate ? (
+                <button className="ms-rate" onClick={() => isAdmin && setEditRate(true)} title={isAdmin ? tr("edit") : ""} style={{ cursor: isAdmin ? "pointer" : "default" }}>
+                  {tr("usdRate")}: {rate}{isAdmin && <svg viewBox="0 0 24 24" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>}
+                </button>
+              ) : (
+                <span className="ms-rate-edit">
+                  <input value={rateInput} onChange={(e) => setRateInput(e.target.value)} inputMode="decimal" />
+                  <button onClick={saveRate} disabled={rateBusy} className="ok">{rateBusy ? "…" : "✓"}</button>
+                  <button onClick={() => { setEditRate(false); setRateInput(String(rate)); }} className="cx">✕</button>
+                </span>
+              )}
+            </span>
+            <b className="n">{fmt(nEgp + nUsd * rate)} <i>{tr("egp")}</i></b>
+          </div>
+          <div className="ms-uhint">{tr("egp")} {fmt(nEgp)} + ${fmt(nUsd)} × {rate}</div>
+        </div>
       </div>
 
       <button className="ms-allbtn" onClick={() => setShowAll(true)}>
@@ -97,6 +130,7 @@ export default function MonthlySales({ rows, collapsible = false }: { rows: Row[
                     <div className="ms-mg-r"><span className="l">{tr("totalCollection")}</span><b className="n">{fmt(d.gross_egp)}</b><b className="n">{fmt(d.gross_usd)}</b></div>
                     <div className="ms-mg-r rf"><span className="l">{tr("monthRefunds")}</span><b className="n">{d.refunds_egp ? "−" : ""}{fmt(d.refunds_egp)}</b><b className="n">{d.refunds_usd ? "−" : ""}{fmt(d.refunds_usd)}</b></div>
                     <div className="ms-mg-r nt"><span className="l">{tr("netCollection")}</span><b className="n">{fmt(d.net_egp)}</b><b className="n">{fmt(d.net_usd)}</b></div>
+                    <div className="ms-mg-uni"><span>💱 {tr("unifiedTotal")} ({tr("egp")} · ×{rate})</span><b className="n">{fmt(d.net_egp + d.net_usd * rate)}</b></div>
                   </div>
                 </div>
               ))}
@@ -131,6 +165,21 @@ const css = `
 .ms-cell.net b{color:var(--green);font-size:17px}
 .ms-bar{height:6px;background:var(--red-soft,#FBECEA)}
 .ms-bar i{display:block;height:100%;background:var(--green)}
+.ms-unified{border-top:1px dashed var(--line);padding:12px 16px;background:var(--brand-soft)}
+.ms-urow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ms-ulbl{font-size:12.5px;font-weight:800;color:var(--brand-d);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ms-urow b{font-family:var(--fd);font-weight:800;font-size:17px;color:var(--brand-d);direction:ltr;display:inline-flex;align-items:baseline;gap:4px}
+.ms-urow b i{font-style:normal;font-size:10.5px;font-weight:700;color:var(--brand-d);opacity:.7;font-family:var(--fa)}
+.ms-rate{border:1px solid var(--brand);background:var(--surface);color:var(--brand-d);font-family:var(--fd);font-weight:700;font-size:11px;padding:2px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:4px}
+.ms-rate-edit{display:inline-flex;align-items:center;gap:4px}
+.ms-rate-edit input{width:56px;height:26px;border:1px solid var(--brand);border-radius:7px;padding:0 8px;font-family:var(--fd);font-size:12px;text-align:center;background:var(--surface);color:var(--ink)}
+.ms-rate-edit button{width:26px;height:26px;border-radius:7px;border:none;cursor:pointer;font-size:12px}
+.ms-rate-edit .ok{background:var(--green);color:#fff}
+.ms-rate-edit .cx{background:var(--bg);color:var(--muted)}
+.ms-uhint{font-size:10px;color:var(--brand-d);opacity:.7;margin-top:4px;font-family:var(--fd);direction:ltr;text-align:end}
+.ms-mg-uni{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;padding:7px 9px;background:var(--brand-soft);border-radius:8px}
+.ms-mg-uni span{font-size:10px;font-weight:700;color:var(--brand-d)}
+.ms-mg-uni b{font-family:var(--fd);font-weight:800;font-size:13px;color:var(--brand-d);direction:ltr}
 .ms-allbtn{margin-top:14px;width:100%;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-family:inherit;font-weight:700;font-size:13px;padding:11px;border-radius:12px;cursor:pointer}
 .ms-allbtn:hover{border-color:var(--brand);color:var(--brand-d);background:var(--brand-soft)}
 .ms-ov{position:fixed;inset:0;background:rgba(21,34,59,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px}
