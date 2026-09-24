@@ -13,6 +13,7 @@ const GROUPS: { title: string; keys: { k: string; label: string; area?: boolean 
     { k: "duration", label: "campDuration" },
   ] },
   { title: "campSessionLink", keys: [{ k: "zoom_link", label: "campZoom" }] },
+  { title: "campWaTemplate", keys: [{ k: "wa_template_name", label: "campWaTemplateName" }] },
   { title: "campWhatsapp", keys: [
     { k: "whatsapp_number", label: "campWaNumber" },
     { k: "whatsapp_prefill", label: "campWaPrefill", area: true },
@@ -112,7 +113,7 @@ export default function CampaignSettingsCard() {
                             style={{ resize: "vertical", minHeight: 44, opacity: editing ? 1 : .7, cursor: editing ? "text" : "default" }} />
                         ) : (
                           <input className="inp" disabled={!editing} value={vals[f.k] ?? ""} onChange={(e) => set(f.k, e.target.value)}
-                            dir={f.k.startsWith("social_") || f.k === "zoom_link" || f.k === "whatsapp_number" ? "ltr" : undefined}
+                            dir={f.k.startsWith("social_") || f.k === "zoom_link" || f.k === "whatsapp_number" || f.k === "wa_template_name" ? "ltr" : undefined}
                             style={{ opacity: editing ? 1 : .7, cursor: editing ? "text" : "default" }} />
                         )}
                       </div>
