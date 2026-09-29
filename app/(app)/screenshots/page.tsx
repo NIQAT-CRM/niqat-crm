@@ -20,8 +20,16 @@ export default async function ScreenshotsPage() {
   const canEdit = ((prof?.team || "").toLowerCase() === "admin" || !!prof?.can_see_finance) && !isAccountant;
   const canOpenCustomer = (prof?.team || "").toLowerCase() === "admin" || prof?.can_view_customers !== false;
 
-  // كل صور الدفع الفعلي من كل المصادر (أقساط + دفعة أولى + إضافات + تحويلات) — الريفند مستبعد داخل الدالة.
-  const { data } = await supabase.rpc("receipts_all", { p_from: "2000-01-01", p_to: "2100-01-01" });
+  // كل صور الدفع الفعلي من كل المصادر — بالصفحات (PostgREST بيقصّ عند 1000، فبنجيب على دفعات)
+  const data: any[] = [];
+  const PAGE = 1000;
+  for (let from = 0; from < 200000; from += PAGE) {
+    const { data: chunk, error } = await supabase.rpc("receipts_all", { p_from: "2000-01-01", p_to: "2100-01-01" }).range(from, from + PAGE - 1);
+    if (error) break;
+    const c = (chunk as any[]) || [];
+    data.push(...c);
+    if (c.length < PAGE) break;
+  }
 
   // إزالة تكرار نفس الصورة — بأولوية المصدر (مطابق لـ sales_month): installment > enrollment > addon > addon_fin > غيره
   const SRC_PRI: Record<string, number> = { installment: 1, enrollment: 2, addon: 3, addon_fin: 4 };

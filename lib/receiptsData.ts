@@ -14,7 +14,15 @@ const SRC_PRI: Record<string, number> = { installment: 1, enrollment: 2, addon: 
 // الفردي (receipts_all) منزوع التكرار بالمسار بأولوية المصدر + المشترك (receipts). يستبعد الاستيراد التاريخي.
 async function collectReceiptRows(supabase: any): Promise<Row[]> {
   const out: Row[] = [];
-  const { data } = await supabase.rpc("receipts_all", { p_from: "2000-01-01", p_to: "2100-01-01" });
+  const data: any[] = [];
+  const PAGE = 1000;
+  for (let from = 0; from < 200000; from += PAGE) {
+    const { data: chunk, error } = await supabase.rpc("receipts_all", { p_from: "2000-01-01", p_to: "2100-01-01" }).range(from, from + PAGE - 1);
+    if (error) break;
+    const c = (chunk as any[]) || [];
+    data.push(...c);
+    if (c.length < PAGE) break;
+  }
   const byPath = new Map<string, Row & { pri: number }>();
   for (const r of ((data as any[]) || [])) {
     if (!r.receipt_url || r.amount == null || !r.uploaded_at) continue;
