@@ -92,6 +92,51 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
     setSelected((p) => { const n = new Set(p); const allSel = ids.every((i) => n.has(i)); ids.forEach((i) => allSel ? n.delete(i) : n.add(i)); return n; });
   }
 
+  function exportCsv() {
+    const groupName = new Map(groups.map((g) => [g.id, g.name]));
+    const now = new Date();
+    const activeTemp = (s: Service): number => {
+      const p = Number(s.temp_discount_pct) || 0;
+      if (p <= 0) return 0;
+      const st = s.temp_discount_start ? new Date(s.temp_discount_start) : null;
+      const en = s.temp_discount_end ? new Date(s.temp_discount_end) : null;
+      if (st && now < st) return 0;
+      if (en && now > en) return 0;
+      return p;
+    };
+    const round = (n: number) => Math.round(n);
+    const TIERS: { k: string; cur: string }[] = [
+      { k: "old", cur: "EGP" }, { k: "recent", cur: "EGP" }, { k: "intl", cur: "USD" }, { k: "single", cur: "EGP" },
+    ];
+    const head = ["المجموعة", "الخدمة", "الكود", "الشريحة", "العملة", "السعر الأساسي", "خصم عادي %", "السعر بعد العادي", "خصم أفلييت %", "السعر بعد الأفلييت", "خصم مؤقت نشط %", "السعر بعد المؤقت", "ملاحظات"];
+    const rows: (string | number)[][] = [];
+    const sorted = [...services].sort((a, b) => (a.group_id + "").localeCompare(b.group_id + "") || (a.sort ?? 0) - (b.sort ?? 0));
+    for (const s of sorted) {
+      const tp = activeTemp(s);
+      const np = Number(s.normal_pct) || 0;
+      const ap = Number(s.affiliate_pct) || 0;
+      const effNormal = tp > 0 ? tp : np;
+      for (const { k, cur } of TIERS) {
+        const base = k === "old" ? s.base_old : k === "recent" ? s.base_recent : k === "intl" ? s.base_intl : s.base_single;
+        if (base == null || Number(base) <= 0) continue;
+        const b = Number(base);
+        rows.push([
+          groupName.get(s.group_id) || "—", s.name || "—", (s as any).code || "",
+          k === "old" ? "قديم" : k === "recent" ? "حديث" : k === "intl" ? "خارج مصر" : "منفرد", cur,
+          round(b), np, round(b * (1 - np / 100)), ap, round(b * (1 - ap / 100)),
+          tp > 0 ? tp : 0, tp > 0 ? round(b * (1 - effNormal / 100)) : "",
+          (s.notes || "").replace(/\n/g, " "),
+        ]);
+      }
+    }
+    const csv = [head, ...rows].map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `services-prices-${now.toISOString().slice(0, 10)}.csv`;
+    a.click();
+  }
+
   return (
     <div style={{ maxWidth: "100%", margin: "0 auto" }}>
       <style>{spCss}</style>
@@ -127,6 +172,9 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
         </div>
         <button className={"sp-compact" + (compact ? " on" : "")} onClick={() => setCompact((v) => !v)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M3 6h18M3 12h18M3 18h18" /></svg>{t("compactView")}
+        </button>
+        <button className="sp-compact" onClick={exportCsv} style={{ marginInlineStart: 8 }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>{t("exportExcel")}
         </button>
       </div>
 
