@@ -10,6 +10,7 @@ import { CountUp, BarRow, Kpi, LineIcon, ApexCombo, PipelineViz } from "./Charts
 import PeriodFilter from "./PeriodFilter";
 import SeeAllModal from "./SeeAllModal";
 import MonthlySales from "./MonthlySales";
+import BatchSalesCard from "./BatchSalesCard";
 
 export const dynamic = "force-dynamic";
 
@@ -421,6 +422,12 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
       {canFinance && monthlyRows.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <MonthlySales rows={monthlyRows} collapsible />
+        </div>
+      )}
+
+      {canFinance && (
+        <div style={{ marginBottom: 16 }}>
+          <BatchSalesCard />
         </div>
       )}
 
