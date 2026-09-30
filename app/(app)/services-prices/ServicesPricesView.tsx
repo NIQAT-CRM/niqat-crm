@@ -92,6 +92,7 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
     setSelected((p) => { const n = new Set(p); const allSel = ids.every((i) => n.has(i)); ids.forEach((i) => allSel ? n.delete(i) : n.add(i)); return n; });
   }
 
+  // تصدير Excel: صف واحد لكل خدمة — كل الأسعار في أعمدة مقسّمة وواضحة
   function exportCsv() {
     const groupName = new Map(groups.map((g) => [g.id, g.name]));
     const now = new Date();
@@ -104,30 +105,33 @@ export default function ServicesPricesView({ groups, services, isAdmin }: { grou
       if (en && now > en) return 0;
       return p;
     };
-    const round = (n: number) => Math.round(n);
-    const TIERS: { k: string; cur: string }[] = [
-      { k: "old", cur: "EGP" }, { k: "recent", cur: "EGP" }, { k: "intl", cur: "USD" }, { k: "single", cur: "EGP" },
+    const R = (n: number) => Math.round(n);
+    const V = (base: number | null | undefined, pct: number) => (base == null || Number(base) <= 0) ? "" : R(Number(base) * (1 - pct / 100));
+    const B = (base: number | null | undefined) => (base == null || Number(base) <= 0) ? "" : R(Number(base));
+
+    const head = [
+      "المجموعة", "الخدمة", "الكود",
+      "قديم — أساسي (ج)", "قديم — عادي (ج)", "قديم — أفلييت (ج)",
+      "حديث — أساسي (ج)", "حديث — عادي (ج)", "حديث — أفلييت (ج)",
+      "خارج مصر — أساسي ($)", "خارج مصر — عادي ($)", "خارج مصر — أفلييت ($)",
+      "منفرد — أساسي (ج)", "منفرد — عادي (ج)", "منفرد — أفلييت (ج)",
+      "خصم عادي %", "خصم أفلييت %", "خصم مؤقت نشط %", "ملاحظات",
     ];
-    const head = ["المجموعة", "الخدمة", "الكود", "الشريحة", "العملة", "السعر الأساسي", "خصم عادي %", "السعر بعد العادي", "خصم أفلييت %", "السعر بعد الأفلييت", "خصم مؤقت نشط %", "السعر بعد المؤقت", "ملاحظات"];
     const rows: (string | number)[][] = [];
-    const sorted = [...services].sort((a, b) => (a.group_id + "").localeCompare(b.group_id + "") || (a.sort ?? 0) - (b.sort ?? 0));
+    const sorted = [...services].sort((a, b) => (groupName.get(a.group_id) || "").localeCompare(groupName.get(b.group_id) || "") || (a.sort ?? 0) - (b.sort ?? 0));
     for (const s of sorted) {
       const tp = activeTemp(s);
       const np = Number(s.normal_pct) || 0;
       const ap = Number(s.affiliate_pct) || 0;
-      const effNormal = tp > 0 ? tp : np;
-      for (const { k, cur } of TIERS) {
-        const base = k === "old" ? s.base_old : k === "recent" ? s.base_recent : k === "intl" ? s.base_intl : s.base_single;
-        if (base == null || Number(base) <= 0) continue;
-        const b = Number(base);
-        rows.push([
-          groupName.get(s.group_id) || "—", s.name || "—", (s as any).code || "",
-          k === "old" ? "قديم" : k === "recent" ? "حديث" : k === "intl" ? "خارج مصر" : "منفرد", cur,
-          round(b), np, round(b * (1 - np / 100)), ap, round(b * (1 - ap / 100)),
-          tp > 0 ? tp : 0, tp > 0 ? round(b * (1 - effNormal / 100)) : "",
-          (s.notes || "").replace(/\n/g, " "),
-        ]);
-      }
+      const effN = tp > 0 ? tp : np;  // المؤقت يحلّ محل العادي
+      rows.push([
+        groupName.get(s.group_id) || "—", s.name || "—", (s as any).code || "",
+        B(s.base_old), V(s.base_old, effN), V(s.base_old, ap),
+        B(s.base_recent), V(s.base_recent, effN), V(s.base_recent, ap),
+        B(s.base_intl), V(s.base_intl, effN), V(s.base_intl, ap),
+        B(s.base_single), V(s.base_single, effN), V(s.base_single, ap),
+        np, ap, tp > 0 ? tp : 0, (s.notes || "").replace(/\n/g, " "),
+      ]);
     }
     const csv = [head, ...rows].map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
