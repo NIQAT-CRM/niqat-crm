@@ -75,8 +75,24 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: "قالب الواتساب (niqat_payment_receipt) لسه تحت الموافقة أو مش معتمد — الإيميل شغّال عادي" }, { status: 400 });
         return NextResponse.json({ error: "فشل إرسال الواتساب: " + info.slice(0, 180) }, { status: 400 });
       }
+      // بعد نجاح القالب → نبعت ملف الـPDF كمرفق (sendSessionFile)
+      let pdfSent = false;
+      try {
+        const path = pdf_url?.includes("/receipts-pdf/") ? pdf_url.split("/receipts-pdf/")[1].split("?")[0] : pdf_url;
+        const { data: file } = await admin.storage.from("receipts-pdf").download(path);
+        if (file) {
+          const buf = Buffer.from(await file.arrayBuffer());
+          const form = new FormData();
+          form.append("file", new Blob([buf], { type: "application/pdf" }), `${receipt_no || "receipt"}.pdf`);
+          const rf = await fetch(`${endpoint}/api/v1/sendSessionFile/${num}?caption=${encodeURIComponent("إيصال الدفع " + (receipt_no || ""))}`, {
+            method: "POST", headers: { Authorization: token }, body: form as any,
+          });
+          const jf: any = await rf.json().catch(() => ({}));
+          pdfSent = rf.ok && jf?.result !== false;
+        }
+      } catch { }
       await admin.rpc("mark_receipt_sent", { p_id: receipt_id, p_channel: "whatsapp" });
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ ok: true, pdfSent });
     }
     return NextResponse.json({ error: "قناة غير معروفة" }, { status: 400 });
   } catch (e: any) {
