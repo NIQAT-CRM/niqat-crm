@@ -2,6 +2,7 @@
 import { useState, useRef, useLayoutEffect, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import ReceiptIssuer from "./ReceiptIssuer";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
@@ -26,7 +27,7 @@ function payMode(e: Enr): "cash" | "installment" | "none" {
   return "installment";
 }
 
-export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], diplomas = [], addons = [], handedOff = false, stage = "" }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; diplomas?: Opt[]; addons?: Addon[]; handedOff?: boolean; stage?: string }) {
+export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], diplomas = [], addons = [], handedOff = false, stage = "", canIssueReceipts = false, customerEmail = "", customerPhone = "" }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; diplomas?: Opt[]; addons?: Addon[]; handedOff?: boolean; stage?: string; canIssueReceipts?: boolean; customerEmail?: string; customerPhone?: string }) {
   const tr = useT();
   const supabase = createClient();
   const router = useRouter();
@@ -334,6 +335,8 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
                       </button>
                       {!paidNow ? (
                         <button onClick={() => { const opening = payFor !== i.id; setPayFor(opening ? i.id : null); setPayFile(null); setPayAmount(opening ? String(i.amount) : ""); setPayCurrency(opening ? i.currency : ""); }} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{tr("paid")}</button>
+                      ) : canIssueReceipts ? (
+                        <ReceiptIssuer customerId={customerId} refId={i.id} refType="installment" amount={Number(i.amount) || 0} currency={i.currency} payKind={payMode(e) === "cash" ? "full" : "installment"} customerEmail={customerEmail} customerPhone={customerPhone} />
                       ) : <span style={{ width: 70 }} />}
                      </div>
                      {editInst === i.id && (

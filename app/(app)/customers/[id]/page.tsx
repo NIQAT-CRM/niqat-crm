@@ -65,7 +65,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     { data: svcItemRows },
     { data: ctry },
   ] = await Promise.all([
-    supabase.from("profiles").select("can_see_finance,can_message,can_manage_batches,can_edit_customers,team").eq("id", user?.id || "").maybeSingle(),
+    supabase.from("profiles").select("can_see_finance,can_message,can_manage_batches,can_edit_customers,can_issue_receipts,team").eq("id", user?.id || "").maybeSingle(),
     supabase.from("customers").select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,onhold_reason,created_at,terms_signed,terms_signed_at,handed_off,owner_id").eq("id", params.id).maybeSingle(),
     supabase.from("specialties").select("id,name_ar").order("name_ar"),
     supabase.from("enrollments").select("id,status,diploma_id,batch_id,transfer_count, diplomas(name_ar), batches(code)").eq("customer_id", params.id),
@@ -94,6 +94,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const canMessage = !!meProf?.can_message;
   const canManageBatches = !!meProf?.can_manage_batches;
   const canEdit = !!meProf?.can_edit_customers;
+  const canIssueReceipts = (meProf as any)?.team === "admin" || !!(meProf as any)?.can_issue_receipts;
   const myTeam = String(meProf?.team || "").toLowerCase();
 
   if (!c) notFound();
@@ -319,7 +320,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
             fuOpen={fuOpen} fuHistory={(fuAll || []).filter((x: any) => x.done).slice(0, 5)}
             finEnrollments={finEnrollments}
             refunds={refunds} refundServices={refundServices} allServicesClosed={allServicesClosed} refundTableMissing={refundTableMissing}
-            canFinance={canFinance} canMessage={canMessage} canManageBatches={canManageBatches} canEdit={canEdit} myTeam={myTeam}
+            canFinance={canFinance} canMessage={canMessage} canManageBatches={canManageBatches} canEdit={canEdit} canIssueReceipts={canIssueReceipts} myTeam={myTeam}
             docs={docs} docsMissing={docsMissing}
             waCtx={waCtx} templates={templates as any}
             tasks={tasks} notes={notes}
