@@ -26,7 +26,7 @@ function receiptHtml(d: any): string {
   ${remain}
   <div class="stampwrap"><img src="${NIQAT_STAMP}"></div>
   <div class="foot"><div class="thanks">شكراً لثقتك في نقاط 🧡</div>
-    <div class="ct">niqatglobal.com · info@niqatcrm.com<br>دعم العملاء (واتساب): wa.me/201000794484</div>
+    <div class="ct">niqatglobal.com · info@niqat.com<br>دعم العملاء (واتساب): wa.me/201000794484</div>
     <div class="seal">هذا الإيصال صادر إلكترونياً من نظام نقاط ولا يحتاج توقيعاً</div></div>
   <div class="perf"></div></div>`;
 }

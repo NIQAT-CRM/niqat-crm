@@ -38,10 +38,10 @@ export async function POST(req: Request) {
       const r = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST", headers: { "api-key": brevoKey, "Content-Type": "application/json", accept: "application/json" },
         body: JSON.stringify({
-          sender: { name: "Niqat", email: "info@niqatcrm.com" },
+          sender: { name: "Niqat", email: "info@niqat.com" },
           to: [{ email, name: customer_name || "" }],
           subject: `إيصال الدفع ${receipt_no || ""} — نقاط`,
-          htmlContent: `<div dir="rtl" style="font-family:Tajawal,Arial,sans-serif"><p>مرحباً ${customer_name || ""},</p><p>مرفق إيصال الدفع رقم <b>${receipt_no || ""}</b> للخدمة: ${service_label || ""} بمبلغ ${amount_label || ""}.</p><p>شكراً لثقتك في نقاط 🧡<br>niqatglobal.com · info@niqatcrm.com</p></div>`,
+          htmlContent: `<div dir="rtl" style="font-family:Tajawal,Arial,sans-serif"><p>مرحباً ${customer_name || ""},</p><p>مرفق إيصال الدفع رقم <b>${receipt_no || ""}</b> للخدمة: ${service_label || ""} بمبلغ ${amount_label || ""}.</p><p>شكراً لثقتك في نقاط 🧡<br>niqatglobal.com · info@niqat.com</p></div>`,
           ...(attachB64 ? { attachment: [{ content: attachB64, name: `${receipt_no || "receipt"}.pdf` }] } : {}),
         }),
       });
