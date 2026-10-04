@@ -226,7 +226,7 @@ export default function CustomerDrawer(props: {
             enrolls={props.enrolls} dipOpts={props.dipOpts} batchOpts={props.batchOpts}
             addons={props.addons} accreditations={props.accredList}
             projects={props.projList} libraries={props.libNames} canFinance={props.canFinance}
-            serviceTypes={props.serviceTypes || []} serviceItemsByType={props.serviceItemsByType || {}} myTeam={props.myTeam || ""} stage={(props.c as any).stage || ""} />
+            serviceTypes={props.serviceTypes || []} serviceItemsByType={props.serviceItemsByType || {}} myTeam={props.myTeam || ""} stage={(props.c as any).stage || ""} canIssueReceipts={!!props.canIssueReceipts} customerEmail={(props.c as any).email || ""} customerPhone={(props.c as any).phone1 || ""} />
         </div>
 
         {props.canFinance && (
