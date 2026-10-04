@@ -34,7 +34,8 @@ export async function POST(req: Request) {
     } else {
       const chromium = (await import("@sparticuz/chromium")).default;
       const puppeteer = await import("puppeteer-core");
-      browser = await puppeteer.launch({ args: [...chromium.args, "--no-sandbox", "--disable-dev-shm-usage"], defaultViewport: { width: 480, height: 800 }, executablePath: await chromium.executablePath(), headless: chromium.headless as any });
+      const execPath = await chromium.executablePath("https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar");
+      browser = await puppeteer.launch({ args: [...chromium.args, "--no-sandbox", "--disable-dev-shm-usage"], defaultViewport: { width: 480, height: 800 }, executablePath: execPath, headless: chromium.headless as any });
     }
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
