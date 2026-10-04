@@ -31,6 +31,8 @@ const securityHeaders = [
 const nextConfig = {
   poweredByHeader: false,
   experimental: {
+    // نسيب مكتبات Puppeteer/Chromium بره الحزم (external) عشان مساراتها متتكسرش
+    serverComponentsExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
     // ضمّ ملفات Chromium في function توليد الـPDF (عشان تشتغل على Vercel)
     outputFileTracingIncludes: {
       "/api/receipts/pdf": ["./node_modules/@sparticuz/chromium/**"],
