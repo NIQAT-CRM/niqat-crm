@@ -4,7 +4,8 @@
 const supabaseHost = "https://isuuwseyxetshrhmhpda.supabase.co";
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",                              // Next.js hydration
+  "script-src 'self' 'unsafe-inline' blob: https://cdnjs.cloudflare.com", // Next.js hydration + html2pdf (مكتبة توليد PDF الإيصالات)
+  "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",  // Tailwind + خطوط Google
   `img-src 'self' data: blob: ${supabaseHost}`,                     // صور + مرفقات Supabase
   "font-src 'self' data: https://fonts.gstatic.com",                // ملفات خطوط Google
