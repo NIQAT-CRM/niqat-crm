@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import ReceiptIssuer from "../[id]/ReceiptIssuer";
+import { issueAndSendReceipt } from "@/lib/issueReceipt";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 import { COUNTRIES, DEFAULT_DIAL, combineDialAndNumber, phoneKey } from "@/lib/phone";
@@ -460,6 +460,15 @@ export default function NewCustomerForm({
     }
     // ملاحظة: مابنعملش نقل هنا. ده طلب نقل (pending) بس — الدعم هو اللي يأكّد النقل من صفحة التفعيل/التسليم.
     await supabase.from("audit_log").insert({ customer_id: ctx.cid, actor_id: meId || null, action: "handoff_requested", detail: labels.join(" · ") });
+    // إصدار الإيصال وإرساله تلقائياً (واتساب + إيميل) لو فيه دفعة مدفوعة
+    if (canIssueReceipts && ctx.instId) {
+      const r = await issueAndSendReceipt({
+        supabase, customerId: ctx.cid, refId: ctx.instId, refType: "installment",
+        amount: ctx.amount || 0, currency: ctx.currency || "EGP", payKind: ctx.payKind || "installment",
+        email: f.email, phone: f.phone1, autoSend: true,
+      });
+      if (r.ok) { const sent = [r.sentEmail && "إيميل", r.sentWa && "واتساب"].filter(Boolean).join(" + "); toast(sent ? `${tr("receiptIssued")} + ${sent}` : tr("receiptIssued")); }
+    }
     setActBusy(false);
     setActOpen(false);
     toast(tr("sentToActivation"));
@@ -828,9 +837,8 @@ export default function NewCustomerForm({
             <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 14, marginTop: -8 }}>{tr("activationChecklistHint")}</div>
 
             {canIssueReceipts && actCtx.instId && (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, border: "1px solid var(--brand)", background: "var(--brand-soft)", borderRadius: 10, padding: "10px 12px", marginBottom: 14 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--brand-d)" }}>🧾 {tr("issueReceiptNow")}</span>
-                <ReceiptIssuer customerId={actCtx.cid} refId={actCtx.instId} refType="installment" amount={actCtx.amount || 0} currency={actCtx.currency || "EGP"} payKind={actCtx.payKind || "installment"} customerEmail={f.email} customerPhone={f.phone1} />
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--brand-d)", background: "var(--brand-soft)", border: "1px solid var(--brand)", borderRadius: 10, padding: "9px 12px", marginBottom: 14 }}>
+                🧾 {tr("receiptAutoNote")}
               </div>
             )}
 
