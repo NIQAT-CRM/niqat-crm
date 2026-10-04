@@ -26,7 +26,8 @@ export default function ReceiptIssuer({ customerId, refId, refType, amount, curr
     if (!r.ok) { toast(r.error || tr("errorGeneric")); return; }
     setDone({ no: r.data.receipt_no, pdfUrl: r.pdfUrl || "", notes: r.sendNotes || [] });
     const sent = [r.sentEmail && "إيميل", r.sentWa && "واتساب"].filter(Boolean).join(" + ");
-    toast(sent ? `${tr("receiptIssued")} + ${tr("sentWord")}: ${sent}` : tr("receiptIssued"));
+    const notes = (r.sendNotes || []).join(" · ");
+    toast((sent ? `${tr("receiptIssued")} + ${tr("sentWord")}: ${sent}` : tr("receiptIssued")) + (notes ? ` — ⚠ ${notes}` : ""));
   }
 
   if (done) {

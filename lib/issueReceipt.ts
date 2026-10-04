@@ -20,13 +20,15 @@ export async function issueAndSendReceipt(a: IssueArgs): Promise<IssueResult> {
     const d = { ...j, customer_id: a.customerId };
     // توليد الـPDF على السيرفر (Puppeteer) — عربي RTL مظبوط
     const path = `${a.customerId}/${d.receipt_no}.pdf`;
-    let pdfUrl = "";
+    let pdfUrl = ""; let pdfErr = "";
     try {
       const pr = await fetch("/api/receipts/pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ receipt_id: d.id, data: d }) });
       const pj = await pr.json();
       if (pr.ok && pj.signedUrl) pdfUrl = pj.signedUrl;
-    } catch { }
+      else pdfErr = pj?.error || `HTTP ${pr.status}`;
+    } catch (e: any) { pdfErr = e?.message || "fetch failed"; }
     const res: IssueResult = { ok: true, data: d, pdfUrl, sendNotes: [] };
+    if (pdfErr) res.sendNotes!.push("PDF: " + pdfErr);
     if (a.autoSend) {
       const payload = (channel: string) => ({
         receipt_id: d.id, channel, email: a.email, whatsapp: a.phone || d.phone,
