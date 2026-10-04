@@ -30,6 +30,12 @@ const securityHeaders = [
 
 const nextConfig = {
   poweredByHeader: false,
+  experimental: {
+    // ضمّ ملفات Chromium في function توليد الـPDF (عشان تشتغل على Vercel)
+    outputFileTracingIncludes: {
+      "/api/receipts/pdf": ["./node_modules/@sparticuz/chromium/**"],
+    },
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
