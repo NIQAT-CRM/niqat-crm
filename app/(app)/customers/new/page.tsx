@@ -11,7 +11,7 @@ export default async function NewCustomerPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   // حماية: إضافة عميل تحتاج صلاحية "تعديل العملاء"
-  const { data: meProf } = await supabase.from("profiles").select("can_edit_customers").eq("id", user?.id || "").maybeSingle();
+  const { data: meProf } = await supabase.from("profiles").select("can_edit_customers,can_issue_receipts,team").eq("id", user?.id || "").maybeSingle();
   if (!meProf?.can_edit_customers) {
     return (<div className="page-h"><div><h1>{tr("addCust")}</h1><p>{tr("noEditCustomersPerm")}</p></div></div>);
   }
@@ -66,6 +66,7 @@ export default async function NewCustomerPage() {
         frequentDiplomas={frequentDiplomas}
         countries={((ctry as any[]) || []).map((x) => x.name).filter(Boolean)}
         recentYears={recentYears}
+        canIssueReceipts={(meProf as any)?.team === "admin" || !!(meProf as any)?.can_issue_receipts}
       />
     </div>
   );

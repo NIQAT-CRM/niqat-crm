@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import ReceiptIssuer from "../[id]/ReceiptIssuer";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 import { COUNTRIES, DEFAULT_DIAL, combineDialAndNumber, phoneKey } from "@/lib/phone";
@@ -55,8 +56,8 @@ function Head({ icon, tint, title }: { icon: string; tint: string; title: string
 }
 
 export default function NewCustomerForm({
-  specialties, diplomas, batches, services = [], meId, affiliates = [], serviceTypes = [], sources = [], defaultInst = { count: 3, gap: 1 }, frequentDiplomas = [], countries = [], recentYears = [],
-}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[]; serviceTypes?: { slug: string; name: string; activation_label: string }[]; sources?: string[]; defaultInst?: { count: number; gap: number }; frequentDiplomas?: string[]; countries?: string[]; recentYears?: number[] }) {
+  specialties, diplomas, batches, services = [], meId, affiliates = [], serviceTypes = [], sources = [], defaultInst = { count: 3, gap: 1 }, frequentDiplomas = [], countries = [], recentYears = [], canIssueReceipts = false,
+}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[]; serviceTypes?: { slug: string; name: string; activation_label: string }[]; sources?: string[]; defaultInst?: { count: number; gap: number }; frequentDiplomas?: string[]; countries?: string[]; recentYears?: number[]; canIssueReceipts?: boolean }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
@@ -120,7 +121,7 @@ export default function NewCustomerForm({
   const [actBusy, setActBusy] = useState(false);
   const [actLibrary, setActLibrary] = useState(true);          // تفعيل المكتبة — مفعّل افتراضياً لكل الدبلومات
   const [actBatchId, setActBatchId] = useState("");            // لو العميل مااختارش باتش في الفورم
-  const [actCtx, setActCtx] = useState<{ cid: string; diploma: string; batchId: string; batch: string } | null>(null);
+  const [actCtx, setActCtx] = useState<{ cid: string; diploma: string; batchId: string; batch: string; instId?: string; amount?: number; currency?: string; payKind?: 'full'|'installment' } | null>(null);
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
 
   // بند 3: كشف تكرار فوري أثناء كتابة الموبايل/الإيميل (debounced)
@@ -275,6 +276,7 @@ export default function NewCustomerForm({
       return;
     }
     const cid = cust.id;
+    let _paidInstId: string | null = null; let _paidAmt = 0;
     // لو التحويل جاي من تسجيل حملة → علّم التسجيل "converted"
     if (convertRegId.current) { try { await supabase.rpc("campaign_mark_converted", { p_id: convertRegId.current }); } catch { } }
     log("action", "action:new_customer", "customers");
@@ -313,13 +315,14 @@ export default function NewCustomerForm({
               await supabase.from("customer_docs").insert({ customer_id: cid, url: cashShot, name: receiptDisplayName(f.name, phone1), amount: transferAmt, currency: transferCur });
             }
           }
-          await supabase.from("installments").insert({
+          const { data: _ci } = await supabase.from("installments").insert({
             enrollment_id: enr.id, amount: net, currency: f.currency,
             due_date: new Date().toISOString().slice(0, 10),
             status: cashPaidNow ? "paid" : "due",
             paid_at: cashPaidNow ? new Date().toISOString() : null,
             screenshot_url: cashShot,
-          });
+          }).select("id").single();
+          if (cashPaidNow && _ci) { _paidInstId = _ci.id; _paidAmt = net; }
         } else {
           const rows = buildSchedule(net, Number(instCount), Number(instGap));
           if (rows.length) {
@@ -333,7 +336,7 @@ export default function NewCustomerForm({
                 await supabase.from("customer_docs").insert({ customer_id: cid, url: firstShot, name: receiptDisplayName(f.name, phone1), amount: transferAmt, currency: transferCur });
               }
             }
-            await supabase.from("installments").insert(
+            const { data: _irows } = await supabase.from("installments").insert(
               rows.map((r, idx) => ({
                 enrollment_id: enr.id, amount: r.amount, currency: f.currency,
                 due_date: r.due,
@@ -341,7 +344,8 @@ export default function NewCustomerForm({
                 paid_at: payFirstNow && idx === 0 ? new Date().toISOString() : null,
                 screenshot_url: payFirstNow && idx === 0 ? firstShot : null,
               }))
-            );
+            ).select("id");
+            if (payFirstNow && _irows && _irows[0]) { _paidInstId = _irows[0].id; _paidAmt = rows[0].amount; }
           }
         }
       }
@@ -395,7 +399,7 @@ export default function NewCustomerForm({
       // العميل اتسجّل بالفعل فوق. نفتح مودال التفعيل. لو اتقفل من غير تأكيد → يفضل بدون handoff.
       const dipName = subMode === "diploma" ? (diplomas.find((d) => d.id === f.diploma_id)?.name || tr("theDiploma")) : svcName;
       const batchName = subMode === "diploma" ? (batches.find((b) => b.id === f.batch_id)?.name || "") : "";
-      setActCtx({ cid, diploma: dipName, batchId: enrollBatch || "", batch: batchName });
+      setActCtx({ cid, diploma: dipName, batchId: enrollBatch || "", batch: batchName, instId: _paidInstId || undefined, amount: _paidAmt || undefined, currency: f.currency, payKind: payMode === "cash" ? "full" : "installment" });
       setActBatchId(enrollBatch || "");
       setActLibrary(true);
       setActOpen(true);
@@ -822,6 +826,13 @@ export default function NewCustomerForm({
             style={{ padding: 20, width: "100%", maxWidth: 440, maxHeight: "90vh", overflow: "auto" }}>
             <Head icon="check" tint="var(--green)" title={tr("activationChecklistTitle")} />
             <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 14, marginTop: -8 }}>{tr("activationChecklistHint")}</div>
+
+            {canIssueReceipts && actCtx.instId && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, border: "1px solid var(--brand)", background: "var(--brand-soft)", borderRadius: 10, padding: "10px 12px", marginBottom: 14 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--brand-d)" }}>🧾 {tr("issueReceiptNow")}</span>
+                <ReceiptIssuer customerId={actCtx.cid} refId={actCtx.instId} refType="installment" amount={actCtx.amount || 0} currency={actCtx.currency || "EGP"} payKind={actCtx.payKind || "installment"} customerEmail={f.email} customerPhone={f.phone1} />
+              </div>
+            )}
 
             {/* الدبلومة (ثابتة) */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "10px 12px", marginBottom: 8, background: "var(--brand-soft)" }}>
