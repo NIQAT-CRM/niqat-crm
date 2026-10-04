@@ -17,7 +17,7 @@ async function collectReceiptRows(supabase: any): Promise<Row[]> {
   const data: any[] = [];
   const PAGE = 1000;
   for (let from = 0; from < 200000; from += PAGE) {
-    const { data: chunk, error } = await supabase.rpc("receipts_all", { p_from: "2000-01-01", p_to: "2100-01-01" }).range(from, from + PAGE - 1);
+    const { data: chunk, error } = await supabase.rpc("receipts_all", { p_from: "2000-01-01", p_to: "2100-01-01" }).order("uploaded_at", { ascending: true }).order("receipt_url", { ascending: true }).order("amount", { ascending: true }).range(from, from + PAGE - 1);
     if (error) break;
     const c = (chunk as any[]) || [];
     data.push(...c);
