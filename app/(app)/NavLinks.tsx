@@ -76,6 +76,7 @@ export default function NavLinks(p: Perms) {
   if (A || p.canFeedback) teams.push({ href: "/feedback", key: "feedback", tk: "feedbackNav" });
   if (A || p.canRefunds !== false) teams.push({ href: "/refunds", key: "refund", tk: "refunds", badge: p.refundCount });
   if (p.canReceipts) teams.push({ href: "/screenshots", key: "receipt", tk: "screenshots" });
+  if (p.canReceipts) teams.push({ href: "/receipts-log", key: "receipt", tk: "receiptsLogNav" });
   if (p.canCampaign) teams.push({ href: "/campaign", key: "campaign", tk: "campaignNav" });
   if (A || p.canArchive !== false) teams.push({ href: "/archive", key: "archive", tk: "archive" });
   if (p.canReports) teams.push({ href: "/reports", key: "report", tk: "reports" });
