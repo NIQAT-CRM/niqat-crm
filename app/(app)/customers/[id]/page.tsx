@@ -96,6 +96,15 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const canEdit = !!meProf?.can_edit_customers;
   const canIssueReceipts = (meProf as any)?.team === "admin" || !!(meProf as any)?.can_issue_receipts;
   const myTeam = String(meProf?.team || "").toLowerCase();
+  // خريطة الإيصالات المتصدرة لهذا العميل (لإخفاء زر الإصدار بعد ما يتصدر) — متاحة لمن معاه إصدار أو عرض
+  const receiptsByRef: Record<string, { id: string; no: string; amount: number; currency: string; serviceLabel: string; sentEmail: boolean; sentWa: boolean }> = {};
+  if (canIssueReceipts) {
+    const { data: recRows } = await supabase.rpc("receipts_for_customer", { p_customer_id: params.id });
+    for (const rr of ((recRows as any[]) || [])) {
+      const k = rr.addon_id ? "addon:" + rr.addon_id : rr.installment_id ? "inst:" + rr.installment_id : "";
+      if (k && !receiptsByRef[k]) receiptsByRef[k] = { id: rr.id, no: rr.receipt_no, amount: Number(rr.amount) || 0, currency: rr.currency, serviceLabel: rr.service_label || "", sentEmail: !!rr.sent_email, sentWa: !!rr.sent_whatsapp };
+    }
+  }
 
   if (!c) notFound();
 
@@ -320,7 +329,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
             fuOpen={fuOpen} fuHistory={(fuAll || []).filter((x: any) => x.done).slice(0, 5)}
             finEnrollments={finEnrollments}
             refunds={refunds} refundServices={refundServices} allServicesClosed={allServicesClosed} refundTableMissing={refundTableMissing}
-            canFinance={canFinance} canMessage={canMessage} canManageBatches={canManageBatches} canEdit={canEdit} canIssueReceipts={canIssueReceipts} myTeam={myTeam}
+            canFinance={canFinance} canMessage={canMessage} canManageBatches={canManageBatches} canEdit={canEdit} canIssueReceipts={canIssueReceipts} myTeam={myTeam} receiptsByRef={receiptsByRef}
             docs={docs} docsMissing={docsMissing}
             waCtx={waCtx} templates={templates as any}
             tasks={tasks} notes={notes}

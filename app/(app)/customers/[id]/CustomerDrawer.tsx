@@ -85,7 +85,7 @@ export default function CustomerDrawer(props: {
   fuOpen: any; fuHistory: any[];
   finEnrollments: any[];
   refunds: any[]; refundServices: any[]; allServicesClosed: boolean; refundTableMissing: boolean;
-  canFinance: boolean; canMessage: boolean; canManageBatches: boolean; canEdit: boolean; canIssueReceipts?: boolean;
+  canFinance: boolean; canMessage: boolean; canManageBatches: boolean; canEdit: boolean; canIssueReceipts?: boolean; receiptsByRef?: Record<string, any>;
   myTeam?: string;
   docs: any[]; docsMissing: boolean;
   waCtx: any; templates: any[];
@@ -226,7 +226,7 @@ export default function CustomerDrawer(props: {
             enrolls={props.enrolls} dipOpts={props.dipOpts} batchOpts={props.batchOpts}
             addons={props.addons} accreditations={props.accredList}
             projects={props.projList} libraries={props.libNames} canFinance={props.canFinance}
-            serviceTypes={props.serviceTypes || []} serviceItemsByType={props.serviceItemsByType || {}} myTeam={props.myTeam || ""} stage={(props.c as any).stage || ""} canIssueReceipts={!!props.canIssueReceipts} customerEmail={(props.c as any).email || ""} customerPhone={(props.c as any).phone1 || ""} />
+            serviceTypes={props.serviceTypes || []} serviceItemsByType={props.serviceItemsByType || {}} myTeam={props.myTeam || ""} stage={(props.c as any).stage || ""} canIssueReceipts={!!props.canIssueReceipts} customerEmail={(props.c as any).email || ""} customerPhone={(props.c as any).phone1 || ""} receiptsByRef={props.receiptsByRef || {}} />
         </div>
 
         {props.canFinance && (
@@ -246,7 +246,7 @@ export default function CustomerDrawer(props: {
                 <div className="num" style={{ fontSize: 15, fontWeight: 800, marginTop: 4, color: "#a5790a" }}>{fmtNum(finRemaining)}</div>
               </div>
             </div>
-            <FinancePanel enrollments={props.finEnrollments} customerId={props.c.id} meId={props.user?.id || ""} batchOpts={props.batchOpts} diplomas={props.dipOpts || []} addons={(props.addons || []).filter((a: any) => a.paid)} handedOff={!!(props.c as any).handed_off} stage={(props.c as any).stage || ""} canIssueReceipts={!!props.canIssueReceipts} customerEmail={(props.c as any).email || ""} customerPhone={(props.c as any).phone1 || ""} />
+            <FinancePanel enrollments={props.finEnrollments} customerId={props.c.id} meId={props.user?.id || ""} batchOpts={props.batchOpts} diplomas={props.dipOpts || []} addons={(props.addons || []).filter((a: any) => a.paid)} handedOff={!!(props.c as any).handed_off} stage={(props.c as any).stage || ""} canIssueReceipts={!!props.canIssueReceipts} customerEmail={(props.c as any).email || ""} customerPhone={(props.c as any).phone1 || ""} receiptsByRef={props.receiptsByRef || {}} />
           </div>
         )}
 

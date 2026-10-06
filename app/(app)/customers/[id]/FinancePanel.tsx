@@ -27,7 +27,7 @@ function payMode(e: Enr): "cash" | "installment" | "none" {
   return "installment";
 }
 
-export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], diplomas = [], addons = [], handedOff = false, stage = "", canIssueReceipts = false, customerEmail = "", customerPhone = "" }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; diplomas?: Opt[]; addons?: Addon[]; handedOff?: boolean; stage?: string; canIssueReceipts?: boolean; customerEmail?: string; customerPhone?: string }) {
+export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], diplomas = [], addons = [], handedOff = false, stage = "", canIssueReceipts = false, customerEmail = "", customerPhone = "", receiptsByRef = {} }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; diplomas?: Opt[]; addons?: Addon[]; handedOff?: boolean; stage?: string; canIssueReceipts?: boolean; customerEmail?: string; customerPhone?: string; receiptsByRef?: Record<string, any> }) {
   const tr = useT();
   const supabase = createClient();
   const router = useRouter();
@@ -336,7 +336,7 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
                       {!paidNow ? (
                         <button onClick={() => { const opening = payFor !== i.id; setPayFor(opening ? i.id : null); setPayFile(null); setPayAmount(opening ? String(i.amount) : ""); setPayCurrency(opening ? i.currency : ""); }} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{tr("paid")}</button>
                       ) : canIssueReceipts ? (
-                        <ReceiptIssuer customerId={customerId} refId={i.id} refType="installment" amount={Number(i.amount) || 0} currency={i.currency} payKind={payMode(e) === "cash" ? "full" : "installment"} customerEmail={customerEmail} customerPhone={customerPhone} />
+                        <ReceiptIssuer customerId={customerId} refId={i.id} refType="installment" amount={Number(i.amount) || 0} currency={i.currency} payKind={payMode(e) === "cash" ? "full" : "installment"} customerEmail={customerEmail} customerPhone={customerPhone} existing={receiptsByRef["inst:" + i.id] || null} />
                       ) : <span style={{ width: 70 }} />}
                      </div>
                      {editInst === i.id && (

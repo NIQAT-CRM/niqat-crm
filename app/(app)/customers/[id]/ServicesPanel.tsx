@@ -23,10 +23,10 @@ const SV_TYPES = [
 const stMeta = (k: string) => SV_TYPES.find((t) => t.key === k) || { key: k, labelKey: "serviceWord", color: "var(--blue)", icon: "🔧" };
 
 export default function ServicesPanel({
-  customerId, meId, enrolls, dipOpts, batchOpts, addons, accreditations, projects, libraries, canFinance, serviceTypes = [], serviceItemsByType = {}, myTeam = "", stage = "", canIssueReceipts = false, customerEmail = "", customerPhone = "",
+  customerId, meId, enrolls, dipOpts, batchOpts, addons, accreditations, projects, libraries, canFinance, serviceTypes = [], serviceItemsByType = {}, myTeam = "", stage = "", canIssueReceipts = false, customerEmail = "", customerPhone = "", receiptsByRef = {},
 }: {
   customerId: string; meId: string; enrolls: Enr[];
-  canIssueReceipts?: boolean; customerEmail?: string; customerPhone?: string;
+  canIssueReceipts?: boolean; customerEmail?: string; customerPhone?: string; receiptsByRef?: Record<string, any>;
   dipOpts: Opt[]; batchOpts: Opt[]; addons: Addon[];
   accreditations: string[]; projects: string[]; libraries: string[]; canFinance: boolean;
   myTeam?: string; stage?: string;
@@ -500,7 +500,7 @@ export default function ServicesPanel({
                   {canFinance && !a.free && <span className="num" dir="ltr" style={{ fontSize: 12.5, color: "var(--muted)" }}>{new Intl.NumberFormat("en").format(a.amount)} {(a as any).currency === "USD" ? "$" : tr("egpShort")}</span>}
                   {a.shot_url && <a href={a.shot_url} target="_blank" rel="noreferrer" title={tr("paymentProof")} style={{ color: "var(--blue)", fontSize: 13 }}>🧾</a>}
                   {a.paid && !a.free && canIssueReceipts && (
-                    <ReceiptIssuer customerId={customerId} refId={a.id} refType="addon" amount={Number(a.amount) || 0} currency={(a as any).currency === "USD" ? "USD" : "EGP"} payKind="full" customerEmail={customerEmail} customerPhone={customerPhone} />
+                    <ReceiptIssuer customerId={customerId} refId={a.id} refType="addon" amount={Number(a.amount) || 0} currency={(a as any).currency === "USD" ? "USD" : "EGP"} payKind="full" customerEmail={customerEmail} customerPhone={customerPhone} existing={receiptsByRef["addon:" + a.id] || null} />
                   )}
                   <div className={"sw" + (a.paid ? " on" : "")} onClick={() => togglePaid(a)} title={a.paid ? tr("paid") : tr("unpaid")} style={{ marginInlineStart: "auto" }}><i /></div>
                   <button onClick={() => delAddon(a)} title={tr("delete")} style={{ color: "var(--red)", fontSize: 13, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>✕</button>

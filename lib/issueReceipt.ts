@@ -5,7 +5,7 @@ const nf = new Intl.NumberFormat("en-US");
 export type IssueArgs = {
   supabase: any; customerId: string; refId: string; refType: "installment" | "addon";
   amount: number; currency: string; payKind?: "installment" | "full"; payMethod?: string;
-  email?: string; phone?: string; autoSend?: boolean; // autoSend=true → يبعت واتساب + إيميل تلقائياً
+  email?: string; phone?: string; autoSend?: boolean; force?: boolean; // autoSend=true → يبعت واتساب + إيميل تلقائياً
 };
 export type IssueResult = { ok: boolean; data?: any; pdfUrl?: string; sentEmail?: boolean; sentWa?: boolean; error?: string; sendNotes?: string[] };
 
@@ -14,7 +14,7 @@ export async function issueAndSendReceipt(a: IssueArgs): Promise<IssueResult> {
   try {
     const { data: j, error } = await supabase.rpc("issue_receipt", {
       p_customer_id: a.customerId, p_kind: a.payKind || "installment", p_ref_id: a.refId,
-      p_amount: a.amount, p_currency: a.currency, p_pay_method: a.payMethod || "", p_ref_type: a.refType,
+      p_amount: a.amount, p_currency: a.currency, p_pay_method: a.payMethod || "", p_ref_type: a.refType, p_force: a.force || false,
     });
     if (error) return { ok: false, error: error.message };
     const d = { ...j, customer_id: a.customerId };
@@ -44,4 +44,28 @@ export async function issueAndSendReceipt(a: IssueArgs): Promise<IssueResult> {
     }
     return res;
   } catch (e: any) { return { ok: false, error: e?.message || "خطأ" }; }
+}
+
+
+export type ResendArgs = {
+  supabase: any; receiptId: string; receiptNo: string; customerId: string;
+  amount: number; currency: string; serviceLabel?: string;
+  customerName?: string; email?: string; phone?: string;
+};
+// إعادة إرسال نفس الإيصال (نفس الـPDF) عبر الإيميل + الواتساب — من غير إصدار جديد
+export async function resendReceipt(a: ResendArgs): Promise<{ sentEmail: boolean; sentWa: boolean; notes: string[] }> {
+  const path = `${a.customerId}/${a.receiptNo}.pdf`;
+  const notes: string[] = []; let sentEmail = false, sentWa = false;
+  let cname = a.customerName;
+  if (!cname) { try { const { data } = await a.supabase.from("customers").select("name").eq("id", a.customerId).maybeSingle(); cname = (data as any)?.name || ""; } catch { } }
+  const payload = (channel: string) => ({
+    receipt_id: a.receiptId, channel, email: a.email, whatsapp: a.phone,
+    pdf_url: path, receipt_no: a.receiptNo, customer_name: cname || "",
+    service_label: a.serviceLabel || "", amount_label: `${nf.format(Math.round(a.amount))} ${a.currency}`,
+  });
+  if (a.email) {
+    try { const r = await fetch("/api/receipts/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload("email")) }); const j = await r.json(); if (r.ok) sentEmail = true; else notes.push("إيميل: " + (j.error || "فشل")); } catch { notes.push("إيميل: فشل"); }
+  } else notes.push("مفيش إيميل للعميل");
+  try { const r = await fetch("/api/receipts/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload("whatsapp")) }); const j = await r.json(); if (r.ok) sentWa = true; else notes.push("واتساب: " + (j.error || "فشل")); } catch { notes.push("واتساب: فشل"); }
+  return { sentEmail, sentWa, notes };
 }
