@@ -21,7 +21,7 @@ export default function ReceiptIssuer({ customerId, refId, refType, amount, curr
     setBusy(true);
     const r = await issueAndSendReceipt({
       supabase, customerId, refId, refType, amount, currency, payKind: payKind || "installment",
-      payMethod, email: customerEmail, phone: customerPhone, autoSend: true,
+      payMethod, email: customerEmail, phone: customerPhone, autoSend: true, background: true,
     });
     setBusy(false);
     if (!r.ok) {

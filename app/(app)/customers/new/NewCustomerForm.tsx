@@ -121,7 +121,7 @@ export default function NewCustomerForm({
   const [actBusy, setActBusy] = useState(false);
   const [actLibrary, setActLibrary] = useState(true);          // تفعيل المكتبة — مفعّل افتراضياً لكل الدبلومات
   const [actBatchId, setActBatchId] = useState("");            // لو العميل مااختارش باتش في الفورم
-  const [actCtx, setActCtx] = useState<{ cid: string; diploma: string; batchId: string; batch: string; instId?: string; amount?: number; currency?: string; payKind?: 'full'|'installment' } | null>(null);
+  const [actCtx, setActCtx] = useState<{ cid: string; diploma: string; batchId: string; batch: string; instId?: string; amount?: number; currency?: string; payKind?: 'full'|'installment'; enrId?: string } | null>(null);
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
 
   // بند 3: كشف تكرار فوري أثناء كتابة الموبايل/الإيميل (debounced)
@@ -276,7 +276,7 @@ export default function NewCustomerForm({
       return;
     }
     const cid = cust.id;
-    let _paidInstId: string | null = null; let _paidAmt = 0;
+    let _paidInstId: string | null = null; let _paidAmt = 0; let _enrId: string | null = null;
     // لو التحويل جاي من تسجيل حملة → علّم التسجيل "converted"
     if (convertRegId.current) { try { await supabase.rpc("campaign_mark_converted", { p_id: convertRegId.current }); } catch { } }
     log("action", "action:new_customer", "customers");
@@ -298,6 +298,7 @@ export default function NewCustomerForm({
         customer_id: cid, diploma_id: enrollDip, batch_id: enrollBatch,
         status: "active", free: f.free, needs_activation: false,
       }).select("id").maybeSingle();
+      _enrId = (enr as any)?.id || null;
       // المالية: المبلغ المستحق بعد الخصم
       if (enr && !f.free && net > 0) {
         await supabase.from("enrollment_finance").insert({
@@ -399,7 +400,7 @@ export default function NewCustomerForm({
       // العميل اتسجّل بالفعل فوق. نفتح مودال التفعيل. لو اتقفل من غير تأكيد → يفضل بدون handoff.
       const dipName = subMode === "diploma" ? (diplomas.find((d) => d.id === f.diploma_id)?.name || tr("theDiploma")) : svcName;
       const batchName = subMode === "diploma" ? (batches.find((b) => b.id === f.batch_id)?.name || "") : "";
-      setActCtx({ cid, diploma: dipName, batchId: enrollBatch || "", batch: batchName, instId: _paidInstId || undefined, amount: _paidAmt || undefined, currency: f.currency, payKind: payMode === "cash" ? "full" : "installment" });
+      setActCtx({ cid, diploma: dipName, batchId: enrollBatch || "", batch: batchName, instId: _paidInstId || undefined, amount: _paidAmt || undefined, currency: f.currency, payKind: payMode === "cash" ? "full" : "installment", enrId: _enrId || undefined });
       setActBatchId(enrollBatch || "");
       setActLibrary(true);
       setActOpen(true);
@@ -465,9 +466,16 @@ export default function NewCustomerForm({
       const r = await issueAndSendReceipt({
         supabase, customerId: ctx.cid, refId: ctx.instId, refType: "installment",
         amount: ctx.amount || 0, currency: ctx.currency || "EGP", payKind: ctx.payKind || "installment",
-        email: f.email, phone: f.phone1, autoSend: true,
+        email: f.email, phone: f.phone1, autoSend: true, background: true,
       });
-      if (r.ok) { const sent = [r.sentEmail && "إيميل", r.sentWa && "واتساب"].filter(Boolean).join(" + "); toast(sent ? `${tr("receiptIssued")} + ${sent}` : tr("receiptIssued")); }
+      if (r.ok) toast(`${tr("receiptIssued")} ${r.data?.receipt_no || ""} — ${tr("receiptBgNote")}`);
+    } else if (canIssueReceipts && f.free && ctx.enrId) {
+      const r = await issueAndSendReceipt({
+        supabase, customerId: ctx.cid, refId: ctx.enrId, refType: "enrollment",
+        amount: 0, currency: ctx.currency || "EGP", payKind: "free",
+        email: f.email, phone: f.phone1, autoSend: true, background: true,
+      });
+      if (r.ok) toast(`${tr("giftReceiptIssued")} ${r.data?.receipt_no || ""}`);
     }
     setActBusy(false);
     setActOpen(false);

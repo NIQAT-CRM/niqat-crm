@@ -5,11 +5,15 @@ const nf = new Intl.NumberFormat("en-US");
 
 export function receiptHtmlDoc(d: any): string {
   const dt = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }).format(new Date(d.issued_at)).replace(",", " —");
-  const isInst = d.pay_kind !== "full";
-  const payType = isInst ? `قسط — الدفعة ${d.installment_no} من ${d.installment_total}` : "دفع كامل (كاش — بدون أقساط)";
-  const amtLabel = isInst ? "المبلغ المدفوع (هذا القسط)" : "المبلغ المدفوع (كامل)";
-  const remain = (isInst && d.remaining != null && d.remaining > 0)
+  const isFree = d.pay_kind === "free";
+  const isInst = d.pay_kind !== "full" && !isFree;
+  const payType = isFree ? "اشتراك هدية — مجاناً 🎁 (Gift)" : (isInst ? `قسط — الدفعة ${d.installment_no} من ${d.installment_total}` : "دفع كامل (كاش — بدون أقساط)");
+  const amtLabel = isFree ? "قيمة الاشتراك" : (isInst ? "المبلغ المدفوع (هذا القسط)" : "المبلغ المدفوع (كامل)");
+  const remain = (!isFree && isInst && d.remaining != null && d.remaining > 0)
     ? `<div class="remain"><span>المتبقّي على العميل</span><span class="a">${nf.format(Math.round(d.remaining))} ${d.currency}</span></div>` : "";
+  const amtValue = isFree
+    ? `<span class="a" style="font-size:18px">🎁 هدية — Free</span>`
+    : `<span class="a">${nf.format(Math.round(d.amount))}<span class="cur">${d.currency}</span></span>`;
   return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -47,7 +51,7 @@ body{background:#fff}
 <div class="sheet"><div class="rb"></div>
   <div class="head"><img class="logo" src="${NIQAT_LOGO}"><div class="rcpt-meta"><div class="t">إيصال رقم</div><div class="no">${d.receipt_no}</div><div class="dt">${dt}</div></div></div>
   <div class="divider"></div>
-  <div class="title-row"><h1>إيصال دفع</h1><div class="paidtag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>مدفوع</div></div>
+  <div class="title-row"><h1>${isFree ? "إيصال اشتراك" : "إيصال دفع"}</h1><div class="paidtag">${isFree ? "🎁 هدية" : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>مدفوع`}</div></div>
   <div class="rows">
     <div class="r"><span class="k">اسم العميل</span><span class="v ltr">${d.customer_name || "-"}</span></div>
     <div class="r"><span class="k">رقم الهاتف</span><span class="v ltr">${d.phone || "-"}</span></div>
@@ -56,7 +60,7 @@ body{background:#fff}
     ${d.pay_method ? `<div class="r"><span class="k">طريقة الدفع</span><span class="v">${d.pay_method}</span></div>` : ""}
     <div class="r hl"><span class="k">نوع الدفعة</span><span class="v">${payType}</span></div>
   </div>
-  <div class="amount-box"><span class="l">${amtLabel}</span><span class="a">${nf.format(Math.round(d.amount))}<span class="cur">${d.currency}</span></span></div>
+  <div class="amount-box"><span class="l">${amtLabel}</span>${amtValue}</div>
   ${remain}
   <div class="stampwrap"><img src="${NIQAT_STAMP}"></div>
   <div class="foot"><div class="thanks">شكراً لثقتك في نقاط 🧡</div>

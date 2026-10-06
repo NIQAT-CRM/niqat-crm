@@ -61,14 +61,12 @@ export default function ReceiptsLogView({ initial }: { initial: any[] }) {
       supabase, customerId: (row as any).customer_id, refId, refType: refType as any,
       amount: Number((row as any).amount) || 0, currency: (row as any).currency,
       payKind: ((row as any).pay_kind || "installment") as any, payMethod: (row as any).pay_method || "",
-      email: (c as any)?.email, phone: (c as any)?.phone1, autoSend: true, force: true,
+      email: (c as any)?.email, phone: (c as any)?.phone1, autoSend: true, force: true, background: true,
     });
     setRowBusy(null);
     if (!res.ok) return toast(res.error || tr("errorGeneric"));
-    const sent = [res.sentEmail && "إيميل", res.sentWa && "واتساب"].filter(Boolean).join(" + ");
-    const notes = res.sendNotes || [];
-    toast(`${tr("receiptIssued")} ${res.data.receipt_no}` + (sent ? ` + ${sent}` : "") + (notes.length ? ` — ⚠ ${notes.join(" · ")}` : ""));
-    setRows((rs) => [{ id: res.data.id, receipt_no: res.data.receipt_no, customer_name: res.data.customer_name, service_label: res.data.service_label, batch_code: res.data.batch_code, amount: res.data.amount, currency: res.data.currency, issued_at: res.data.issued_at, sent_email: res.sentEmail, sent_whatsapp: res.sentWa, pdf_url: "" }, ...rs]);
+    toast(`${tr("receiptIssued")} ${res.data.receipt_no} — ${tr("receiptBgNote")}`);
+    setRows((rs) => [{ id: res.data.id, receipt_no: res.data.receipt_no, customer_name: res.data.customer_name, service_label: res.data.service_label, batch_code: res.data.batch_code, amount: res.data.amount, currency: res.data.currency, issued_at: res.data.issued_at, sent_email: false, sent_whatsapp: false, pdf_url: "" }, ...rs]);
   }
   const fmtDate = (iso: string) => iso ? new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "—";
 
@@ -100,7 +98,7 @@ export default function ReceiptsLogView({ initial }: { initial: any[] }) {
                 <div style={{ ...C, display: "flex", gap: 5 }}>
                   {r.sent_email ? <span title={fmtDate(r.sent_email_at)} style={{ fontSize: 15 }}>✉️</span> : null}
                   {r.sent_whatsapp ? <span title={fmtDate(r.sent_whatsapp_at)} style={{ fontSize: 15 }}>📱</span> : null}
-                  {!r.sent_email && !r.sent_whatsapp ? <span style={{ fontSize: 11, color: "var(--muted)" }}>—</span> : null}
+                  {!r.sent_email && !r.sent_whatsapp ? <span style={{ fontSize: 10.5, color: "#c0392b", fontWeight: 700 }}>{tr("notSentWord")}</span> : null}
                 </div>
                 <div style={{ ...C, display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <button className="btn ghost" style={{ height: 30, padding: "0 10px", fontSize: 12 }} onClick={() => openPdf(r)}>👁 {tr("viewWord")}</button>

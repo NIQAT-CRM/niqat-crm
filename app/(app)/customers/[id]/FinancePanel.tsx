@@ -3,6 +3,7 @@ import { useState, useRef, useLayoutEffect, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import ReceiptIssuer from "./ReceiptIssuer";
+import { issueAndSendReceipt } from "@/lib/issueReceipt";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
@@ -121,6 +122,14 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
     }
     // ملاحظة: مابنعملش نقل هنا. ده طلب نقل (pending) بس — الدعم هو اللي يأكّد النقل من صفحة التفعيل/التسليم.
     await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "handoff_requested", detail: labels.join(" · ") });
+    // إيصال هدية للاشتراك المجاني (الفري مالوش قسط) — في الخلفية
+    if (canIssueReceipts && actEnr.free) {
+      await issueAndSendReceipt({
+        supabase, customerId, refId: actEnr.id, refType: "enrollment",
+        amount: 0, currency: actEnr.currency || "EGP", payKind: "free",
+        email: customerEmail, phone: customerPhone, autoSend: true, background: true,
+      });
+    }
     setActBusy(false);
     setActEnr(null);
     toast(tr("sentToActivation")); router.refresh();
