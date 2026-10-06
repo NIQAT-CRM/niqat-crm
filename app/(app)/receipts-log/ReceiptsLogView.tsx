@@ -16,100 +16,146 @@ export default function ReceiptsLogView({ initial }: { initial: any[] }) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const [rowBusy, setRowBusy] = useState<string | null>(null);
+  const [searched, setSearched] = useState(false);
 
   async function search() {
     const needle = q.trim();
     setBusy(true);
-    if (!needle) { setBusy(false); return; }
     const { data } = await supabase.rpc("receipts_search", { p_query: needle });
     setRows((data as any[]) || []);
+    setSearched(!!needle);
     setBusy(false);
   }
+  function clearSearch() { setQ(""); setRows(initial); setSearched(false); }
+
   async function openPdf(r: any) {
-    const path = r.pdf_url || null;
-    if (!path) { const { data } = await supabase.from("receipts_issued").select("pdf_url").eq("id", r.id).maybeSingle(); if (!data?.pdf_url) return; r.pdf_url = data.pdf_url; }
-    const { data: s } = await supabase.storage.from("receipts-pdf").createSignedUrl(r.pdf_url, 3600);
+    let path = r.pdf_url || null;
+    if (!path) { const { data } = await supabase.from("receipts_issued").select("pdf_url").eq("id", r.id).maybeSingle(); if (!data?.pdf_url) return toast(tr("errorGeneric")); path = data.pdf_url; r.pdf_url = path; }
+    const { data: s } = await supabase.storage.from("receipts-pdf").createSignedUrl(path, 3600);
     if (s?.signedUrl) window.open(s.signedUrl, "_blank");
   }
   // إعادة إرسال نفس الإيصال (نفس الرقم والـPDF)
   async function resend(r: any) {
     setRowBusy(r.id);
-    const { data: row } = await supabase.from("receipts_issued").select("customer_id,service_label,amount,currency,receipt_no").eq("id", r.id).maybeSingle();
+    const { data: row } = await supabase.from("receipts_issued").select("customer_id,service_label,amount,currency,pay_kind,receipt_no").eq("id", r.id).maybeSingle();
     if (!row) { setRowBusy(null); return toast(tr("errorGeneric")); }
     const { data: c } = await supabase.from("customers").select("name,email,phone1").eq("id", (row as any).customer_id).maybeSingle();
     const res = await resendReceipt({
       supabase, receiptId: r.id, receiptNo: (row as any).receipt_no, customerId: (row as any).customer_id,
-      amount: Number((row as any).amount) || 0, currency: (row as any).currency, serviceLabel: (row as any).service_label,
+      amount: Number((row as any).amount) || 0, currency: (row as any).currency, serviceLabel: (row as any).service_label, payKind: (row as any).pay_kind,
       customerName: (c as any)?.name, email: (c as any)?.email, phone: (c as any)?.phone1,
     });
     setRowBusy(null);
     const sent = [res.sentEmail && "إيميل", res.sentWa && "واتساب"].filter(Boolean).join(" + ");
     toast((sent ? `${tr("resentWord")}: ${sent}` : tr("errorGeneric")) + (res.notes.length ? ` — ⚠ ${res.notes.join(" · ")}` : ""));
-    setRows((rs) => rs.map((x) => x.id === r.id ? { ...x, sent_email: x.sent_email || res.sentEmail, sent_whatsapp: x.sent_whatsapp || res.sentWa } : x));
+    setRows((rs) => rs.map((x) => x.id === r.id ? { ...x, sent_email: x.sent_email || res.sentEmail, sent_whatsapp: x.sent_whatsapp || res.sentWa, sent_email_at: x.sent_email_at || (res.sentEmail ? new Date().toISOString() : null), sent_whatsapp_at: x.sent_whatsapp_at || (res.sentWa ? new Date().toISOString() : null) } : x));
   }
   // إصدار إيصال جديد (بديل) لنفس الدفعة — بتأكيد، بيستخدم force
   async function issueNew(r: any) {
     if (!await confirmDialog({ message: tr("reissueConfirm"), confirmLabel: tr("reissueYes"), cancelLabel: tr("cancel"), danger: true })) return;
     setRowBusy(r.id);
-    const { data: row } = await supabase.from("receipts_issued").select("customer_id,installment_id,addon_id,pay_kind,pay_method,amount,currency").eq("id", r.id).maybeSingle();
+    const { data: row } = await supabase.from("receipts_issued").select("customer_id,installment_id,addon_id,enrollment_id,pay_kind,pay_method,amount,currency").eq("id", r.id).maybeSingle();
     if (!row) { setRowBusy(null); return toast(tr("errorGeneric")); }
-    const refType = (row as any).addon_id ? "addon" : "installment";
-    const refId = (row as any).addon_id || (row as any).installment_id;
+    const rr: any = row;
+    const refType = rr.addon_id ? "addon" : rr.installment_id ? "installment" : "enrollment";
+    const refId = rr.addon_id || rr.installment_id || rr.enrollment_id;
     if (!refId) { setRowBusy(null); return toast(tr("errorGeneric")); }
-    const { data: c } = await supabase.from("customers").select("email,phone1").eq("id", (row as any).customer_id).maybeSingle();
+    const { data: c } = await supabase.from("customers").select("email,phone1").eq("id", rr.customer_id).maybeSingle();
     const res = await issueAndSendReceipt({
-      supabase, customerId: (row as any).customer_id, refId, refType: refType as any,
-      amount: Number((row as any).amount) || 0, currency: (row as any).currency,
-      payKind: ((row as any).pay_kind || "installment") as any, payMethod: (row as any).pay_method || "",
+      supabase, customerId: rr.customer_id, refId, refType: refType as any,
+      amount: Number(rr.amount) || 0, currency: rr.currency,
+      payKind: (rr.pay_kind || "installment") as any, payMethod: rr.pay_method || "",
       email: (c as any)?.email, phone: (c as any)?.phone1, autoSend: true, force: true, background: true,
     });
     setRowBusy(null);
     if (!res.ok) return toast(res.error || tr("errorGeneric"));
     toast(`${tr("receiptIssued")} ${res.data.receipt_no} — ${tr("receiptBgNote")}`);
-    setRows((rs) => [{ id: res.data.id, receipt_no: res.data.receipt_no, customer_name: res.data.customer_name, service_label: res.data.service_label, batch_code: res.data.batch_code, amount: res.data.amount, currency: res.data.currency, issued_at: res.data.issued_at, sent_email: false, sent_whatsapp: false, pdf_url: "" }, ...rs]);
+    setRows((rs) => [{ id: res.data.id, receipt_no: res.data.receipt_no, customer_name: res.data.customer_name, service_label: res.data.service_label, batch_code: res.data.batch_code, amount: res.data.amount, currency: res.data.currency, pay_kind: res.data.pay_kind, issued_at: res.data.issued_at, sent_email: false, sent_whatsapp: false, pdf_url: "" }, ...rs]);
   }
-  const fmtDate = (iso: string) => iso ? new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "—";
+  const fmtDate = (iso: string) => iso ? new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { timeZone: "Africa/Cairo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "—";
 
-  const cols = "150px 1.2fr 1.3fr 105px 125px 90px 190px";
-  const H: React.CSSProperties = { fontSize: 11.5, fontWeight: 800, color: "var(--muted)", padding: "11px 12px", whiteSpace: "nowrap" };
-  const C: React.CSSProperties = { fontSize: 12.5, color: "var(--text)", padding: "11px 12px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
+  const cols = "124px 1.5fr 120px 148px 132px 208px";
+  const cell: React.CSSProperties = { padding: "13px 14px", minWidth: 0 };
+  const head: React.CSSProperties = { ...cell, fontSize: 11, fontWeight: 800, color: "var(--muted)", whiteSpace: "nowrap" };
+  const abtn: React.CSSProperties = { height: 30, padding: "0 10px", fontSize: 11.5 };
 
   return (
-    <div>
-      <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--ink)", marginBottom: 16 }}>🧾 {tr("receiptsLogTitle")}</h1>
-      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        <input className="inp" placeholder={tr("receiptsSearchPh")} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search()} style={{ height: 40, flex: 1 }} />
-        <button className="btn" style={{ height: 40 }} onClick={search} disabled={busy}>{busy ? "..." : "🔍 " + tr("searchWord")}</button>
-        <button className="btn ghost" style={{ height: 40 }} onClick={() => { setQ(""); setRows(initial); }}>{tr("clearWord")}</button>
+    <div style={{ maxWidth: 1180 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 18 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)" }}>🧾 {tr("receiptsLogTitle")}</h1>
+        <span style={{ fontSize: 13, color: "var(--muted)", fontWeight: 600 }}>{rows.length} {tr("receiptWord")}</span>
       </div>
-      {rows.length === 0 ? <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>{tr("noReceiptsIssued")}</div> : (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, boxShadow: "var(--sh)", overflowX: "auto" }}>
-          <div style={{ minWidth: 950 }}>
-            <div style={{ display: "grid", gridTemplateColumns: cols, borderBottom: "1px solid var(--line)", background: "var(--bg)" }}>
-              {[tr("colReceiptNo"), tr("customer"), tr("serviceWord"), tr("amount"), tr("colCreatedAt"), tr("sendStatusWord"), tr("actionWord")].map((h, i) => <div key={i} style={H}>{h}</div>)}
-            </div>
-            {rows.map((r, i) => (
-              <div key={r.id || i} style={{ display: "grid", gridTemplateColumns: cols, borderBottom: "1px solid var(--line)", alignItems: "center", background: i % 2 ? "transparent" : "var(--muted-soft)" }}>
-                <div className="num" style={{ ...C, direction: "ltr", fontWeight: 700, color: "var(--brand-d)" }}>{r.receipt_no}</div>
-                <div style={{ ...C, fontWeight: 700, color: "var(--ink)" }}>{r.customer_name || r.service_label || "—"}</div>
-                <div style={C} title={r.service_label}>{r.service_label || "—"}{r.batch_code ? ` · ${r.batch_code}` : ""}</div>
-                <div className="num" style={{ ...C, direction: "ltr", fontWeight: 700 }}>{nf.format(Math.round(r.amount || 0))} {r.currency}</div>
-                <div className="num" style={{ ...C, direction: "ltr" }}>{fmtDate(r.issued_at)}</div>
-                <div style={{ ...C, display: "flex", gap: 5 }}>
-                  {r.sent_email ? <span title={fmtDate(r.sent_email_at)} style={{ fontSize: 15 }}>✉️</span> : null}
-                  {r.sent_whatsapp ? <span title={fmtDate(r.sent_whatsapp_at)} style={{ fontSize: 15 }}>📱</span> : null}
-                  {!r.sent_email && !r.sent_whatsapp ? <span style={{ fontSize: 10.5, color: "#c0392b", fontWeight: 700 }}>{tr("notSentWord")}</span> : null}
-                </div>
-                <div style={{ ...C, display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <button className="btn ghost" style={{ height: 30, padding: "0 10px", fontSize: 12 }} onClick={() => openPdf(r)}>👁 {tr("viewWord")}</button>
-                  <button className="btn ghost" style={{ height: 30, padding: "0 10px", fontSize: 12 }} onClick={() => resend(r)} disabled={rowBusy === r.id}>{rowBusy === r.id ? "..." : "🔁 " + tr("resendReceipt")}</button>
-                  <button className="btn ghost" style={{ height: 30, padding: "0 10px", fontSize: 12 }} onClick={() => issueNew(r)} disabled={rowBusy === r.id}>➕ {tr("reissueNewBtn")}</button>
-                </div>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <div style={{ position: "relative", flex: 1 }}>
+          <span style={{ position: "absolute", insetInlineStart: 14, top: "50%", transform: "translateY(-50%)", fontSize: 15, opacity: .5, pointerEvents: "none" }}>🔍</span>
+          <input className="inp" placeholder={tr("receiptsSearchPh")} value={q}
+            onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search()}
+            style={{ height: 44, width: "100%", paddingInlineStart: 40, fontSize: 13.5 }} />
+        </div>
+        <button className="btn" style={{ height: 44, padding: "0 22px" }} onClick={search} disabled={busy}>{busy ? "..." : tr("searchWord")}</button>
+        {(searched || q) && <button className="btn ghost" style={{ height: 44 }} onClick={clearSearch}>{tr("clearWord")}</button>}
+      </div>
+
+      {rows.length === 0 ? (
+        <div style={{ padding: "56px 20px", textAlign: "center", color: "var(--muted)", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)" }}>
+          <div style={{ fontSize: 34, marginBottom: 8, opacity: .5 }}>🧾</div>
+          {searched ? tr("noSearchResults") : tr("noReceiptsIssued")}
+        </div>
+      ) : (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", boxShadow: "var(--shadow)", overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <div style={{ minWidth: 900 }}>
+              <div style={{ display: "grid", gridTemplateColumns: cols, borderBottom: "1.5px solid var(--line)", background: "var(--muted-soft)" }}>
+                <div style={head}>{tr("colReceiptNo")}</div>
+                <div style={head}>{tr("customer")}</div>
+                <div style={head}>{tr("amount")}</div>
+                <div style={head}>{tr("colCreatedAt")}</div>
+                <div style={head}>{tr("sendStatusWord")}</div>
+                <div style={head}>{tr("actionWord")}</div>
               </div>
-            ))}
+              {rows.map((r, i) => {
+                const anySent = r.sent_email || r.sent_whatsapp;
+                const isFree = r.pay_kind === "free";
+                return (
+                  <div key={r.id || i} className="rlog-row" style={{ display: "grid", gridTemplateColumns: cols, alignItems: "center", borderBottom: i === rows.length - 1 ? "none" : "1px solid var(--line)" }}>
+                    <div style={cell}>
+                      <span className="num" style={{ direction: "ltr", fontWeight: 800, fontSize: 12.5, color: "var(--brand-d)", whiteSpace: "nowrap" }}>{r.receipt_no}</span>
+                    </div>
+                    <div style={{ ...cell, overflow: "hidden" }}>
+                      <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.customer_name || "—"}</div>
+                      <div style={{ fontSize: 11.5, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{isFree ? "🎁 " : ""}{r.service_label || "—"}{r.batch_code ? ` · ${r.batch_code}` : ""}</div>
+                    </div>
+                    <div style={cell}>
+                      {isFree
+                        ? <span className="chip" style={{ background: "var(--brand-soft)", color: "var(--brand-d)" }}>🎁 {tr("freeWord")}</span>
+                        : <span className="num" style={{ direction: "ltr", fontWeight: 800, fontSize: 13.5, color: "var(--ink)", whiteSpace: "nowrap" }}>{nf.format(Math.round(r.amount || 0))} <span style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700 }}>{r.currency}</span></span>}
+                    </div>
+                    <div style={cell}>
+                      <span className="num" style={{ direction: "ltr", fontSize: 11.5, color: "var(--muted)", whiteSpace: "nowrap" }}>{fmtDate(r.issued_at)}</span>
+                    </div>
+                    <div style={cell}>
+                      {anySent ? (
+                        <span className="chip" title={`${r.sent_email_at ? "✉ " + fmtDate(r.sent_email_at) : ""}${r.sent_whatsapp_at ? "  📱 " + fmtDate(r.sent_whatsapp_at) : ""}`} style={{ background: "var(--green-soft)", color: "var(--green)" }}>
+                          ✓ {tr("sentWord")} {r.sent_email ? "✉️" : ""}{r.sent_whatsapp ? "📱" : ""}
+                        </span>
+                      ) : (
+                        <span className="chip" style={{ background: "var(--red-soft)", color: "var(--red)" }}>● {tr("notSentWord")}</span>
+                      )}
+                    </div>
+                    <div style={{ ...cell, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <button className="btn ghost" style={abtn} onClick={() => openPdf(r)}>👁 {tr("viewWord")}</button>
+                      <button className="btn ghost" style={abtn} onClick={() => resend(r)} disabled={rowBusy === r.id}>{rowBusy === r.id ? "..." : "🔁 " + tr("resendShort")}</button>
+                      <button className="btn ghost" style={abtn} onClick={() => issueNew(r)} disabled={rowBusy === r.id}>➕ {tr("newShort")}</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
+      <style>{`.rlog-row{transition:background .12s}.rlog-row:hover{background:var(--muted-soft)}`}</style>
     </div>
   );
 }
