@@ -1,6 +1,7 @@
 "use client";
 import { confirmDialog } from "@/lib/confirm";
 import ReceiptIssuer from "./ReceiptIssuer";
+import { issueAndSendReceipt } from "@/lib/issueReceipt";
 import { createPortal } from "react-dom";
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -144,7 +145,10 @@ export default function ServicesPanel({
         await supabase.from("enrollment_finance").insert({ enrollment_id: ins.id, agreed_amount: amt, currency: svCurrency, screenshot_url: null });
         // نعمل قسط مدفوع لو فيه اسكرين تحويل — عشان يتحسب محصّل ويظهر في الإيصالات (مرة واحدة)
         if (shot_url) {
-          await supabase.from("installments").insert({ enrollment_id: ins.id, amount: amt, currency: svCurrency, status: "paid", paid_at: new Date().toISOString(), screenshot_url: shot_url });
+          const { data: _pi } = await supabase.from("installments").insert({ enrollment_id: ins.id, amount: amt, currency: svCurrency, status: "paid", paid_at: new Date().toISOString(), screenshot_url: shot_url }).select("id").maybeSingle();
+          if (_pi && canIssueReceipts) {
+            await issueAndSendReceipt({ supabase, customerId, refId: (_pi as any).id, refType: "installment", amount: amt, currency: svCurrency, payKind: "full", email: customerEmail, phone: customerPhone, autoSend: true, background: true });
+          }
         }
       }
       await logAudit("enrollment_add", `${tr("auditEnrollmentAdd")}: ${label}${svBatch ? " — " + batchLabel(svBatch) : ""}`);
@@ -160,6 +164,10 @@ export default function ServicesPanel({
         ({ data, error } = await supabase.from("customer_addons").insert(addonRow).select("id").single());
       }
       if (error) { setBusy(false); toast(tr("addFailed") + error.message); return; }
+      // إيصال تلقائي لو الإضافة مدفوعة
+      if (isPaid && data && canIssueReceipts) {
+        await issueAndSendReceipt({ supabase, customerId, refId: (data as any).id, refType: "addon", amount: amt, currency: svCurrency, payKind: "full", email: customerEmail, phone: customerPhone, autoSend: true, background: true });
+      }
       await logAudit("addon_add", `${tr("auditAddonAdd")} ${tr(stMeta(svType).labelKey)}: ${label}`);
     }
 
@@ -196,11 +204,14 @@ export default function ServicesPanel({
 
     // 2) رسوم النقل كقسط مدفوع (يدخل التحصيل) — إلا لو هدية
     if (!moveGift && fee > 0) {
-      const { error: finErr } = await supabase.from("installments").insert({
+      const { data: _mi, error: finErr } = await supabase.from("installments").insert({
         enrollment_id: e.id, amount: fee, currency: moveCur, status: "paid",
         paid_at: new Date().toISOString(), screenshot_url: shotUrl || null,
-      });
+      }).select("id").maybeSingle();
       if (finErr) { setBusy(false); toast(tr("transferFailed")); return; }
+      if (_mi && canIssueReceipts) {
+        await issueAndSendReceipt({ supabase, customerId, refId: (_mi as any).id, refType: "installment", amount: fee, currency: moveCur, payKind: "full", email: customerEmail, phone: customerPhone, autoSend: true, background: true });
+      }
     }
 
     // 3) طلب النقل — مابنغيّرش الباتش هنا. الدعم هو اللي يأكّد من صفحة التفعيل/التسليم.
@@ -239,6 +250,14 @@ export default function ServicesPanel({
     const next = !a.paid;
     const { error } = await supabase.from("customer_addons").update({ paid: next }).eq("id", a.id);
     if (error) { toast(tr("updateFailedShort")); return; }
+    // إيصال تلقائي فور تعليم الإضافة «مدفوعة»
+    if (next && canIssueReceipts) {
+      await issueAndSendReceipt({
+        supabase, customerId, refId: a.id, refType: "addon",
+        amount: Number(a.amount) || 0, currency: (a as any).currency === "USD" ? "USD" : "EGP", payKind: "full",
+        email: customerEmail, phone: customerPhone, autoSend: true, background: true,
+      });
+    }
     toast(next ? tr("markedPaid") : tr("paymentCancelled")); router.refresh();
   }
 

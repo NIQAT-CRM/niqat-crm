@@ -164,6 +164,15 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
     if (error) { setBusy(null); return toast(tr("updateFailed") + error.message); }
     await logAudit("installment_paid", `${tr("auditInstallmentPaid")} ${money(amtNum, cur)} + ${tr("receipt")}`);
 
+    // إصدار الإيصال تلقائياً فور تأكيد الدفع (خلفية: PDF + إيميل + واتساب) — الحارس يمنع التكرار
+    if (canIssueReceipts) {
+      await issueAndSendReceipt({
+        supabase, customerId, refId: i.id, refType: "installment",
+        amount: amtNum, currency: cur, payKind: enr && payMode(enr) === "cash" ? "full" : "installment",
+        email: customerEmail, phone: customerPhone, autoSend: true, background: true,
+      });
+    }
+
     // تحويل العميل لـ «مسجّل / دفع» (enrolled) أول ما يتأكّد أي دفع — لو مش كده بالفعل
     if (stage !== "enrolled") {
       await supabase.from("customers").update({ stage: "enrolled" }).eq("id", customerId);
