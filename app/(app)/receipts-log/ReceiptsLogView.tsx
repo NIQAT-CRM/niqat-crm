@@ -8,7 +8,7 @@ import { issueAndSendReceipt, resendReceipt } from "@/lib/issueReceipt";
 
 const nf = new Intl.NumberFormat("en-US");
 
-export default function ReceiptsLogView({ initial }: { initial: any[] }) {
+export default function ReceiptsLogView({ initial, embedded = false }: { initial: any[]; embedded?: boolean }) {
   const tr = useT();
   const lang = useLang();
   const supabase = createClient();
@@ -89,10 +89,12 @@ export default function ReceiptsLogView({ initial }: { initial: any[] }) {
 
   return (
     <div style={{ width: "100%" }}>
+      {!embedded && (
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 18 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)" }}>🧾 {tr("receiptsLogTitle")}</h1>
         <span style={{ fontSize: 13, color: "var(--muted)", fontWeight: 600 }}>{rows.length} {tr("receiptWord")}</span>
       </div>
+      )}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         <div style={{ position: "relative", flex: 1 }}>

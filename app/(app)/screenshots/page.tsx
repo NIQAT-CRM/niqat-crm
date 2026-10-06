@@ -4,6 +4,8 @@ import { t as tr } from "@/lib/i18n";
 import { receiptPath } from "@/lib/supabase/receipts";
 import RealtimeRefresh from "../RealtimeRefresh";
 import ScreenshotsView, { type Receipt } from "./ScreenshotsView";
+import SettingsTabs from "../settings/SettingsTabs";
+import ReceiptsLogView from "../receipts-log/ReceiptsLogView";
 
 export const dynamic = "force-dynamic";
 
@@ -90,13 +92,19 @@ export default async function ScreenshotsPage() {
   const rows: Receipt[] = [...oldRows, ...sharedRows]
     .sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1));
 
+  // سجل الإيصالات المُصدَرة (تبويب جنب صور التحويلات) — نفس صلاحية عرض الإيصالات
+  const { data: issuedRows } = await supabase.rpc("receipts_search", { p_query: "" });
+
   return (
     <div className="page-h" style={{ display: "block" }}>
       <RealtimeRefresh tables={["installments","customer_docs","customer_addons","enrollment_finance","addon_finance","receipts","receipt_allocations"]} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <h1>{tr("screenshots")}</h1>
       </div>
-      <ScreenshotsView rows={rows} canCreate={canCreate} canDelete={canDelete} canEdit={canEdit} canOpenCustomer={canOpenCustomer} />
+      <SettingsTabs tabs={[
+        { key: "proofs", label: "💸 " + tr("paymentProofs"), content: <ScreenshotsView rows={rows} canCreate={canCreate} canDelete={canDelete} canEdit={canEdit} canOpenCustomer={canOpenCustomer} /> },
+        { key: "log", label: "🧾 " + tr("receiptsLogNav"), content: <ReceiptsLogView initial={(issuedRows as any[]) || []} embedded /> },
+      ]} />
     </div>
   );
 }
