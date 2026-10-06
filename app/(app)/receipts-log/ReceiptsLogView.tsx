@@ -74,13 +74,21 @@ export default function ReceiptsLogView({ initial }: { initial: any[] }) {
   }
   const fmtDate = (iso: string) => iso ? new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { timeZone: "Africa/Cairo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "—";
 
-  const cols = "124px 1.5fr 120px 148px 132px 208px";
+  // شارة حالة الإرسال لكل قناة على حدة (واتساب / إيميل)
+  const chBadge = (icon: string, label: string, sent: boolean, at?: string) => (
+    <span className="chip" title={sent ? (at ? `${tr("sentWord")}: ${fmtDate(at)}` : tr("sentWord")) : tr("notSentWord")}
+      style={{ background: sent ? "var(--green-soft)" : "var(--red-soft)", color: sent ? "var(--green)" : "var(--red)", fontSize: 10.5, padding: "2px 9px", gap: 5, fontWeight: 700, whiteSpace: "nowrap" }}>
+      {icon} {label} {sent ? "✓" : "✗"}
+    </span>
+  );
+
+  const cols = "130px 1.4fr 120px 150px 176px 206px";
   const cell: React.CSSProperties = { padding: "13px 14px", minWidth: 0 };
   const head: React.CSSProperties = { ...cell, fontSize: 11, fontWeight: 800, color: "var(--muted)", whiteSpace: "nowrap" };
   const abtn: React.CSSProperties = { height: 30, padding: "0 10px", fontSize: 11.5 };
 
   return (
-    <div style={{ maxWidth: 1180 }}>
+    <div style={{ width: "100%" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 18 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)" }}>🧾 {tr("receiptsLogTitle")}</h1>
         <span style={{ fontSize: 13, color: "var(--muted)", fontWeight: 600 }}>{rows.length} {tr("receiptWord")}</span>
@@ -105,7 +113,7 @@ export default function ReceiptsLogView({ initial }: { initial: any[] }) {
       ) : (
         <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r)", boxShadow: "var(--shadow)", overflow: "hidden" }}>
           <div style={{ overflowX: "auto" }}>
-            <div style={{ minWidth: 900 }}>
+            <div style={{ minWidth: 950 }}>
               <div style={{ display: "grid", gridTemplateColumns: cols, borderBottom: "1.5px solid var(--line)", background: "var(--muted-soft)" }}>
                 <div style={head}>{tr("colReceiptNo")}</div>
                 <div style={head}>{tr("customer")}</div>
@@ -115,7 +123,6 @@ export default function ReceiptsLogView({ initial }: { initial: any[] }) {
                 <div style={head}>{tr("actionWord")}</div>
               </div>
               {rows.map((r, i) => {
-                const anySent = r.sent_email || r.sent_whatsapp;
                 const isFree = r.pay_kind === "free";
                 return (
                   <div key={r.id || i} className="rlog-row" style={{ display: "grid", gridTemplateColumns: cols, alignItems: "center", borderBottom: i === rows.length - 1 ? "none" : "1px solid var(--line)" }}>
@@ -134,14 +141,9 @@ export default function ReceiptsLogView({ initial }: { initial: any[] }) {
                     <div style={cell}>
                       <span className="num" style={{ direction: "ltr", fontSize: 11.5, color: "var(--muted)", whiteSpace: "nowrap" }}>{fmtDate(r.issued_at)}</span>
                     </div>
-                    <div style={cell}>
-                      {anySent ? (
-                        <span className="chip" title={`${r.sent_email_at ? "✉ " + fmtDate(r.sent_email_at) : ""}${r.sent_whatsapp_at ? "  📱 " + fmtDate(r.sent_whatsapp_at) : ""}`} style={{ background: "var(--green-soft)", color: "var(--green)" }}>
-                          ✓ {tr("sentWord")} {r.sent_email ? "✉️" : ""}{r.sent_whatsapp ? "📱" : ""}
-                        </span>
-                      ) : (
-                        <span className="chip" style={{ background: "var(--red-soft)", color: "var(--red)" }}>● {tr("notSentWord")}</span>
-                      )}
+                    <div style={{ ...cell, display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+                      {chBadge("📱", tr("whatsappWord"), !!r.sent_whatsapp, r.sent_whatsapp_at)}
+                      {chBadge("✉️", tr("emailWord"), !!r.sent_email, r.sent_email_at)}
                     </div>
                     <div style={{ ...cell, display: "flex", gap: 6, flexWrap: "wrap" }}>
                       <button className="btn ghost" style={abtn} onClick={() => openPdf(r)}>👁 {tr("viewWord")}</button>
