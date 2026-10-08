@@ -6,6 +6,18 @@ import { createClient } from "@/lib/supabase/client";
 const TOKEN_KEY = "edu_portal_token";
 const BRAND = "#F08A24";
 
+// عدّاد ٤٨ ساعة الحيّ
+function Countdown({ deadline }: { deadline: string }) {
+  const [left, setLeft] = useState(() => Math.max(0, Math.floor((Date.parse(deadline) - Date.now()) / 1000)));
+  useEffect(() => {
+    const id = setInterval(() => setLeft(Math.max(0, Math.floor((Date.parse(deadline) - Date.now()) / 1000))), 1000);
+    return () => clearInterval(id);
+  }, [deadline]);
+  if (left <= 0) return <span>انتهى الوقت</span>;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return <span dir="ltr">({pad(Math.floor(left / 3600))}:{pad(Math.floor((left % 3600) / 60))}:{pad(left % 60)})</span>;
+}
+
 export default function PortalPage() {
   const supabase = createClient();
   const [phase, setPhase] = useState<"login" | "code" | "home" | "consent" | "exam" | "result">("login");
@@ -71,10 +83,10 @@ export default function PortalPage() {
     setToken(null); setData(null); setPhase("login"); setCode("");
   }
 
-  async function fileAppeal(attemptId: string) {
+  async function fileAppeal(source: string, ref: string) {
     if (!appealReason.trim()) return;
     setLoading(true);
-    const { error } = await supabase.rpc("edu_portal_file_appeal", { p_token: token, p_source: "accreditation", p_ref: attemptId, p_reason: appealReason.trim() });
+    const { error } = await supabase.rpc("edu_portal_file_appeal", { p_token: token, p_source: source, p_ref: ref, p_reason: appealReason.trim() });
     setLoading(false);
     if (error) { alert("تعذّر تقديم التظلم: " + error.message); return; }
     setAppealFor(null); setAppealReason("");
@@ -269,6 +281,30 @@ export default function PortalPage() {
   const diplomas: any[] = data?.diplomas || [];
   const exams: any[] = data?.exams || [];
   const appeals: any[] = data?.appeals || [];
+  const certs: any[] = data?.certificates || [];
+
+  // صندوق التظلم مع عدّاد ٤٨ ساعة الحيّ — يشتغل للاعتماد والدبلومة
+  const renderAppeal = (key: string, source: string, ref: string, ap: any) => {
+    if (!ap) return null;
+    if (ap.already_appealed) return <div style={{ marginTop: 10, fontSize: 12.5, color: "var(--muted,#9aa7b6)" }}>تم تقديم تظلم على النتيجة دي.</div>;
+    if (!ap.allowed) return null;
+    if (appealFor === key) {
+      return (
+        <div style={{ marginTop: 10 }}>
+          <textarea value={appealReason} onChange={(e) => setAppealReason(e.target.value)} rows={3} placeholder="اكتب سبب التظلم…" style={{ ...inp, height: "auto", padding: 12, resize: "vertical" }} />
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button style={{ ...btn, marginTop: 0, height: 40, width: "auto", padding: "0 18px" }} onClick={() => fileAppeal(source, ref)} disabled={loading}>إرسال التظلم</button>
+            <button onClick={() => { setAppealFor(null); setAppealReason(""); }} style={{ background: "none", border: "1px solid var(--line,#2a3547)", color: "var(--muted,#9aa7b6)", borderRadius: 9, padding: "0 16px", cursor: "pointer" }}>إلغاء</button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <button onClick={() => setAppealFor(key)} style={{ marginTop: 10, background: "none", border: "1px solid " + BRAND, color: BRAND, borderRadius: 9, padding: "7px 16px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", display: "inline-flex", gap: 8, alignItems: "center" }}>
+        تقديم تظلم {ap.deadline_at && <Countdown deadline={ap.deadline_at} />}
+      </button>
+    );
+  };
 
   return (
     <div style={wrap}>
@@ -317,8 +353,30 @@ export default function PortalPage() {
                   ))}
                 </div>
               )}
+              {d.batch_id && d.appeal && (
+                <div style={{ borderTop: "1px solid var(--line,#2a3547)", padding: "10px 12px" }}>
+                  {renderAppeal("dip:" + d.batch_id, "diploma", d.batch_id, d.appeal)}
+                </div>
+              )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* الشهادات */}
+      {certs.length > 0 && (
+        <div style={{ ...card, marginBottom: 14 }}>
+          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 12 }}>الشهادات</div>
+          {certs.map((c: any, i: number) => {
+            const m: any = { issued: ["#7ee2a8", "#12351f", "تم الإصدار"], issuing: ["#f0c674", "#3a2c0e", "جاري الإصدار"], pending: ["#f0c674", "#3a2c0e", "قيد الانتظار"], manual_wait: ["#f0c674", "#3a2c0e", "في انتظار الدعم"], failed: ["#f2a9a0", "#3a1512", "فشل الإصدار"] };
+            const [fg, bg, txt] = m[c.status] || ["#9aa7b6", "#222c3a", c.status];
+            return (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line,#2a3547)", borderRadius: 11, padding: 12, marginBottom: 8 }}>
+                <span style={{ fontSize: 13.5, flex: 1, textTransform: "capitalize" }}>{c.kind}</span>
+                <span style={chip(fg, bg)}>{txt}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -328,7 +386,6 @@ export default function PortalPage() {
           <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 12 }}>الاعتمادات والاختبارات</div>
           {exams.map((ex, i) => {
             const submitted = !!ex.submitted_at;
-            const canAppeal = submitted && ex.passed === false && ex.appeal && (ex.appeal.can === true || ex.appeal.allowed === true);
             return (
               <div key={i} style={{ border: "1px solid var(--line,#2a3547)", borderRadius: 11, padding: 12, marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -348,21 +405,7 @@ export default function PortalPage() {
                   <button onClick={() => openConsent(ex)} style={{ ...btn, marginTop: 10, height: 42 }}>ابدأ الاختبار</button>
                 )}
 
-                {canAppeal && (
-                  appealFor === ex.attempt_id ? (
-                    <div style={{ marginTop: 10 }}>
-                      <textarea value={appealReason} onChange={(e) => setAppealReason(e.target.value)} rows={3} placeholder="اكتب سبب التظلم…" style={{ ...inp, height: "auto", padding: 12, resize: "vertical" }} />
-                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                        <button style={{ ...btn, marginTop: 0, height: 40, width: "auto", padding: "0 18px" }} onClick={() => fileAppeal(ex.attempt_id)} disabled={loading}>إرسال التظلم</button>
-                        <button onClick={() => { setAppealFor(null); setAppealReason(""); }} style={{ background: "none", border: "1px solid var(--line,#2a3547)", color: "var(--muted,#9aa7b6)", borderRadius: 9, padding: "0 16px", cursor: "pointer" }}>إلغاء</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button onClick={() => setAppealFor(ex.attempt_id)} style={{ marginTop: 10, background: "none", border: "1px solid " + BRAND, color: BRAND, borderRadius: 9, padding: "7px 16px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
-                      تقديم تظلم (خلال ٤٨ ساعة)
-                    </button>
-                  )
-                )}
+                {submitted && ex.passed === false && renderAppeal("acc:" + ex.attempt_id, "accreditation", ex.attempt_id, ex.appeal)}
               </div>
             );
           })}

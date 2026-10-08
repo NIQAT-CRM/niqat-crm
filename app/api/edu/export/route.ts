@@ -42,6 +42,25 @@ export async function POST(req: Request) {
 
   let body: any = {};
   try { body = await req.json(); } catch { /* */ }
+
+  // تصدير عام (الداشبورد): صفوف جاهزة من الواجهة — صفر ماليات (الواجهة مش عندها ماليات أصلاً)
+  if (body.kind === "generic") {
+    const headers = Array.isArray(body.headers) ? body.headers.map(String) : [];
+    const rows = Array.isArray(body.rows) ? body.rows : [];
+    if (!headers.length || !rows.length) return new Response("No rows", { status: 400 });
+    const company = await loadCompany(supabase);
+    const buf = await brandedXlsx({ title: String(body.title || "NIQAT Education"), companyName: company.name, logo: company.logo, logoExt: company.ext, headers, rows, rtl: true });
+    const fname = `niqat-education-dashboard-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    return new Response(buf as any, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="${fname}"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
   const batchId = String(body.batch_id || "").trim();
   if (!batchId) return new Response("batch_id required", { status: 400 });
 
