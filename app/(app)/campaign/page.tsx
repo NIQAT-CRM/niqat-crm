@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import CampaignView, { type Reg } from "./CampaignView";
+import { type PaidRow } from "./CampaignPaidList";
 
 export const dynamic = "force-dynamic";
 
@@ -36,12 +37,22 @@ export default async function CampaignPage() {
     status: r.status || "",
   }));
 
+  // مدفوعات الحملة (شراء دبلومة من صفحة الدفع) — نفس بوابة can_view_campaign
+  const { data: paidData } = await supabase.rpc("campaign_diploma_orders");
+  const paidRows: PaidRow[] = ((paidData as any[]) || []).map((r) => ({
+    id: r.id || "", createdAt: r.created_at || "", paidAt: r.paid_at || "",
+    fullName: r.full_name || "", email: r.email || "", whatsapp: r.whatsapp || "",
+    specialization: r.specialization || "", country: r.country || "",
+    amount: r.amount != null ? Number(r.amount) : null, currency: r.currency || "USD",
+    status: (r.status || "").toLowerCase(), paypalCaptureId: r.paypal_capture_id || "", invoiceUrl: r.invoice_url || "",
+  }));
+
   return (
     <div className="page-h" style={{ display: "block" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div><h1>{tr("campaignTitle")}</h1><p>{tr("campaignDesc")}</p></div>
       </div>
-      <CampaignView rows={rows} canMessage={canMessage} templates={templates} />
+      <CampaignView rows={rows} paidRows={paidRows} canMessage={canMessage} templates={templates} />
     </div>
   );
 }

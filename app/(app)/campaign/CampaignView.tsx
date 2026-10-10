@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT, useLang } from "@/lib/i18n/client";
+import CampaignPaidList, { type PaidRow } from "./CampaignPaidList";
 
 export type Reg = {
   id: string; createdAt: string; fullName: string; email: string; whatsapp: string;
@@ -17,18 +18,19 @@ function cairoDay(iso: string) {
   catch { return String(iso).slice(0, 10); }
 }
 
-export default function CampaignView({ rows, canMessage = false, templates = [] }: { rows: Reg[]; canMessage?: boolean; templates?: string[] }) {
+export default function CampaignView({ rows, paidRows = [], canMessage = false, templates = [] }: { rows: Reg[]; paidRows?: PaidRow[]; canMessage?: boolean; templates?: string[] }) {
   const tr = useT();
   const lang = useLang();
-  const [tab, setTab] = useState<"dash" | "list">("dash");
+  const [tab, setTab] = useState<"dash" | "list" | "paid">("dash");
 
   return (
     <div>
       <div className="cmp-tabs">
         <button className={tab === "dash" ? "on" : ""} onClick={() => setTab("dash")}>📊 {tr("campDashboard")}</button>
         <button className={tab === "list" ? "on" : ""} onClick={() => setTab("list")}>📋 {tr("campRegistrations")} <span className="cmp-cnt">{rows.length}</span></button>
+        <button className={tab === "paid" ? "on" : ""} onClick={() => setTab("paid")}>💳 {tr("campPaidTab")} <span className="cmp-cnt">{paidRows.length}</span></button>
       </div>
-      {tab === "dash" ? <Dashboard rows={rows} tr={tr} lang={lang} /> : <RegList rows={rows} tr={tr} lang={lang} canMessage={canMessage} templates={templates} />}
+      {tab === "dash" ? <Dashboard rows={rows} tr={tr} lang={lang} /> : tab === "list" ? <RegList rows={rows} tr={tr} lang={lang} canMessage={canMessage} templates={templates} /> : <CampaignPaidList rows={paidRows} />}
       <style>{css}</style>
     </div>
   );
