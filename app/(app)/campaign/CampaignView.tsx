@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
@@ -138,6 +138,24 @@ function RegList({ rows, tr, lang, canMessage = false, templates = [] }: { rows:
   const [busy, setBusy] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [tpl, setTpl] = useState("");
+  // جلب القوالب لايف من WATI عند فتح نافذة الإرسال (مع fallback للقائمة المحلية)
+  const [liveTpls, setLiveTpls] = useState<string[]>([]);
+  const [tplsLoading, setTplsLoading] = useState(false);
+  const [tplsErr, setTplsErr] = useState(false);
+  useEffect(() => {
+    if (!sendOpen || liveTpls.length || tplsLoading) return;
+    (async () => {
+      setTplsLoading(true); setTplsErr(false);
+      try {
+        const res = await fetch("/api/wa/templates");
+        const j = await res.json();
+        if (res.ok && Array.isArray(j.templates)) setLiveTpls(j.templates.map((t: any) => t.name).filter(Boolean));
+        else setTplsErr(true);
+      } catch { setTplsErr(true); }
+      setTplsLoading(false);
+    })();
+  }, [sendOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tplOptions = liveTpls.length ? liveTpls : templates;
   const toggleSel = (id: string) => setSel((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const uniq = (f: keyof Reg) => Array.from(new Set(rows.map((r) => (r[f] || "").toString().trim()).filter(Boolean))).sort();
@@ -263,13 +281,14 @@ function RegList({ rows, tr, lang, canMessage = false, templates = [] }: { rows:
       {sendOpen && (
         <div className="ms-ov" onClick={() => !busy && setSendOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(21,34,59,.5)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, padding: 20, width: "100%", maxWidth: 420, boxShadow: "0 20px 60px rgba(0,0,0,.28)" }}>
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--ink)", marginBottom: 6 }}>📨 {tr("bulkWaSend")}</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--ink)", marginBottom: 6 }}>📨 {tr("bulkWaSend").replace("{n}", String(sel.size))}</h3>
             <p style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 14 }}>{tr("bulkWaSendHint").replace("{n}", String(sel.size))}</p>
             <label style={{ fontSize: 11.5, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 6 }}>{tr("chooseTemplate")}</label>
-            <select className="inp" value={tpl} onChange={(e) => setTpl(e.target.value)} style={{ width: "100%", marginBottom: 8 }}>
-              <option value="">— {tr("chooseTemplate")} —</option>
-              {templates.map((t) => <option key={t} value={t}>{t}</option>)}
+            <select className="inp" value={tpl} onChange={(e) => setTpl(e.target.value)} disabled={tplsLoading} style={{ width: "100%", marginBottom: tplsErr ? 6 : 8 }}>
+              <option value="">— {tplsLoading ? "..." : tr("chooseTemplate")} —</option>
+              {tplOptions.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
+            {tplsErr && <p style={{ fontSize: 10.5, color: "var(--red)", marginBottom: 8 }}>⚠ {tr("watiTplsError")}</p>}
             <p style={{ fontSize: 10.5, color: "var(--muted)", marginBottom: 16 }}>💡 {tr("bulkWaVarNote")}</p>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button className="btn ghost" onClick={() => setSendOpen(false)} disabled={busy}>{tr("cancel")}</button>
