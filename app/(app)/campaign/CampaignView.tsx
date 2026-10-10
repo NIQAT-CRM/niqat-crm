@@ -140,6 +140,7 @@ function RegList({ rows, tr, lang, canMessage = false, templates = [] }: { rows:
   const [tpl, setTpl] = useState("");
   // جلب القوالب لايف من WATI عند فتح نافذة الإرسال (مع fallback للقائمة المحلية)
   const [liveTpls, setLiveTpls] = useState<string[]>([]);
+  const [liveTplObjs, setLiveTplObjs] = useState<any[]>([]);
   const [tplsLoading, setTplsLoading] = useState(false);
   const [tplsErr, setTplsErr] = useState(false);
   useEffect(() => {
@@ -149,7 +150,7 @@ function RegList({ rows, tr, lang, canMessage = false, templates = [] }: { rows:
       try {
         const res = await fetch("/api/wa/templates");
         const j = await res.json();
-        if (res.ok && Array.isArray(j.templates)) setLiveTpls(j.templates.map((t: any) => t.name).filter(Boolean));
+        if (res.ok && Array.isArray(j.templates)) { setLiveTplObjs(j.templates); setLiveTpls(j.templates.map((t: any) => t.name).filter(Boolean)); }
         else setTplsErr(true);
       } catch { setTplsErr(true); }
       setTplsLoading(false);
@@ -213,10 +214,15 @@ function RegList({ rows, tr, lang, canMessage = false, templates = [] }: { rows:
     if (!sel.size || !tpl) return;
     setBusy(true);
     try {
-      const r = await fetch("/api/campaign/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ registration_ids: Array.from(sel), template_name: tpl }) });
+      const selParams = (liveTplObjs.find((t) => t.name === tpl)?.params) || [];
+      const r = await fetch("/api/campaign/bulk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ registration_ids: Array.from(sel), template_name: tpl, params: selParams }) });
       const j = await r.json();
       if (!r.ok) toast(j.error || tr("sendFailed"));
-      else { toast(`${tr("waSent")}: ${j.sent} · ${tr("waFailed")}: ${j.failed}`); setSendOpen(false); setSel(new Set()); }
+      else {
+        const reason = (j.reasons && j.reasons.length && j.failed) ? ` — ${j.reasons.join(" · ")}` : "";
+        toast(`${tr("waSent")}: ${j.sent} · ${tr("waFailed")}: ${j.failed}${reason}`);
+        if (!j.failed) { setSendOpen(false); setSel(new Set()); }
+      }
     } catch { toast(tr("sendFailed")); }
     setBusy(false);
   }

@@ -16,14 +16,13 @@ export async function POST(req: Request) {
   const supabase = createServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  // صلاحية: رؤية الحملة (أو أدمن) + صلاحية الإرسال
   const { data: me } = await supabase.from("profiles").select("can_view_campaign, can_message, team").eq("id", user.id).maybeSingle();
   const isAdmin = (me?.team || "").toLowerCase() === "admin";
   if (!isAdmin && !me?.can_view_campaign) return NextResponse.json({ error: "مالكش صلاحية الحملة" }, { status: 403 });
   if (!isAdmin && !me?.can_message) return NextResponse.json({ error: "مالكش صلاحية إرسال واتساب" }, { status: 403 });
 
   const body = await req.json().catch(() => ({} as any));
-  const { registration_ids, template_name, channel } = body || {};
+  const { registration_ids, template_name, channel, params } = body || {};
   if (!Array.isArray(registration_ids) || registration_ids.length === 0) return NextResponse.json({ error: "مفيش تسجيلات مختارة" }, { status: 400 });
   if (!template_name) return NextResponse.json({ error: "اختَر قالب الأول" }, { status: 400 });
   if (registration_ids.length > 1000) return NextResponse.json({ error: "الحد الأقصى 1000 في المرة" }, { status: 400 });
@@ -42,13 +41,29 @@ export async function POST(req: Request) {
   const senderCh = String(sender || "").replace(/[^\d]/g, "");
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
-  // نقرا التسجيلات المختارة (service role)
   const { data: regs } = await admin.rpc("campaign_pick_svc", { p_ids: registration_ids });
   const targets = ((regs as any[]) || []).filter((r) => r.whatsapp).map((r) => ({
-    name: String(r.full_name || "").trim().split(/\s+/).slice(0, 2).join(" "), num: normNum(r.whatsapp),
+    name: String(r.full_name || "").trim().split(/\s+/).slice(0, 2).join(" "),
+    num: normNum(r.whatsapp),
+    country: String(r.country || ""),
+    spec: String(r.specialization || ""),
   })).filter((t) => t.num);
 
+  // نبني متغيّرات القالب حسب متغيّراته الفعلية (زي بحث العملاء) — مش متغيّر ثابت
+  const plist: string[] = Array.isArray(params) ? params.map((p: any) => String(p)) : ["1"];
+  const buildParams = (t: { name: string; num: string; country: string; spec: string }) =>
+    plist.map((p, idx) => {
+      const key = String(p).toLowerCase();
+      let value = t.name;
+      if (/country|بلد|دول/.test(key)) value = t.country || t.name;
+      else if (/spec|تخصص|major/.test(key)) value = t.spec || t.name;
+      else if (/phone|whats|mobile|رقم/.test(key)) value = t.num;
+      else if (/name|اسم/.test(key) || key === "1" || idx === 0) value = t.name;
+      return { name: p || String(idx + 1), value: value || t.name };
+    });
+
   let sent = 0, failed = 0;
+  const reasons = new Set<string>();
   const BATCH = 8;
   for (let i = 0; i < targets.length; i += BATCH) {
     const slice = targets.slice(i, i + BATCH);
@@ -57,12 +72,17 @@ export async function POST(req: Request) {
         const apiUrl = `${endpoint}/api/v1/sendTemplateMessage?whatsappNumber=${t.num}${senderCh ? `&channelPhoneNumber=${senderCh}` : ""}`;
         const r = await fetch(apiUrl, {
           method: "POST", headers,
-          body: JSON.stringify({ template_name, broadcast_name: template_name, parameters: [{ name: "1", value: t.name }] }),
+          body: JSON.stringify({ template_name, broadcast_name: template_name, parameters: buildParams(t), channel_number: senderCh, channelNumber: senderCh, channelPhoneNumber: senderCh }),
         });
         const j: any = await r.json().catch(() => ({}));
-        if (r.ok && j?.result !== false) sent++; else failed++;
-      } catch { failed++; }
+        if (r.ok && j?.result !== false) sent++;
+        else {
+          failed++;
+          const reason = j?.info || j?.message || j?.error || (typeof j?.result === "string" ? j.result : "") || `HTTP ${r.status}`;
+          if (reason) reasons.add(String(reason).slice(0, 180));
+        }
+      } catch (e: any) { failed++; if (e?.message) reasons.add(String(e.message).slice(0, 180)); }
     }));
   }
-  return NextResponse.json({ ok: true, sent, failed, total: targets.length });
+  return NextResponse.json({ ok: true, sent, failed, total: targets.length, reasons: Array.from(reasons).slice(0, 3) });
 }
