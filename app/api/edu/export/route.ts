@@ -68,19 +68,29 @@ export async function POST(req: Request) {
   const { data: bat } = await supabase.from("edu_v_batches").select("id, code, diploma_id").eq("id", batchId).maybeSingle();
   const batchCode = (bat?.code as string) || "";
 
-  // اشتراكات الباتش → customer_id + diploma_id لكل عميل في الباتش ده
-  const { data: enr } = await supabase.from("enrollments").select("customer_id, diploma_id").eq("batch_id", batchId).limit(5000);
-  const rowsEnr = (enr || []) as any[];
+  // اشتراكات الباتش — ترقيم صفحات لتجاوز حد الـ1000 صف (الباتشات الكبيرة)
+  const rowsEnr: any[] = [];
+  for (let from = 0; from <= 40000; from += 1000) {
+    const { data: page, error } = await supabase.from("enrollments")
+      .select("customer_id, diploma_id").eq("batch_id", batchId).range(from, from + 999);
+    if (error) break;
+    const arr = (page || []) as any[];
+    rowsEnr.push(...arr);
+    if (arr.length < 1000) break;
+  }
   const ids = [...new Set(rowsEnr.map((e) => e.customer_id).filter(Boolean))];
   if (!ids.length) return new Response("No rows", { status: 400 });
 
-  // قوائم مرجعية
-  const [{ data: cs }, { data: specs }, { data: dips }] = await Promise.all([
-    supabase.from("edu_v_customers").select("id, name, email, specialty_id").in("id", ids),
+  // العملاء على دفعات — تجنّب حد طول الـURL في .in مع آلاف المعرّفات (ده كان سبب فشل الباتشات الكبيرة)
+  const custMap = new Map<string, any>();
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += 300) chunks.push(ids.slice(i, i + 300));
+  const [custResults, { data: specs }, { data: dips }] = await Promise.all([
+    Promise.all(chunks.map((ch) => supabase.from("edu_v_customers").select("id, name, email, specialty_id").in("id", ch))),
     supabase.from("specialties").select("id, name_ar, name_en"),
     supabase.from("diplomas").select("id, name_ar, name_en"),
   ]);
-  const custMap = new Map<string, any>(((cs || []) as any[]).map((c) => [c.id, c]));
+  for (const r of custResults as any[]) for (const c of ((r.data || []) as any[])) custMap.set(c.id, c);
   const specMap = new Map<string, string>(((specs || []) as any[]).map((s) => [s.id, s.name_en || s.name_ar || ""]));
   const dipMap = new Map<string, string>(((dips || []) as any[]).map((d) => [d.id, d.name_ar || d.name_en || ""]));
 
