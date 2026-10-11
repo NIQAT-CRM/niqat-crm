@@ -101,7 +101,14 @@ export default function EducationTree({
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ batch_id: b.id }),
       });
-      if (!res.ok) { toast(tr("exportFailed")); return; }
+      if (!res.ok) {
+        const raw = await res.text().catch(() => "");
+        const msg = raw === "No rows" ? tr("eduNoExportRows")
+          : res.status === 403 ? tr("eduExportForbidden")
+          : (raw || tr("exportFailed"));
+        toast(msg);
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
