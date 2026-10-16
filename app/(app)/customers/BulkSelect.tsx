@@ -30,6 +30,10 @@ export function BulkSelectProvider({ filter, children }: { filter: CustFilterSP;
   const [loadingAll, setLoadingAll] = useState(false);
   const tr = useT();
 
+  // أي تغيير في الفلتر يمسح التحديد — عشان المحدّد يفضل دايماً جوه الفلتر الحالي (مايتجمّعش عبر الفلاتر)
+  const filterKey = JSON.stringify(filter || {});
+  useEffect(() => { setSel(new Set()); }, [filterKey]);
+
   const toggle = useCallback((id: string) => {
     setSel((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }, []);
@@ -191,15 +195,22 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
     if (!waTpl) { toast(tr("enterTplName")); return; }
     setWaSending(true); setWaResult("");
     const var_map = waSelParams.map((p) => ({ name: p, field: waVarMap[p] || "name", custom: waCustom[p] || "" }));
+    const allIds = ids();
+    const CHUNK = 300; // دفعات صغيرة: بتشيل حد الـ1000 وبتتفادى timeout السيرفر — أي عدد بيشتغل
+    let sent = 0, failed = 0, total = 0;
     try {
-      const res = await fetch("/api/wa/bulk", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customer_ids: ids(), channel: waChannel, template_name: waTpl, var_map }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setWaResult("err:" + (data.error || tr("bulkGenericError"))); }
-      else { setWaResult(`ok:${data.sent}:${data.failed}:${data.total}`); }
-    } catch (e: any) { setWaResult("err:" + (e?.message || "")); }
+      for (let i = 0; i < allIds.length; i += CHUNK) {
+        const chunk = allIds.slice(i, i + CHUNK);
+        const res = await fetch("/api/wa/bulk", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ customer_ids: chunk, channel: waChannel, template_name: waTpl, var_map }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { setWaResult("err:" + (data.error || tr("bulkGenericError"))); setWaSending(false); return; }
+        sent += data.sent || 0; failed += data.failed || 0; total += data.total || 0;
+        setWaResult(`ok:${sent}:${failed}:${total}`); // تحديث تقدّمي بعد كل دفعة
+      }
+    } catch (e: any) { setWaResult("err:" + (e?.message || "")); setWaSending(false); return; }
     setWaSending(false);
   }
 
@@ -306,7 +317,7 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
       {waNums && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(15,27,48,.45)", zIndex: 60, display: "grid", placeItems: "center", padding: 16 }} onClick={() => !waSending && setWaNums(null)}>
           <div className="card" style={{ padding: 20, width: "min(480px,100%)" }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)", marginBottom: 14 }}>💬 {tr("bulkWhatsapp")} — {waNums.length}</div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)", marginBottom: 14 }}>💬 {tr("bulkWhatsapp")} — {count}</div>
 
             {/* اختيار الرقم المُرسِل */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
@@ -369,7 +380,7 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
 
             <div style={{ display: "flex", gap: 8 }}>
               <button className="btn" style={{ flex: 1, justifyContent: "center" }} disabled={waSending || !waTpl} onClick={doBulkSend}>
-                {waSending ? tr("bulkWaSending") : tr("bulkWaSend").replace("{n}", String(waNums.length))}
+                {waSending ? tr("bulkWaSending") : tr("bulkWaSend").replace("{n}", String(count))}
               </button>
               <button className="btn ghost" disabled={waSending} onClick={() => setWaNums(null)}>{tr("done")}</button>
             </div>
