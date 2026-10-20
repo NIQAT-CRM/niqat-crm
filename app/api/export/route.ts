@@ -32,7 +32,7 @@ async function loadCompany(supabase: any): Promise<{ name: string; logo: Buffer 
 }
 
 // ============ تجميع بيانات العملاء الكاملة ============
-async function buildCustomers(supabase: any, ids: string[], canFinance: boolean) {
+async function buildCustomers(supabase: any, ids: string[], canFinance: boolean, dipFilter?: string[]) {
   // قوائم مرجعية صغيرة
   const [{ data: specs }, { data: profs }, { data: dips }] = await Promise.all([
     supabase.from("specialties").select("id,name_ar"),
@@ -56,7 +56,9 @@ async function buildCustomers(supabase: any, ids: string[], canFinance: boolean)
   const dipNamesByCust = new Map<string, string[]>();
   const enrToCust = new Map<string, string>();
   for (const part of chunk(ids, CH)) {
-    const { data } = await supabase.from("enrollments").select("id,customer_id,diploma_id").in("customer_id", part);
+    let eq = supabase.from("enrollments").select("id,customer_id,diploma_id").in("customer_id", part);
+    if (dipFilter && dipFilter.length) eq = eq.in("diploma_id", dipFilter);
+    const { data } = await eq;
     for (const e of (data as any[]) || []) {
       enrToCust.set(e.id, e.customer_id);
       if (e.diploma_id) {
@@ -134,7 +136,8 @@ export async function POST(req: Request) {
   if (type === "customers") {
     const ids: string[] = Array.isArray(body.ids) && body.ids.length ? body.ids : await filteredCustomerIds(body.filter || {});
     if (!ids.length) return new Response("No rows", { status: 400 });
-    const built = await buildCustomers(supabase, ids, canFinance);
+    const dipFilter = String(body.filter?.dip || "").split(",").map((x: string) => x.trim()).filter(Boolean);
+    const built = await buildCustomers(supabase, ids, canFinance, dipFilter);
     headers = built.headers; rows = built.rows;
     title = "Customers";
   } else if (type === "generic") {
