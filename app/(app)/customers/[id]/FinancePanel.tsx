@@ -280,6 +280,9 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
                   </button>
                 </b>
                 <div style={{ display: "flex", gap: 12, fontSize: 12.5 }}>
+                  {e.free ? (
+                    <span style={{ color: "var(--brand)", fontWeight: 800, fontSize: 13 }}>🎁 FREE{e.freeReason ? ` — ${e.freeReason}` : ""}</span>
+                  ) : (<>
                   <span style={{ color: "var(--muted)" }}>{tr("agreed")}: {editAgreedId === e.id ? (
                     <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
                       <input className="inp num" style={{ width: 90, height: 32, fontSize: 13 }} value={editAgreedVal} onChange={ev => setEditAgreedVal(ev.target.value)} />
@@ -295,6 +298,7 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
                   )}</span>
                   <span style={{ color: "var(--green)" }}>{tr("paid")}: <b className="num">{money(paid, e.currency)}</b></span>
                   <span style={{ color: "var(--amber)" }}>{tr("remaining")}: <b className="num">{money(remaining, e.currency)}</b></span>
+                  </>)}
                 </div>
               </div>
 

@@ -68,7 +68,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     supabase.from("profiles").select("can_see_finance,can_message,can_manage_batches,can_edit_customers,can_issue_receipts,team").eq("id", user?.id || "").maybeSingle(),
     supabase.from("customers").select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,onhold_reason,created_at,terms_signed,terms_signed_at,handed_off,owner_id").eq("id", params.id).maybeSingle(),
     supabase.from("specialties").select("id,name_ar").order("name_ar"),
-    supabase.from("enrollments").select("id,status,diploma_id,batch_id,transfer_count, diplomas(name_ar), batches(code)").eq("customer_id", params.id),
+    supabase.from("enrollments").select("id,status,diploma_id,batch_id,transfer_count,free,free_reason, diplomas(name_ar), batches(code)").eq("customer_id", params.id),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
     supabase.from("batches").select("id,code,status,diploma_id,done,price,currency,price_egp,price_usd").order("code"),
     supabase.from("profiles").select("id,full_name"),
