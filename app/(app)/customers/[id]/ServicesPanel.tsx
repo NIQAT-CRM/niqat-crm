@@ -78,6 +78,7 @@ export default function ServicesPanel({
     setMovePos({ top, left });
   }, [moveFor, moveAnchor]);
   const [moveTo, setMoveTo] = useState("");
+  const [moveDip, setMoveDip] = useState(""); // دبلومة الهدف (أدمن فقط)
   const [moveFee, setMoveFee] = useState("");
   const [moveCur, setMoveCur] = useState("EGP");
   const [moveGift, setMoveGift] = useState(false);
@@ -176,7 +177,7 @@ export default function ServicesPanel({
     toast(tr("serviceAdded")); router.refresh();
   }
 
-  function resetMove() { setMoveFor(null); setMoveTo(""); setMoveFee(""); setMoveCur("EGP"); setMoveGift(false); setMoveFile(null); }
+  function resetMove() { setMoveFor(null); setMoveTo(""); setMoveDip(""); setMoveFee(""); setMoveCur("EGP"); setMoveGift(false); setMoveFile(null); }
 
   // كيبورد: ESC يقفل نافذة النقل أو نافذة إضافة الخدمة
   useEffect(() => {
@@ -235,13 +236,18 @@ export default function ServicesPanel({
   // نقل مباشر مجاني (النقلة الأولى — الدعم/الأدمن فقط): يغيّر الباتش فوراً بدون رسوم/طلب/تذكرة.
   // الحماية والعدّاد على مستوى قاعدة البيانات (trigger): لو حد غير الدعم/الأدمن → القاعدة بترفض.
   async function doDirectTransfer(e: Enr) {
-    if (!moveTo || moveTo === e.batchId) { toast(tr("selectTargetBatch")); return; }
+    const targetDip = moveDip || e.diplomaId;
+    const dipChanged = targetDip !== e.diplomaId;
+    if (!moveTo || (!dipChanged && moveTo === e.batchId)) { toast(tr("selectTargetBatch")); return; }
     setBusy(true);
     const fromLabel = e.batch || batchLabel(e.batchId);
     const toLabel = batchLabel(moveTo);
-    const { error } = await supabase.from("enrollments").update({ batch_id: moveTo }).eq("id", e.id);
+    const patch: any = { batch_id: moveTo };
+    if (dipChanged) patch.diploma_id = targetDip; // نقل بين الدبلومات (أدمن)
+    const { error } = await supabase.from("enrollments").update(patch).eq("id", e.id);
     if (error) { setBusy(false); toast(tr("transferFailed")); return; }
-    await logAudit("batch_transfer_confirmed", `${e.diploma}: ${tr("auditBatchTransfer")} ${fromLabel} → ${toLabel} (${tr("firstFreeTransfer")})`);
+    const dipNote = dipChanged ? ` · ${tr("diplomaWord")}: ${e.diploma} → ${dipOpts.find((d) => d.v === targetDip)?.label || targetDip}` : "";
+    await logAudit("batch_transfer_confirmed", `${e.diploma}: ${tr("auditBatchTransfer")} ${fromLabel} → ${toLabel}${dipNote} (${tr("firstFreeTransfer")})`);
     setBusy(false); resetMove();
     toast(tr("transferDone")); router.refresh();
   }
@@ -394,7 +400,7 @@ export default function ServicesPanel({
                 )}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                   <span style={{ color: "var(--muted)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tr("batchColon")} <span className="num">{e.batch}</span></span>
-                  <button onClick={(ev) => { if (moveFor === e.id) { resetMove(); } else { const r = ev.currentTarget.getBoundingClientRect(); resetMove(); setMoveFor(e.id); setMoveAnchor(r); setMoveTo(""); } }}
+                  <button onClick={(ev) => { if (moveFor === e.id) { resetMove(); } else { const r = ev.currentTarget.getBoundingClientRect(); resetMove(); setMoveFor(e.id); setMoveAnchor(r); setMoveTo(""); setMoveDip(e.diplomaId); } }}
                     style={{ color: "var(--brand)", fontWeight: 700, fontSize: 12, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>
                     {tr("moveTransfer")}
                   </button>
@@ -425,6 +431,30 @@ export default function ServicesPanel({
                       </div>
                     </>
                   );
+                  // محدّد الأدمن: دبلومة الهدف + باتش الهدف (النقل بين الدبلومات)
+                  const adminTargetDip = moveDip || e.diplomaId;
+                  const openBAdmin = batchOpts.filter((b) => b.dip === adminTargetDip && b.status === "open" && (adminTargetDip !== e.diplomaId || b.v !== e.batchId));
+                  const adminPicker = (
+                    <>
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 4 }}>{tr("diplomaWord")}</label>
+                        <select className="inp" style={{ width: "100%", height: 38 }} value={adminTargetDip} onChange={(ev) => { setMoveDip(ev.target.value); setMoveTo(""); }}>
+                          {dipOpts.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", display: "block", marginBottom: 4 }}>{tr("targetBatch")}</label>
+                        {openBAdmin.length > 0 ? (
+                          <select className="inp" style={{ width: "100%", height: 38 }} value={moveTo} onChange={(ev) => setMoveTo(ev.target.value)}>
+                            <option value="">{tr("selectTargetBatch")}</option>
+                            {openBAdmin.map((b) => <option key={b.v} value={b.v}>{b.label}{b.done ? " · " + tr("endedWord") : ""}</option>)}
+                          </select>
+                        ) : (
+                          <div style={{ fontSize: 12.5, color: "var(--muted)", padding: "8px 10px", border: "1px dashed var(--line)", borderRadius: 8 }}>{tr("noOpenBatchesSameDip")}</div>
+                        )}
+                      </div>
+                    </>
+                  );
                   const box = (children: React.ReactNode) => (typeof document === "undefined" ? null : createPortal(
                     <div onClick={resetMove} style={{ position: "fixed", inset: 0, background: "rgba(4,10,22,.35)", zIndex: 200 }}>
                       <div ref={movePopRef} onClick={(ev) => ev.stopPropagation()} style={{ position: "fixed", top: movePos?.top ?? -9999, left: movePos?.left ?? -9999, visibility: movePos ? "visible" : "hidden", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,.35)", width: "min(440px,calc(100vw - 24px))", maxHeight: "88vh", overflow: "auto", padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -445,7 +475,7 @@ export default function ServicesPanel({
                   // (٠) أدمن → نقل مباشر دايماً، من غير أي قيود (رسوم/مرة أولى)
                   if (isAdmin) {
                     return box(<>
-                      {batchPicker}
+                      {adminPicker}
                       <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.6 }}>{tr("adminDirectTransferNote")}</div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button className="btn" onClick={() => doDirectTransfer(e)} disabled={busy || !moveTo} style={{ height: 38, flex: 1 }}>{busy ? "..." : tr("confirmFreeTransfer")}</button>
