@@ -60,7 +60,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
     supabase.from("profiles").select("can_see_daily_sales").eq("id", user?.id || "").maybeSingle(),
     supabase.from("specialties").select("id,name_ar"),
     supabase.from("diplomas").select("id,name_ar"),
-    supabase.from("batches").select("id,code,status,start_date,capacity,diploma_id,kind").order("start_date"),
+    supabase.from("batches").select("id,code,status,start_date,end_date,capacity,diploma_id,kind").order("start_date"),
     supabase.from("tickets").select("*", { count: "exact", head: true }).in("status", ["open", "progress"]),
     supabase.from("follow_ups").select("customer_id,due_at,note").eq("done", false).lte("due_at", new Date().toISOString()),
     supabase.from("handoffs").select("customer_id").eq("status", "pending"),
@@ -95,10 +95,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
 
   // تواريخ النهاية (دفاعي)
   const endMap = new Map<string, string>();
-  if (batches.length) {
-    const eRes = await supabase.from("batches").select("id,end_date");
-    if (!eRes.error) for (const r of (eRes.data as any[]) || []) if (r.end_date) endMap.set(r.id, r.end_date);
-  }
+  for (const r of (batches as any[])) if (r.end_date) endMap.set(r.id, r.end_date);
 
   // مهام اليوم
   const endToday = new Date(); endToday.setHours(23, 59, 59, 999);
@@ -132,25 +129,22 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
   let overdueInst: any[] = [], soonInst: any[] = [];
   let refundGroups: { diploma: string; batch: string; egp: number; usd: number; count: number }[] = [];
   if (canFinance) {
-    const { data: ft } = await supabase.rpc("fin_totals", rpcArgs);
-    const mr = await receiptMonthlyTotals(supabase);
-    monthlyRows = (mr as any[]) || [];
+    // الأربعة بالتوازي بدل ورا بعض
+    const [ftR, mrR, alR, refRR] = await Promise.all([
+      supabase.rpc("fin_totals", rpcArgs),
+      receiptMonthlyTotals(supabase),
+      supabase.from("installments").select("enrollment_id,amount,due_date,status,paid_at").neq("status", "paid").is("paid_at", null).not("due_date", "is", null).lte("due_date", in7).order("due_date").limit(200),
+      supabase.from("refunds").select("amount,currency,status,enrollment_id,enrollments(diploma_id,batch_id)").in("status", ["refunded", "closed"]),
+    ]);
+    const ft = (ftR as any).data;
+    monthlyRows = (mrR as any[]) || [];
     for (const r of (ft as any[]) || []) {
       if (r.currency === "USD") { usdCollected = Number(r.collected) || 0; usdDue = Number(r.due) || 0; }
       else { egpCollected += Number(r.collected) || 0; egpDue += Number(r.due) || 0; }
     }
-    // تنبيهات: أقساط غير مدفوعة ليها تاريخ استحقاق لغاية +7 أيام (عددها طبيعي صغير)
-    const { data: al } = await supabase.from("installments")
-      .select("enrollment_id,amount,due_date,status,paid_at")
-      .neq("status", "paid").is("paid_at", null)
-      .not("due_date", "is", null).lte("due_date", in7)
-      .order("due_date").limit(200);
+    const al = (alR as any).data;
     for (const i of (al as any[]) || []) { if (i.due_date < todayStr) overdueInst.push(i); else soonInst.push(i); }
-
-    // ريفند لكل دبلومة/باتش — المرتجع فعلاً بس (refunded/closed)، جنيه ودولار منفصلين
-    const { data: refR } = await supabase.from("refunds")
-      .select("amount,currency,status,enrollment_id,enrollments(diploma_id,batch_id)")
-      .in("status", ["refunded", "closed"]);
+    const refR = (refRR as any).data;
     const bCode = new Map(batches.map((b: any) => [b.id, b.code]));
     const rMap: Record<string, { diploma: string; batch: string; egp: number; usd: number; count: number }> = {};
     for (const r of (refR as any[]) || []) {
@@ -292,26 +286,14 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
   const colByMonth: Record<string, number> = {};
   monthKeys.forEach((k) => { custByMonth[k] = 0; colByMonth[k] = 0; });
   {
-    // عملاء جدد شهرياً — نجيب created_at للـ 12 شهر ونجمّعهم
-    const P = 1000;
-    for (let from = 0; from < 200000; from += P) {
-      const { data, error } = await supabase.from("customers").select("created_at")
-        .eq("deleted", false).eq("archived", false).gte("created_at", start12).range(from, from + P - 1);
-      if (error) break;
-      const rows = (data as any[]) || [];
-      for (const r of rows) { const k = String(r.created_at).slice(0, 7); if (k in custByMonth) custByMonth[k]++; }
-      if (rows.length < P) break;
-    }
+    // عملاء جدد شهرياً — تجميع في القاعدة (أسرع بكتير من جلب كل الصفوف)
+    const { data: cbm } = await supabase.rpc("dash_new_customers_by_month", { p_start: start12 });
+    for (const r of (cbm as any[]) || []) { if (r.ym in custByMonth) custByMonth[r.ym] = Number(r.n) || 0; }
   }
   if (canFinance) {
-    // تحصيل شهري (جنيه) آخر 12 شهر — للخط في الرسم الهيرو
-    const { data: colRows } = await supabase.from("installments")
-      .select("amount,currency,paid_at").not("paid_at", "is", null).gte("paid_at", start12);
-    for (const r of (colRows as any[]) || []) {
-      if (r.currency === "USD") continue;
-      const k = String(r.paid_at).slice(0, 7);
-      if (k in colByMonth) colByMonth[k] += Number(r.amount) || 0;
-    }
+    // تحصيل شهري (جنيه) — تجميع في القاعدة
+    const { data: colRows } = await supabase.rpc("dash_collections_by_month", { p_start: start12 });
+    for (const r of (colRows as any[]) || []) { if (r.ym in colByMonth) colByMonth[r.ym] = Number(r.egp) || 0; }
   }
   const heroBars = monthKeys.map((k) => custByMonth[k]);
   const heroLine = canFinance ? monthKeys.map((k) => colByMonth[k]) : undefined;
