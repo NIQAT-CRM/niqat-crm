@@ -40,14 +40,14 @@ export default function BatchActions({ batch, enrolledCount, diplomas = [] }: {
       end_date: f.end_date || null,
       capacity: f.capacity ? Number(f.capacity) : null,
       notes: f.notes.trim(),
-      price_egp: pe || null,
-      price_usd: pu || null,
-      price: pe || null,
+      price_egp: pe || 0,
+      price_usd: pu || 0,
+      price: pe || 0,
       currency: "EGP",
       status: f.status,
     }).eq("id", batch.id);
     setBusy(false);
-    if (error) { toast((error as any).code === "23505" ? tr("codeExists") : tr("saveFailed")); return; }
+    if (error) { toast((error as any).code === "23505" ? tr("codeExists") : tr("saveFailed") + ((error as any).message || "")); return; }
     setMode(null);
     toast(tr("batchUpdated")); router.refresh();
   }
