@@ -67,7 +67,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   ] = await Promise.all([
     supabase.from("profiles").select("can_see_finance,can_message,can_manage_batches,can_edit_customers,can_issue_receipts,team").eq("id", user?.id || "").maybeSingle(),
     supabase.from("customers").select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,onhold_reason,created_at,terms_signed,terms_signed_at,handed_off,owner_id").eq("id", params.id).maybeSingle(),
-    supabase.from("specialties").select("id,name_ar").order("name_ar"),
+    supabase.from("specialties").select("id,name_ar").eq("active", true).order("name_ar"),
     supabase.from("enrollments").select("id,status,diploma_id,batch_id,transfer_count,free,free_reason, diplomas(name_ar), batches(code)").eq("customer_id", params.id),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
     supabase.from("batches").select("id,code,status,diploma_id,done,price,currency,price_egp,price_usd").order("code"),
@@ -107,6 +107,13 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   }
 
   if (!c) notFound();
+
+  // قائمة التخصصات للتعديل: النشطة + تخصص العميل الحالي لو مخفي (غير نشط) عشان يفضل ظاهر ومايضيعش عند الحفظ
+  let specList = (specs as any[]) || [];
+  if ((c as any)?.specialty_id && !specList.some((s: any) => s.id === (c as any).specialty_id)) {
+    const { data: curSpec } = await supabase.from("specialties").select("id,name_ar").eq("id", (c as any).specialty_id).maybeSingle();
+    if (curSpec) specList = [...specList, curSpec];
+  }
 
   const enrolls = (enrRows || []).map((e: any) => ({
     id: e.id, diploma: e.diplomas?.name_ar || "—", batch: e.batches?.code || "—",
@@ -321,7 +328,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
         )}
         <div className="dr-b" style={{ display: "flex", flexDirection: "column" }}>
           <CustomerDrawer
-            user={user} c={c} specs={specs || []} countries={((ctry as any[]) || []).map((x) => x.name).filter(Boolean)}
+            user={user} c={c} specs={specList} countries={((ctry as any[]) || []).map((x) => x.name).filter(Boolean)}
             enrolls={enrolls} dipOpts={dipOpts} batchOpts={batchOpts} addons={addons}
             accredList={accredList} projList={projList} libNames={(libOpts || []).map((l: any) => l.name)}
             serviceTypes={serviceTypes} serviceItemsByType={serviceItemsByType}

@@ -16,7 +16,7 @@ export default async function NewCustomerPage() {
     return (<div className="page-h"><div><h1>{tr("addCust")}</h1><p>{tr("noEditCustomersPerm")}</p></div></div>);
   }
   const [{ data: specs }, { data: dips }, { data: bts }, { data: affRow }, { data: svcTypes }, { data: srcs }, { data: defRow }, { data: edRows }, { data: ctry }, { data: svcPrices }, { data: ryRow }] = await Promise.all([
-    supabase.from("specialties").select("id,name_ar").order("name_ar"),
+    supabase.from("specialties").select("id,name_ar").eq("active", true).order("name_ar"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
     supabase.from("batches").select("id,code,price,currency,price_egp,price_usd,diploma_id,status,kind,service_id").order("start_date", { ascending: false }),
     supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
