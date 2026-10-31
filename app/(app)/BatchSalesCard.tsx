@@ -16,12 +16,20 @@ export default function BatchSalesCard() {
   const [dip, setDip] = useState("");
   const [batch, setBatch] = useState("");
   const [ym, setYm] = useState("");
+  const [allB, setAllB] = useState<{ id: string; code: string; diploma_id: string | null; diploma_name: string | null }[]>([]);
 
   useEffect(() => {
     if (!open || rows !== null) return;
     (async () => {
-      try { const r: any = await createClient().rpc("sales_by_batch_month"); setRows(r.error ? [] : ((r.data as Row[]) || [])); }
-      catch { setRows([]); }
+      const sb = createClient();
+      try {
+        const [r, bq]: any = await Promise.all([
+          sb.rpc("sales_by_batch_month"),
+          sb.from("batches").select("id,code,diploma_id, diplomas(name_ar)").not("diploma_id", "is", null).order("code"),
+        ]);
+        setRows(r.error ? [] : ((r.data as Row[]) || []));
+        setAllB(((bq.data as any[]) || []).map((b) => ({ id: b.id, code: b.code, diploma_id: b.diploma_id, diploma_name: b.diplomas?.name_ar || null })));
+      } catch { setRows([]); }
     })();
   }, [open]);
 
@@ -33,15 +41,17 @@ export default function BatchSalesCard() {
   const diplomas = useMemo(() => {
     const m = new Map<string, string>();
     for (const r of (rows || [])) m.set(r.diploma_id || "none", r.diploma_name || tr("noDiploma"));
+    for (const b of allB) if (b.diploma_id) m.set(b.diploma_id, b.diploma_name || tr("noDiploma"));
     return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-  }, [rows]);
+  }, [rows, allB]);
 
   const batches = useMemo(() => {
     if (!dip) return [];
     const m = new Map<string, string>();
     for (const r of (rows || [])) if ((r.diploma_id || "none") === dip) m.set(bkey(r), bcode(r));
+    for (const b of allB) if ((b.diploma_id || "none") === dip) m.set(b.id, b.code);
     return Array.from(m.entries()).sort((a, b) => (a[0] === "none" ? 1 : 0) - (b[0] === "none" ? 1 : 0) || a[1].localeCompare(b[1]));
-  }, [rows, dip]);
+  }, [rows, allB, dip]);
 
   const months = useMemo(() => {
     if (!dip || !batch) return [];
