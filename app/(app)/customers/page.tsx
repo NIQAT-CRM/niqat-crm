@@ -65,7 +65,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     const enrFlags = new Map<string, { due: boolean; over: boolean }>();
     for (let from = 0; from < CAP; from += PAGE) {
       const { data, error } = await supabase.from("installments")
-        .select("enrollment_id,due_date,paid_at,status").neq("status", "paid").range(from, from + PAGE - 1);
+        .select("enrollment_id,due_date,paid_at,status").neq("status", "paid").order("id", { ascending: true }).range(from, from + PAGE - 1);
       if (error) break;
       const rows = (data as any[]) || [];
       for (const i of rows) {
@@ -109,7 +109,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     const set = new Set<string>();
     const P = 1000, C = 60000;
     for (let from = 0; from < C; from += P) {
-      const { data } = await supabase.from("enrollments").select("customer_id").neq("status", "refunded").in(col, vals).range(from, from + P - 1);
+      const { data } = await supabase.from("enrollments").select("customer_id").neq("status", "refunded").in(col, vals).order("id", { ascending: true }).range(from, from + P - 1);
       const rows = (data as any[]) || [];
       for (const r of rows) if (r.customer_id) set.add(r.customer_id);
       if (rows.length < P) break;
