@@ -111,6 +111,15 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
   const [fuDate, setFuDate] = useState("");
   const [fuNote, setFuNote] = useState("");
   const [confirmBox, setConfirmBox] = useState<{ msg: string; label: string; danger: boolean; run: () => void } | null>(null);
+  // Graphy
+  const [gOpen, setGOpen] = useState(false);
+  const [gCourses, setGCourses] = useState<{ id: string; title: string }[]>([]);
+  const [gLoadingCourses, setGLoadingCourses] = useState(false);
+  const [gCourse, setGCourse] = useState<{ id: string; title: string } | null>(null);
+  const [gSearch, setGSearch] = useState("");
+  const [gRunning, setGRunning] = useState(false);
+  const [gProgress, setGProgress] = useState("");
+  const [gReport, setGReport] = useState<{ name: string; email: string; ok: boolean; reason: string }[] | null>(null);
 
   // كل الـ hooks لازم تكون قبل أي return شرطي (إصلاح React #310)
   const waSelParamsEff = waTpls.find((t) => t.name === waTpl)?.params || [];
@@ -122,6 +131,39 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
 
   if (count === 0) return null;
   const ids = () => Array.from(sel);
+
+  async function openGraphy() {
+    setGOpen(true); setGReport(null); setGCourse(null); setGSearch(""); setGProgress("");
+    if (gCourses.length) return;
+    setGLoadingCourses(true);
+    try { const r = await fetch("/api/graphy/courses"); const j = await r.json(); if (r.ok && Array.isArray(j.courses)) setGCourses(j.courses); else toast(j?.error || tr("errorGeneric")); }
+    catch { toast(tr("errorGeneric")); }
+    setGLoadingCourses(false);
+  }
+  async function runGraphy() {
+    if (!gCourse) return;
+    setGRunning(true); setGReport(null); setGProgress("");
+    const allIds = ids(); const CH = 100; const rep: any[] = [];
+    try {
+      for (let i = 0; i < allIds.length; i += CH) {
+        const chunk = allIds.slice(i, i + CH);
+        const r = await fetch("/api/graphy/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer_ids: chunk, course_id: gCourse.id }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { toast(j?.error || tr("errorGeneric")); setGRunning(false); return; }
+        rep.push(...((j.results as any[]) || []));
+        setGProgress(`${Math.min(i + CH, allIds.length)} / ${allIds.length}`);
+      }
+    } catch (e: any) { toast(e?.message || tr("errorGeneric")); setGRunning(false); return; }
+    setGReport(rep); setGRunning(false);
+  }
+  function exportGraphyCsv() {
+    if (!gReport) return;
+    const head = ["Name", "Email", "Result", "Reason"];
+    const lines = gReport.map((r) => [r.name, r.email, r.ok ? "Success" : "Failed", r.reason || ""]);
+    const csv = [head, ...lines].map((row) => row.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `graphy-${(gCourse?.title || "report").replace(/[^\w]+/g, "-")}.csv`; a.click();
+  }
 
   async function run(fn: () => Promise<{ ok: number; error: string | null }>, okMsg: string) {
     setBusy(true); setMenu("");
@@ -259,6 +301,9 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
         {/* واتساب جماعي */}
         {canMessage && (
           <button style={{ ...btn, background: "var(--wa)", color: "#fff", borderColor: "var(--wa)" }} disabled={busy} onClick={doWhatsapp}>💬 {tr("bulkWhatsapp")}</button>
+        )}
+        {canMessage && (
+          <button style={{ ...btn, background: "var(--brand)", color: "#fff", borderColor: "var(--brand)" }} disabled={busy} onClick={openGraphy}>🎓 Graphy</button>
         )}
 
         {/* تعيين مسؤول */}
@@ -406,6 +451,53 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
               </button>
               <button className="btn ghost" onClick={() => setConfirmBox(null)}>{tr("cancel")}</button>
             </div>
+          </div>
+        </div>
+      )}
+      {gOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,27,48,.45)", zIndex: 60, display: "grid", placeItems: "center", padding: 16 }} onClick={() => !gRunning && setGOpen(false)}>
+          <div className="card" style={{ padding: 20, width: "min(620px,100%)", maxHeight: "85vh", overflow: "auto" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontWeight: 800, fontSize: 15, color: "var(--ink)", marginBottom: 14 }}>🎓 Graphy — {count} {tr("customer")}</div>
+
+            {!gReport ? (
+              <>
+                <input className="inp" placeholder={tr("searchWord") + "..."} value={gSearch} onChange={(e) => setGSearch(e.target.value)} style={{ height: 40, width: "100%", marginBottom: 8 }} />
+                <div style={{ border: "1px solid var(--line)", borderRadius: 10, maxHeight: 240, overflow: "auto", marginBottom: 12 }}>
+                  {gLoadingCourses ? (
+                    <div style={{ padding: 16, textAlign: "center", color: "var(--muted)" }}>...</div>
+                  ) : (
+                    gCourses.filter((c) => c.title.toLowerCase().includes(gSearch.trim().toLowerCase())).map((c) => (
+                      <button key={c.id} onClick={() => setGCourse(c)} style={{ display: "block", width: "100%", textAlign: "start", padding: "10px 12px", border: "none", borderBottom: "1px solid var(--line)", background: gCourse?.id === c.id ? "var(--brand-soft)" : "transparent", color: gCourse?.id === c.id ? "var(--brand-d)" : "var(--text)", fontWeight: gCourse?.id === c.id ? 800 : 500, fontSize: 13, cursor: "pointer" }}>{c.title}</button>
+                    ))
+                  )}
+                </div>
+                <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 14, lineHeight: 1.6 }}>العملية: إنشاء المتدرّب على Graphy لو مش موجود، ثم Enroll على الكورس. العملاء بدون إيميل هيظهروا «فشل».</div>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button className="btn ghost" disabled={gRunning} onClick={() => setGOpen(false)}>{tr("cancel")}</button>
+                  <button className="btn" disabled={!gCourse || gRunning} onClick={runGraphy}>{gRunning ? `... ${gProgress}` : `تنفيذ على ${count}`}</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: "flex", gap: 14, marginBottom: 12, fontWeight: 800, fontSize: 14 }}>
+                  <span style={{ color: "var(--green)" }}>✅ نجح {gReport.filter((r) => r.ok).length}</span>
+                  <span style={{ color: "var(--red)" }}>❌ فشل {gReport.filter((r) => !r.ok).length}</span>
+                </div>
+                <div style={{ border: "1px solid var(--line)", borderRadius: 10, maxHeight: 320, overflow: "auto", marginBottom: 12 }}>
+                  {gReport.map((r, i) => (
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1.3fr 1.6fr 70px", gap: 8, padding: "8px 10px", borderBottom: "1px solid var(--line)", fontSize: 12, alignItems: "center", background: i % 2 ? "transparent" : "var(--muted-soft)" }}>
+                      <span style={{ fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name || "—"}</span>
+                      <span style={{ color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.ok ? r.email : (r.reason || "")}>{r.ok ? r.email : (r.reason || "—")}</span>
+                      <span style={{ fontWeight: 800, color: r.ok ? "var(--green)" : "var(--red)" }}>{r.ok ? "✅" : "❌"}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button className="btn ghost" onClick={exportGraphyCsv}>⬇ {tr("exportExcel")}</button>
+                  <button className="btn" onClick={() => { setGOpen(false); setGReport(null); clear(); router.refresh(); }}>تمام</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
