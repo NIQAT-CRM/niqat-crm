@@ -85,7 +85,7 @@ export function SelectAllHeader({ pageIds }: { pageIds: string[] }) {
   );
 }
 
-export function BulkBar({ owners, stages, templates, totalFiltered, canManageBatches, canExport, canMessage }: {
+export function BulkBar({ owners, stages, templates, totalFiltered, canManageBatches, canExport, canMessage, canUseGraphy }: {
   owners: { id: string; name: string }[];
   stages: { key: string; label: string }[];
   templates: { id: string; name: string }[];
@@ -93,6 +93,7 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
   canManageBatches: boolean;
   canExport: boolean;
   canMessage: boolean;
+  canUseGraphy?: boolean;
 }) {
   const { sel, count, clear, selectAllFiltered, loadingAll, filter } = useSel();
   const tr = useT();
@@ -115,7 +116,7 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
   const [gOpen, setGOpen] = useState(false);
   const [gCourses, setGCourses] = useState<{ id: string; title: string }[]>([]);
   const [gLoadingCourses, setGLoadingCourses] = useState(false);
-  const [gCourse, setGCourse] = useState<{ id: string; title: string } | null>(null);
+  const [gSel, setGSel] = useState<Set<string>>(new Set());
   const [gSearch, setGSearch] = useState("");
   const [gRunning, setGRunning] = useState(false);
   const [gProgress, setGProgress] = useState("");
@@ -129,11 +130,19 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
     setWaVarMap(m); setWaCustom({});
   }, [waTpl]);
 
+  // قفل الصفحة أثناء تنفيذ Graphy (تحذير لو حاول يقفل)
+  useEffect(() => {
+    if (!gRunning) return;
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", h);
+    return () => window.removeEventListener("beforeunload", h);
+  }, [gRunning]);
+
   if (count === 0) return null;
   const ids = () => Array.from(sel);
 
   async function openGraphy() {
-    setGOpen(true); setGReport(null); setGCourse(null); setGSearch(""); setGProgress("");
+    setGOpen(true); setGReport(null); setGSel(new Set()); setGSearch(""); setGProgress("");
     if (gCourses.length) return;
     setGLoadingCourses(true);
     try { const r = await fetch("/api/graphy/courses"); const j = await r.json(); if (r.ok && Array.isArray(j.courses)) setGCourses(j.courses); else toast(j?.error || tr("errorGeneric")); }
@@ -141,28 +150,32 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
     setGLoadingCourses(false);
   }
   async function runGraphy() {
-    if (!gCourse) return;
+    const courseIds = Array.from(gSel);
+    if (!courseIds.length) return;
+    const courseTitles = courseIds.map((id) => gCourses.find((c) => c.id === id)?.title || id);
     setGRunning(true); setGReport(null); setGProgress("");
-    const allIds = ids(); const CH = 100; const rep: any[] = [];
+    const allIds = ids(); const CH = 60; const rep: any[] = []; let runId: string | null = null;
     try {
       for (let i = 0; i < allIds.length; i += CH) {
         const chunk = allIds.slice(i, i + CH);
-        const r = await fetch("/api/graphy/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer_ids: chunk, course_id: gCourse.id }) });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) { toast(j?.error || tr("errorGeneric")); setGRunning(false); return; }
+        const res: Response = await fetch("/api/graphy/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer_ids: chunk, course_ids: courseIds, course_titles: courseTitles, total_customers: allIds.length, run_id: runId }) });
+        const j: any = await res.json().catch(() => ({}));
+        if (!res.ok) { toast(j?.error || tr("errorGeneric")); setGRunning(false); return; }
+        if (j.run_id) runId = j.run_id;
         rep.push(...((j.results as any[]) || []));
         setGProgress(`${Math.min(i + CH, allIds.length)} / ${allIds.length}`);
       }
     } catch (e: any) { toast(e?.message || tr("errorGeneric")); setGRunning(false); return; }
-    setGReport(rep); setGRunning(false);
+    const titleOf = (cid: string) => gCourses.find((c) => c.id === cid)?.title || cid;
+    setGReport(rep.map((r) => ({ ...r, course: titleOf(r.course_id) }))); setGRunning(false);
   }
   function exportGraphyCsv() {
     if (!gReport) return;
-    const head = ["Name", "Email", "Result", "Reason"];
-    const lines = gReport.map((r) => [r.name, r.email, r.ok ? "Success" : "Failed", r.reason || ""]);
+    const head = ["Name", "Email", "Course", "Result", "Reason"];
+    const lines = gReport.map((r) => [r.name, r.email, (r as any).course || "", r.ok ? "Success" : "Failed", r.reason || ""]);
     const csv = [head, ...lines].map((row) => row.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `graphy-${(gCourse?.title || "report").replace(/[^\w]+/g, "-")}.csv`; a.click();
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `graphy-report.csv`; a.click();
   }
 
   async function run(fn: () => Promise<{ ok: number; error: string | null }>, okMsg: string) {
@@ -302,7 +315,7 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
         {canMessage && (
           <button style={{ ...btn, background: "var(--wa)", color: "#fff", borderColor: "var(--wa)" }} disabled={busy} onClick={doWhatsapp}>💬 {tr("bulkWhatsapp")}</button>
         )}
-        {canMessage && (
+        {canUseGraphy && (
           <button style={{ ...btn, background: "var(--brand)", color: "#fff", borderColor: "var(--brand)" }} disabled={busy} onClick={openGraphy}>🎓 Graphy</button>
         )}
 
@@ -466,27 +479,45 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
                   {gLoadingCourses ? (
                     <div style={{ padding: 16, textAlign: "center", color: "var(--muted)" }}>...</div>
                   ) : (
-                    gCourses.filter((c) => c.title.toLowerCase().includes(gSearch.trim().toLowerCase())).map((c) => (
-                      <button key={c.id} onClick={() => setGCourse(c)} style={{ display: "block", width: "100%", textAlign: "start", padding: "10px 12px", border: "none", borderBottom: "1px solid var(--line)", background: gCourse?.id === c.id ? "var(--brand-soft)" : "transparent", color: gCourse?.id === c.id ? "var(--brand-d)" : "var(--text)", fontWeight: gCourse?.id === c.id ? 800 : 500, fontSize: 13, cursor: "pointer" }}>{c.title}</button>
-                    ))
+                    gCourses.filter((c) => c.title.toLowerCase().includes(gSearch.trim().toLowerCase())).map((c) => {
+                      const on = gSel.has(c.id);
+                      return (
+                        <button key={c.id} onClick={() => setGSel((prev) => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; })} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "start", padding: "10px 12px", border: "none", borderBottom: "1px solid var(--line)", background: on ? "var(--brand-soft)" : "transparent", color: on ? "var(--brand-d)" : "var(--text)", fontWeight: on ? 800 : 500, fontSize: 13, cursor: "pointer" }}>
+                          <span style={{ width: 16, height: 16, borderRadius: 4, border: "2px solid " + (on ? "var(--brand)" : "var(--line)"), background: on ? "var(--brand)" : "transparent", color: "#fff", display: "inline-grid", placeItems: "center", fontSize: 11, flexShrink: 0 }}>{on ? "✓" : ""}</span>
+                          {c.title}
+                        </button>
+                      );
+                    })
                   )}
                 </div>
-                <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 14, lineHeight: 1.6 }}>العملية: إنشاء المتدرّب على Graphy لو مش موجود، ثم Enroll على الكورس. العملاء بدون إيميل هيظهروا «فشل».</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14, lineHeight: 1.7 }}>
+                  {gSel.size > 0 && <div style={{ color: "var(--brand-d)", fontWeight: 700, marginBottom: 4 }}>الكورسات المختارة: {gSel.size}</div>}
+                  لكل عميل: يتعمله حساب في جرافي لو مش موجود، وبعدين يتفعّل له كل كورس مختار. اللي مالوش إيميل هيبان «فشل».
+                </div>
+                {gRunning && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--brand-soft)", borderRadius: 8, marginBottom: 12 }}>
+                    <span className="gspin" />
+                    <span style={{ fontWeight: 700, color: "var(--brand-d)", fontSize: 12.5 }}>جارٍ التنفيذ... {gProgress} — سيبها لحد ما تخلّص، متقفلهاش ⏳</span>
+                  </div>
+                )}
+                <style>{`.gspin{width:18px;height:18px;border:3px solid var(--brand);border-top-color:transparent;border-radius:50%;display:inline-block;animation:gspin .8s linear infinite;flex-shrink:0}@keyframes gspin{to{transform:rotate(360deg)}}`}</style>
                 <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                   <button className="btn ghost" disabled={gRunning} onClick={() => setGOpen(false)}>{tr("cancel")}</button>
-                  <button className="btn" disabled={!gCourse || gRunning} onClick={runGraphy}>{gRunning ? `... ${gProgress}` : `تنفيذ على ${count}`}</button>
+                  <button className="btn" disabled={!gSel.size || gRunning} onClick={runGraphy}>{gRunning ? `جارٍ... ${gProgress}` : `تنفيذ (${count} عميل × ${gSel.size} كورس)`}</button>
                 </div>
               </>
             ) : (
               <>
-                <div style={{ display: "flex", gap: 14, marginBottom: 12, fontWeight: 800, fontSize: 14 }}>
+                <div style={{ display: "flex", gap: 14, marginBottom: 6, fontWeight: 800, fontSize: 14 }}>
                   <span style={{ color: "var(--green)" }}>✅ نجح {gReport.filter((r) => r.ok).length}</span>
                   <span style={{ color: "var(--red)" }}>❌ فشل {gReport.filter((r) => !r.ok).length}</span>
                 </div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 12 }}>📑 اتسجّل في «سجل Graphy» (الإعدادات) — تقدر ترجعله وتنزّله Excel أي وقت.</div>
                 <div style={{ border: "1px solid var(--line)", borderRadius: 10, maxHeight: 320, overflow: "auto", marginBottom: 12 }}>
                   {gReport.map((r, i) => (
-                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1.3fr 1.6fr 70px", gap: 8, padding: "8px 10px", borderBottom: "1px solid var(--line)", fontSize: 12, alignItems: "center", background: i % 2 ? "transparent" : "var(--muted-soft)" }}>
-                      <span style={{ fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name || "—"}</span>
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1.1fr 1.3fr 1.3fr 48px", gap: 8, padding: "8px 10px", borderBottom: "1px solid var(--line)", fontSize: 12, alignItems: "center", background: i % 2 ? "transparent" : "var(--muted-soft)" }}>
+                      <span style={{ fontWeight: 700, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.name}>{r.name || "—"}</span>
+                      <span style={{ color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={(r as any).course}>{(r as any).course || "—"}</span>
                       <span style={{ color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.ok ? r.email : (r.reason || "")}>{r.ok ? r.email : (r.reason || "—")}</span>
                       <span style={{ fontWeight: 800, color: r.ok ? "var(--green)" : "var(--red)" }}>{r.ok ? "✅" : "❌"}</span>
                     </div>

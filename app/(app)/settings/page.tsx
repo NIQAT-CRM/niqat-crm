@@ -13,6 +13,7 @@ import ServiceTypesManager from "./ServiceTypesManager";
 import AffiliatesManager from "../affiliates/AffiliatesManager";
 import UsersManager from "../users/UsersManager";
 import ChatLogView from "../admin/chat-log/ChatLogView";
+import GraphyLogView from "./GraphyLogView";
 import MembersManager from "../education/members/MembersManager";
 
 export const dynamic = "force-dynamic";
@@ -129,6 +130,13 @@ async function buildChatLogTab(supabase: any): Promise<SettingsTab> {
   return { key: "chatlog", label: "💬 " + tr("chatLogNav"), content: <ChatLogView items={items} rooms={rooms} /> };
 }
 
+async function buildGraphyTab(supabase: any): Promise<SettingsTab> {
+  const { data } = await supabase.from("graphy_runs")
+    .select("id,created_at,customers_count,total,succeeded,failed,course_titles, actor:profiles(full_name)")
+    .order("created_at", { ascending: false }).limit(200);
+  return { key: "graphy", label: "🎓 " + tr("graphyLogNav"), content: <GraphyLogView runs={(data as any[]) || []} /> };
+}
+
 export default async function Settings() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -232,9 +240,10 @@ export default async function Settings() {
 
   // ===== تبويب سجل الشات — للأدمن فقط =====
   if (isAdmin) tabs.push(await buildChatLogTab(supabase));
+  if (isAdmin) tabs.push(await buildGraphyTab(supabase));
 
   // ترتيب التبويبات النهائي المطلوب
-  const TAB_ORDER = ["users", "catalog", "team", "integrations", "chatlog"];
+  const TAB_ORDER = ["users", "catalog", "team", "integrations", "chatlog", "graphy"];
   tabs.sort((a, b) => {
     const ia = TAB_ORDER.indexOf(a.key), ib = TAB_ORDER.indexOf(b.key);
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);

@@ -42,12 +42,13 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: meProf } = await supabase.from("profiles")
-    .select("can_export,can_see_finance,can_message,can_manage_batches,can_edit_customers,can_add_customers,team").eq("id", user?.id || "").maybeSingle();
+    .select("can_export,can_see_finance,can_message,can_manage_batches,can_edit_customers,can_add_customers,can_use_graphy,team").eq("id", user?.id || "").maybeSingle();
   const canExport = !!meProf?.can_export;
   const canEditCustomers = !!meProf?.can_edit_customers;
   const canAddCustomers = !!meProf?.can_add_customers || (meProf?.team || "").toLowerCase() === "admin";
   const canFinance = !!meProf?.can_see_finance;
   const canMessage = !!meProf?.can_message;
+  const canUseGraphy = !!meProf?.can_use_graphy || (meProf?.team || "").toLowerCase() === "admin";
   const canManageBatches = !!meProf?.can_manage_batches;
 
   // ===== مجموعات فلتر الدفع (تُحسب فقط لما يكون فلتر الدفع مفعّل) =====
@@ -345,7 +346,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
           stages={STAGE_OPTS.map((s) => ({ key: s.v, label: s.label }))}
           templates={(tplRows as any) || []}
           totalFiltered={totalCount}
-          canManageBatches={canManageBatches} canExport={canExport} canMessage={canMessage} />
+          canManageBatches={canManageBatches} canExport={canExport} canMessage={canMessage} canUseGraphy={canUseGraphy} />
       <div className="tbl-wrap">
         <table>
           <thead>

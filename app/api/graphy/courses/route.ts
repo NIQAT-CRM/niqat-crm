@@ -9,9 +9,9 @@ export async function GET() {
   const supabase = createServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const { data: me } = await supabase.from("profiles").select("can_message, team").eq("id", user.id).maybeSingle();
+  const { data: me } = await supabase.from("profiles").select("can_use_graphy, team").eq("id", user.id).maybeSingle();
   const isAdmin = (me?.team || "").toLowerCase() === "admin";
-  if (!isAdmin && !me?.can_message) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!isAdmin && !me?.can_use_graphy) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const mid = (process.env.GRAPHY_MID || "").trim();
   const key = (process.env.GRAPHY_API_TOKEN || "").trim();
