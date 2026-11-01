@@ -74,10 +74,17 @@ export async function filteredCustomerIds(sp: CustFilterSP): Promise<string[]> {
     const set = new Set<string>();
     const P = 1000, C = 60000;
     for (let from = 0; from < C; from += P) {
-      const { data } = await supabase.from("enrollments").select("customer_id").in(col, vals).order("id", { ascending: true }).range(from, from + P - 1);
+      const { data } = await supabase.from("enrollments").select("customer_id").neq("status", "refunded").in(col, vals).order("id", { ascending: true }).range(from, from + P - 1);
       const rows = (data as any[]) || [];
       for (const r of rows) if (r.customer_id) set.add(r.customer_id);
       if (rows.length < P) break;
+    }
+    // مطابقة لصفحة العملاء: للباتشات نضمّ كمان المشتركين عبر customer_addons.batch_id
+    if (col === "batch_id") {
+      try {
+        const { data: adRows } = await supabase.from("customer_addons").select("customer_id").in("batch_id", vals);
+        for (const r of ((adRows as any[]) || [])) if (r.customer_id) set.add(r.customer_id);
+      } catch { /* العمود لسه مش متعمل؟ نتجاهل */ }
     }
     return set;
   }
