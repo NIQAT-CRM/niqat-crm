@@ -491,20 +491,24 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
                   )}
                 </div>
                 <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14, lineHeight: 1.7 }}>
-                  {gSel.size > 0 && <div style={{ color: "var(--brand-d)", fontWeight: 700, marginBottom: 4 }}>الكورسات المختارة: {gSel.size}</div>}
-                  لكل عميل: يتعمله حساب في جرافي لو مش موجود، وبعدين يتفعّل له كل كورس مختار. اللي مالوش إيميل هيبان «فشل».
+                  {gSel.size > 0 && <div style={{ color: "var(--brand-d)", fontWeight: 700, marginBottom: 4 }}>{tr("gSelectedCourses")}: {gSel.size}</div>}
+                  {tr("gNote")}
                 </div>
-                {gRunning && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--brand-soft)", borderRadius: 8, marginBottom: 12 }}>
-                    <span className="gspin" />
-                    <span style={{ fontWeight: 700, color: "var(--brand-d)", fontSize: 12.5 }}>جارٍ التنفيذ... {gProgress} — سيبها لحد ما تخلّص، متقفلهاش ⏳</span>
+                <style>{`.gspin{width:18px;height:18px;border:3px solid var(--brand);border-top-color:transparent;border-radius:50%;display:inline-block;animation:gspin .8s linear infinite;flex-shrink:0}@keyframes gspin{to{transform:rotate(360deg)}}`}</style>
+                {gRunning ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "13px 16px", background: "var(--brand-soft)", borderRadius: 8 }}>
+                      <span className="gspin" />
+                      <span style={{ fontWeight: 700, color: "var(--brand-d)", fontSize: 12.5, textAlign: "center" }}>{tr("gRunningLabel")}... {gProgress} — {tr("gKeepOpen")} ⏳</span>
+                    </div>
+                    <button className="btn ghost" disabled>{tr("cancel")}</button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                    <button className="btn ghost" onClick={() => setGOpen(false)}>{tr("cancel")}</button>
+                    <button className="btn" disabled={!gSel.size} onClick={runGraphy}>{tr("gRunBtn").replace("{n}", String(count)).replace("{c}", String(gSel.size))}</button>
                   </div>
                 )}
-                <style>{`.gspin{width:18px;height:18px;border:3px solid var(--brand);border-top-color:transparent;border-radius:50%;display:inline-block;animation:gspin .8s linear infinite;flex-shrink:0}@keyframes gspin{to{transform:rotate(360deg)}}`}</style>
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <button className="btn ghost" disabled={gRunning} onClick={() => setGOpen(false)}>{tr("cancel")}</button>
-                  <button className="btn" disabled={!gSel.size || gRunning} onClick={runGraphy}>{gRunning ? `جارٍ... ${gProgress}` : `تنفيذ (${count} عميل × ${gSel.size} كورس)`}</button>
-                </div>
               </>
             ) : (
               <>
@@ -512,7 +516,7 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
                   <span style={{ color: "var(--green)" }}>✅ نجح {gReport.filter((r) => r.ok).length}</span>
                   <span style={{ color: "var(--red)" }}>❌ فشل {gReport.filter((r) => !r.ok).length}</span>
                 </div>
-                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 12 }}>📑 اتسجّل في «سجل Graphy» (الإعدادات) — تقدر ترجعله وتنزّله Excel أي وقت.</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 12 }}>📑 {tr("gLogged")}</div>
                 <div style={{ border: "1px solid var(--line)", borderRadius: 10, maxHeight: 320, overflow: "auto", marginBottom: 12 }}>
                   {gReport.map((r, i) => (
                     <div key={i} style={{ display: "grid", gridTemplateColumns: "1.1fr 1.3fr 1.3fr 48px", gap: 8, padding: "8px 10px", borderBottom: "1px solid var(--line)", fontSize: 12, alignItems: "center", background: i % 2 ? "transparent" : "var(--muted-soft)" }}>

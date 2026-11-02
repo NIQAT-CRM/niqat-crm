@@ -1,13 +1,14 @@
 "use client";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useLang } from "@/lib/i18n/client";
+import { useLang, useT } from "@/lib/i18n/client";
 
 type Run = { id: string; created_at: string; actor?: { full_name?: string } | null; course_titles: string[]; customers_count: number; total: number; succeeded: number; failed: number };
 type Item = { name: string; email: string; course_title: string; ok: boolean; reason: string };
 
 export default function GraphyLogView({ runs }: { runs: Run[] }) {
   const lang = useLang();
+  const tr = useT();
   const supabase = createClient();
   const [open, setOpen] = useState<Run | null>(null);
   const [items, setItems] = useState<Item[] | null>(null);
@@ -33,7 +34,7 @@ export default function GraphyLogView({ runs }: { runs: Run[] }) {
   if (open) {
     return (
       <div>
-        <button className="btn ghost" style={{ marginBottom: 12 }} onClick={() => { setOpen(null); setItems(null); }}>← رجوع للسجل</button>
+        <button className="btn ghost" style={{ marginBottom: 12 }} onClick={() => { setOpen(null); setItems(null); }}>← {tr("gBack")}</button>
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8, flexWrap: "wrap" }}>
           <span style={{ fontWeight: 800, color: "var(--ink)" }}>{fmt(open.created_at)}</span>
           <span style={{ color: "var(--green)", fontWeight: 700 }}>✅ {open.succeeded}</span>
@@ -59,7 +60,7 @@ export default function GraphyLogView({ runs }: { runs: Run[] }) {
 
   return (
     <div>
-      {runs.length === 0 ? <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>مفيش عمليات Graphy لسه</div> : (
+      {runs.length === 0 ? <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>{tr("gNoRuns")}</div> : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {runs.map((r) => (
             <button key={r.id} onClick={() => openRun(r)} style={{ textAlign: "start", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px", background: "var(--surface)", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>

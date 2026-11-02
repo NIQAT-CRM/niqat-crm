@@ -20,6 +20,7 @@ const PERMS: [string, string][] = [
   ["can_grant_access", "permGrantAccess"],
   ["can_message", "permMessage"],
   ["can_export", "permExport"],
+  ["can_use_graphy", "permUseGraphy"],
   ["can_manage_settings", "permManageSettings"],
   ["can_manage_users", "permManageUsers"],
   ["can_see_daily_sales", "permSeeDailySales"],
