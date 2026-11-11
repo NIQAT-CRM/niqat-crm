@@ -71,7 +71,7 @@ export default function NewCustomerForm({
   const [serviceId, setServiceId] = useState("");
   const [serviceKind, setServiceKind] = useState<string>(serviceTypes[0]?.slug || "accreditation");
   const [f, setF] = useState({
-    name: "", phone1: "", phone2: "", email: "", company: "", affiliate_code: "",
+    name: "", phone1: "", phone2: "", email: "", company: "", job_title: "", affiliate_code: "",
     specialty_id: "", stage: "interested", residency: "", grad_year: "", source: "",
     follow: "", diploma_id: "", batch_id: "", free: false, note: "",
     amount: "", currency: "EGP",
@@ -264,7 +264,7 @@ export default function NewCustomerForm({
 
     const { data: cust, error } = await supabase.from("customers").insert({
       name: f.name.trim(), phone1: phone1 || null, phone2: phone2 || null,
-      email: f.email.trim() || null, company: f.company.trim(), affiliate_code: f.affiliate_code.trim(),
+      email: f.email.trim() || null, company: f.company.trim(), job_title: f.job_title.trim(), affiliate_code: f.affiliate_code.trim(),
       specialty_id: f.specialty_id || null, stage: f.stage, residency: f.residency.trim(),
       grad_year: f.grad_year.trim() || null, source: f.source.trim(),
       owner_id: meId || null,
@@ -584,6 +584,9 @@ export default function NewCustomerForm({
             <Head icon="briefcase" tint="var(--purple)" title={tr("salesData")} />
             <div className="frow">
               {I(tr("company"), "company")}
+              {I(tr("jobTitle"), "job_title")}
+            </div>
+            <div className="frow">
               <div className="fld"><label>{tr("stage")}</label>
                 <select className="inp" value={f.stage} onChange={(e) => set("stage", e.target.value)}>
                   {STAGES.map((s) => <option key={s[0]} value={s[0]}>{tr(s[1])}</option>)}

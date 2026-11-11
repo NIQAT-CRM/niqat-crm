@@ -47,7 +47,7 @@ async function buildCustomers(supabase: any, ids: string[], canFinance: boolean,
   const custs: any[] = [];
   for (const part of chunk(ids, CH)) {
     const { data } = await supabase.from("customers")
-      .select("id,name,phone1,phone2,email,company,source,specialty_id,stage,owner_id,created_at")
+      .select("id,name,phone1,phone2,email,company,job_title,source,specialty_id,stage,owner_id,created_at")
       .in("id", part);
     for (const c of (data as any[]) || []) custs.push(c);
   }
@@ -92,7 +92,7 @@ async function buildCustomers(supabase: any, ids: string[], canFinance: boolean,
   }
 
   const headers = [
-    "Name", "Mobile 1", "Mobile 2", "Email", "Company / Group", "Source",
+    "Name", "Mobile 1", "Mobile 2", "Email", "Company / Group", "Job Title", "Source",
     "Specialty", "Stage", "Owner", "Diplomas", "Diplomas Count", "Created At",
     ...(canFinance ? ["Agreed (EGP)", "Paid (EGP)", "Remaining (EGP)", "Paid (USD)"] : []),
   ];
@@ -101,7 +101,7 @@ async function buildCustomers(supabase: any, ids: string[], canFinance: boolean,
   const rows = custs.map((c) => {
     const dipNames = dipNamesByCust.get(c.id) || [];
     const base: (string | number)[] = [
-      c.name || "", c.phone1 || "", c.phone2 || "", c.email || "", c.company || "", c.source || "",
+      c.name || "", c.phone1 || "", c.phone2 || "", c.email || "", c.company || "", c.job_title || "", c.source || "",
       specMap.get(c.specialty_id) || "", STAGE_EN[c.stage] || c.stage || "",
       profMap.get(c.owner_id) || "", dipNames.join(", "), dipNames.length,
       c.created_at ? String(c.created_at).slice(0, 10) : "",

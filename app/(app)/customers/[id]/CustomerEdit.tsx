@@ -9,7 +9,7 @@ import { ARAB_COUNTRIES, FREQUENT_COUNTRIES } from "@/lib/countries";
 type Spec = { id: string; name_ar: string };
 type C = {
   id: string; name: string; phone1: string | null; phone2: string | null;
-  email: string | null; company: string | null; residency: string | null;
+  email: string | null; company: string | null; job_title?: string | null; residency: string | null;
   grad_year: number | null; stage: string; specialty_id: string | null;
   lms_status: string | null; source: string | null; affiliate_code: string | null; created_at: string;
   terms_signed?: boolean | null; terms_signed_at?: string | null;
@@ -37,7 +37,7 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
   const [activeTab, setActiveTab] = useState<string>("basic");
   const [f, setF] = useState({
     name: customer.name || "", phone1: customer.phone1 || "", phone2: customer.phone2 || "",
-    email: customer.email || "", company: customer.company || "", residency: customer.residency || "",
+    email: customer.email || "", company: customer.company || "", job_title: customer.job_title || "", residency: customer.residency || "",
     grad_year: customer.grad_year ? String(customer.grad_year) : "",
     specialty_id: customer.specialty_id || "", stage: customer.stage || "interested",
     affiliate_code: customer.affiliate_code || "",
@@ -64,7 +64,7 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
     if (/[\u0600-\u06FF]/.test(f.name)) { setErr(tr("nameEnglishOnly")); return; }
     const { error } = await supabase.from("customers").update({
       name: f.name.trim().toUpperCase(), phone1: f.phone1.trim() || null, phone2: f.phone2.trim() || null,
-      email: f.email.trim() || null, company: f.company.trim() || null, residency: f.residency.trim() || null,
+      email: f.email.trim() || null, company: f.company.trim() || null, job_title: f.job_title.trim(), residency: f.residency.trim() || null,
       grad_year: f.grad_year ? Number(f.grad_year) : null,
       specialty_id: f.specialty_id || null, stage: f.stage,
       affiliate_code: f.affiliate_code.trim(), source: f.source.trim(), lms_status: f.lms_status,
@@ -131,6 +131,10 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
               <div className={fld}>
                 <label className={lbl} style={lblStyle}>{tr("company")}</label>
                 <input className={inp} value={f.company} onChange={(e) => set("company", e.target.value)} />
+              </div>
+              <div className={fld}>
+                <label className={lbl} style={lblStyle}>{tr("jobTitle")}</label>
+                <input className={inp} value={f.job_title} onChange={(e) => set("job_title", e.target.value)} />
               </div>
               <div className={fld}>
                 <label className={lbl} style={lblStyle}>{tr("country")}</label>
